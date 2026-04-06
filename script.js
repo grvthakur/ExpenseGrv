@@ -580,8 +580,49 @@ function showSummary() {
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      plugins: { legend: { position: "bottom" } },
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const val = ctx.parsed;
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = ((val / total) * 100).toFixed(1);
+              return ` ₹${val.toFixed(2)}  (${pct}%)`;
+            },
+          },
+        },
+        datalabels: false,
+      },
     },
+    plugins: [
+      {
+        id: "sliceLabels",
+        afterDatasetDraw(chart) {
+          const { ctx: c, data } = chart;
+          const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+          chart.getDatasetMeta(0).data.forEach((arc, i) => {
+            const val = data.datasets[0].data[i];
+            const pct = ((val / total) * 100).toFixed(1);
+            if (pct < 4) return; // skip tiny slices
+            const angle = (arc.startAngle + arc.endAngle) / 2;
+            const r = (arc.innerRadius + arc.outerRadius) / 2 + 10;
+            const x = arc.x + Math.cos(angle) * r;
+            const y = arc.y + Math.sin(angle) * r;
+            c.save();
+            c.fillStyle = "#ffffff";
+            c.font = "bold 11px DM Sans, sans-serif";
+            c.textAlign = "center";
+            c.textBaseline = "middle";
+            c.shadowColor = "rgba(0,0,0,0.6)";
+            c.shadowBlur = 3;
+            c.fillText(`₹${val % 1 === 0 ? val : val.toFixed(0)}`, x, y - 6);
+            c.fillText(`${pct}%`, x, y + 7);
+            c.restore();
+          });
+        },
+      },
+    ],
   });
 
   const sal = salaries[key] || 0;
