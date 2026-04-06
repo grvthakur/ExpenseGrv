@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker — Personal Finance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0b0b10;
+            --surface: #13131c;
+            --s2: #1c1c28;
+            --border: #2a2a3d;
+            --accent: #a78bfa;
+            --green: #34d399;
+            --pink: #f472b6;
+            --danger: #f87171;
+            --muted: #7878a0;
+            --radius: 14px;
+            --radius-sm: 8px;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'DM Sans', sans-serif;
+            color: #eeeeff;
+            padding-bottom: 2rem;
+        }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-icon {
+            font-size: 1.6rem;
+        }
+
+        .brand-name {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.4rem;
+        }
+
+        .brand-name span {
+            color: var(--accent);
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .month-picker {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .month-picker select {
+            background: var(--s2);
+            border: none;
+            color: white;
+            font-weight: 500;
+            padding: 8px 14px;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .month-picker select option {
+            background: var(--s2);
+            color: white;
+        }
+
+        .month-picker span {
+            color: var(--border);
+            padding: 0 2px;
+        }
+
+        .btn-summary {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 8px 18px;
+            font-weight: 600;
+            color: var(--accent);
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .btn-summary:hover {
+            background: var(--accent);
+            color: #0b0b10;
+            border-color: var(--accent);
+        }
+
+        /* ── STATS ── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 20px 28px 0;
+        }
+
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 18px;
+            transition: 0.2s;
+        }
+
+        .stat:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+        }
+
+        .stat-value {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.5rem;
+            margin-top: 5px;
+        }
+
+        .c-red {
+            color: var(--danger);
+        }
+
+        .c-green {
+            color: var(--green);
+        }
+
+        .c-purple {
+            color: var(--accent);
+        }
+
+        .c-pink {
+            color: var(--pink);
+        }
+
+        /* ── MAIN GRID ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            padding: 20px 28px;
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+
+        .card:last-child {
+            margin-bottom: 0;
+        }
+
+        .card-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1rem;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        /* ── SALARY ── */
+        .salary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .salary-display .salary-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 1px;
+        }
+
+        .salary-amount {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.7rem;
+            color: var(--green);
+        }
+
+        .salary-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .salary-input-group input {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-family: inherit;
+            width: 140px;
+        }
+
+        .btn-edit {
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 30px;
+            color: var(--muted);
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        /* ── FORM ── */
+        .field {
+            margin-bottom: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .field label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+        }
+
+        .field input,
+        .field select {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: var(--accent);
+        }
+
+        .field select option {
+            background: var(--s2);
+            color: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 11px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0b0b10;
+        }
+
+        .btn-primary:hover {
+            background: #c4b5fd;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            color: white;
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        /* ── TABLE ── */
+        .table-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expense-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .expense-table th {
+            text-align: left;
+            padding: 12px 16px;
+            background: var(--s2);
+            color: var(--muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .expense-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .delete-btn:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+        }
+
+        /* ── MODAL ── */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            width: 90%;
+            max-width: 550px;
+            padding: 24px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--muted);
+            cursor: pointer;
+        }
+
+        .pie-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        canvas#summaryChart {
+            max-height: 280px;
+            max-width: 280px;
+        }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--green);
+            color: #0b0b10;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: 0.3s;
+            z-index: 1100;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+
+        /* ── STATUS BANNER ── */
+        .status-banner {
+            display: none;
+            background: #f87171;
+            color: #fff;
+            padding: 10px 28px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        /* ── LOADING OVERLAY ── */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 11, 16, 0.88);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .loading-spinner {
+            width: 42px;
+            height: 42px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        /* ── TABS ── */
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            padding: 16px 28px 0;
+        }
+
+        .tab-btn {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 8px 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--muted);
+            transition: 0.2s;
+            font-family: inherit;
+        }
+
+        .tab-btn.tab-active {
+            background: var(--accent);
+            color: #0b0b10;
+            border-color: var(--accent);
+        }
+
+        .tab-btn:hover:not(.tab-active) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ── CC STATS ── */
+        .cc-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px 28px 0;
+        }
+
+        /* ── CARD SUMMARY GRID ── */
+        .card-summary-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .card-summary-item {
+            background: var(--s2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            min-width: 200px;
+            flex: 1;
+        }
+
+        .cs-name {
+            font-weight: 700;
+            font-size: 0.78rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .cs-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            margin-bottom: 4px;
+            color: var(--muted);
+        }
+
+        .cs-row span:last-child {
+            color: #eeeeff;
+            font-weight: 600;
+        }
+
+        .cs-bar-wrap {
+            background: var(--border);
+            border-radius: 4px;
+            height: 5px;
+            margin: 6px 0;
+            overflow: hidden;
+        }
+
+        .cs-bar {
+            background: var(--accent);
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .cs-bar-over {
+            background: var(--danger);
+        }
+
+        /* ── STATUS BADGES ── */
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        .badge-paid {
+            background: #064e3b;
+            color: var(--green);
+        }
+
+        .badge-unpaid {
+            background: #450a0a;
+            color: var(--danger);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 750px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar,
+            .stats,
+            .main-grid {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <div class="brand">
+            <span class="brand-icon">💰</span>
+            <div class="brand-name"><span>Expense</span>Tracker</div>
+        </div>
+        <div class="controls">
+            <div class="month-picker">
+                <select id="monthSelect"></select>
+                <span>–</span>
+                <select id="yearSelect"></select>
+            </div>
+            <button class="btn-summary" id="summaryBtn">📊 Summary</button>
+        </div>
+    </div>
+
+    <!-- Status banner -->
+    <div id="statusBanner" class="status-banner"></div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div id="loadingMsg" class="loading-text">Loading your data…</div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="tab-bar">
+        <button class="tab-btn tab-active" id="tabExpenses">💰 Expenses</button>
+        <button class="tab-btn" id="tabCards">💳 Credit Cards</button>
+    </div>
+
+    <!-- ═══ EXPENSES STATS (shown when Expenses tab active) ═══ -->
+    <div id="expenseSection">
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Total Expenses</div>
+                <div class="stat-value c-red" id="statTotalExpenses">₹0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Salary</div>
+                <div class="stat-value c-green" id="statSalary">—</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Remaining</div>
+                <div class="stat-value c-purple" id="statRemaining">—</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Sweetie Balance</div>
+                <div class="stat-value c-pink" id="statSweetie">₹0</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="left-col">
+
+                <div class="card">
+                    <div class="card-title">Monthly Salary</div>
+                    <div class="salary-row">
+                        <div class="salary-display">
+                            <div class="salary-label">Current month</div>
+                            <div class="salary-amount" id="salaryDisplay">—</div>
+                        </div>
+                        <div id="salaryEditGroup">
+                            <div class="salary-input-group">
+                                <input type="number" id="salaryInput" placeholder="Amount ₹" />
+                                <button class="btn-edit" id="saveSalaryBtn">Save</button>
+                            </div>
+                        </div>
+                        <button class="btn-edit" id="editSalaryBtn" style="display:none;">✏️ Edit</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Add Transaction</div>
+                    <div class="field"><label>Date</label><input type="date" id="expenseDate" /></div>
+                    <div class="field">
+                        <label>Category</label>
+                        <select id="expenseCategory">
+                            <option>Food and Groceries</option>
+                            <option>Transportation</option>
+                            <option>Personal</option>
+                            <option>Shopping</option>
+                            <option>Entertainment and Leisure</option>
+                            <option>Dining Out</option>
+                            <option>Savings and Investments</option>
+                            <option>Bill Repayment</option>
+                            <option>Miscellaneous</option>
+                            <option>Received</option>
+                            <option>Loan</option>
+                            <option>Sport</option>
+                            <option>Sweetie Saving</option>
+                            <option>Sweetie Borrow</option>
+                        </select>
+                    </div>
+                    <div class="field"><label>Description (optional)</label><input type="text" id="expenseDesc" /></div>
+                    <div class="field"><label>Amount (₹)</label><input type="number" id="expenseAmount" /></div>
+                    <button class="btn btn-primary" id="addBtn">➕ Add Entry</button>
+                    <button class="btn btn-secondary" id="syncBtn">🔄 Sync from Sheet</button>
+                </div>
+
+            </div>
+
+            <div class="right-col">
+                <div class="table-wrapper">
+                    <div class="table-header">
+                        <span>📋 Transactions</span>
+                        <span id="rowCount" class="stat-label"
+                            style="background:var(--s2);padding:2px 8px;border-radius:20px;">0
+                            entries</span>
+                    </div>
+                    <div style="max-height:420px;overflow-y:auto;">
+                        <table class="expense-table" id="expenseTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                        <div id="emptyMessage" class="empty-state" style="display:none;">✨ No transactions this month
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /expenseSection -->
+
+    <!-- ═══ CREDIT CARDS SECTION ═══ -->
+    <div id="cardSection" style="display:none;">
+
+        <!-- CC Stats -->
+        <div class="cc-stats">
+            <div class="stat">
+                <div class="stat-label">Total Spend</div>
+                <div class="stat-value c-red" id="ccStatTotal">₹0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Unpaid</div>
+                <div class="stat-value c-pink" id="ccStatUnpaid">₹0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Paid</div>
+                <div class="stat-value c-green" id="ccStatPaid">₹0</div>
+            </div>
+        </div>
+
+        <div class="main-grid" style="padding-top:20px;">
+            <!-- Left: Add Card Transaction -->
+            <div class="left-col">
+                <div class="card">
+                    <div class="card-title">Add Card Transaction</div>
+                    <div class="field">
+                        <label>Credit Card</label>
+                        <select id="cardSelect"></select>
+                    </div>
+                    <div class="field"><label>Used By</label><input type="text" id="cardUsedBy" placeholder="Name" />
+                    </div>
+                    <div class="field"><label>Description</label><input type="text" id="cardDesc"
+                            placeholder="What was bought" /></div>
+                    <div class="field"><label>Transaction Date</label><input type="date" id="cardTxnDate" /></div>
+                    <div class="field"><label>Remarks (optional)</label><input type="text" id="cardRemarks" /></div>
+                    <div class="field"><label>Amount (₹)</label><input type="number" id="cardAmount" /></div>
+                    <div class="field">
+                        <label>Status</label>
+                        <select id="cardStatus">
+                            <option value="UNPAID">UNPAID</option>
+                            <option value="PAID">PAID</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="addCardBtn">➕ Add Card Entry</button>
+                    <button class="btn btn-secondary" id="cardSyncBtn" style="margin-top:8px;">🔄 Sync Cards</button>
+                </div>
+            </div>
+
+            <!-- Right: Card transactions table -->
+            <div class="right-col">
+                <!-- Per-card summary bars -->
+                <div id="cardSummaryGrid" class="card-summary-grid"></div>
+
+                <div class="table-wrapper">
+                    <div class="table-header">
+                        <span>💳 Card Transactions</span>
+                        <span id="ccRowCount" class="stat-label"
+                            style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+                    </div>
+                    <div style="max-height:420px;overflow-y:auto;">
+                        <table class="expense-table" id="cardTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Card</th>
+                                    <th>Used By</th>
+                                    <th>Description</th>
+                                    <th>Remarks</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cardTableBody"></tbody>
+                        </table>
+                        <div id="cardEmptyMessage" class="empty-state" style="display:none;">✨ No card transactions this
+                            billing month</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div><!-- /cardSection -->
+
+    <!-- Summary Modal -->
+    <div id="summaryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="font-family:'DM Serif Display'">📈 Monthly Breakdown</h3>
+                <button class="close-modal" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="pie-container"><canvas id="summaryChart" width="250" height="250"></canvas></div>
+            <div id="modalLegend" style="text-align:center;font-size:0.8rem;color:var(--muted);margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <div id="toastMsg" class="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
