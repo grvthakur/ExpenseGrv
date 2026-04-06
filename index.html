@@ -31,13 +31,116 @@
             --muted: #7878a0;
             --radius: 14px;
             --radius-sm: 8px;
+            --text: #eeeeff;
+        }
+
+        body.light-mode {
+            --bg: #f4f4f8;
+            --surface: #ffffff;
+            --s2: #f0f0f5;
+            --border: #d0d0e0;
+            --accent: #7c3aed;
+            --green: #059669;
+            --pink: #db2777;
+            --danger: #dc2626;
+            --muted: #6b6b8a;
+            --text: #1a1a2e;
+        }
+
+        body.light-mode .brand-name {
+            color: #1a1a2e;
+        }
+
+        body.light-mode .expense-table td {
+            color: #1a1a2e;
+        }
+
+        body.light-mode .expense-table th {
+            color: var(--muted);
+        }
+
+        /* All inputs, selects and options — fix text visibility in light mode */
+        body.light-mode input,
+        body.light-mode select,
+        body.light-mode textarea {
+            color: #1a1a2e !important;
+            background: var(--s2) !important;
+        }
+
+        body.light-mode select option {
+            color: #1a1a2e !important;
+            background: #f0f0f5 !important;
+        }
+
+        /* Month/year picker dropdowns */
+        body.light-mode .month-picker select {
+            color: #1a1a2e !important;
+            background: var(--s2) !important;
+        }
+
+        body.light-mode .month-picker select option {
+            color: #1a1a2e !important;
+            background: #f0f0f5 !important;
+        }
+
+        body.light-mode .modal-content {
+            color: #1a1a2e;
+        }
+
+        body.light-mode .stat-value {
+            color: inherit;
+        }
+
+        body.light-mode .stat-label {
+            color: var(--muted);
+        }
+
+        body.light-mode .card-title {
+            color: #1a1a2e;
+        }
+
+        body.light-mode .salary-label {
+            color: var(--muted);
+        }
+
+        body.light-mode .salary-amount {
+            color: var(--green);
+        }
+
+        body.light-mode .empty-state {
+            color: var(--muted);
+        }
+
+        /* Category badge inside expense table */
+        body.light-mode .expense-table td span {
+            color: #1a1a2e !important;
+            background: #e0e0ed !important;
+        }
+
+        body.light-mode .expense-table tr:hover td {
+            background: #e8e8f0;
+        }
+
+        body.light-mode .btn-edit {
+            color: var(--muted);
+            background: var(--s2);
+        }
+
+        body.light-mode .delete-btn {
+            color: var(--muted);
+            background: var(--s2);
+        }
+
+        body.light-mode .cs-name {
+            color: var(--accent);
         }
 
         body {
             background: var(--bg);
             font-family: 'DM Sans', sans-serif;
-            color: #eeeeff;
+            color: var(--text);
             padding-bottom: 2rem;
+            transition: background 0.2s, color 0.2s;
         }
 
         /* ── TOPBAR ── */
@@ -464,6 +567,16 @@
         }
 
 
+        /* ── SORT ARROWS ── */
+        .sort-arrow {
+            color: var(--muted);
+            font-size: 0.7rem;
+        }
+
+        th:hover .sort-arrow {
+            color: var(--accent);
+        }
+
         /* ── STATUS BANNER ── */
         .status-banner {
             display: none;
@@ -740,6 +853,7 @@
             <button class="btn-summary" id="summaryBtn">📊 Summary</button>
             <button class="btn-summary" id="ccMasterBtn" style="color:#f472b6;border-color:#f472b6;">🔒 CC
                 Master</button>
+            <button class="btn-summary" id="themeToggleBtn" title="Toggle light/dark mode">🌙 Dark</button>
         </div>
     </div>
 
@@ -824,6 +938,9 @@
                     <div class="field"><label>Description (optional)</label><input type="text" id="expenseDesc" /></div>
                     <div class="field"><label>Amount (₹)</label><input type="number" id="expenseAmount" /></div>
                     <button class="btn btn-primary" id="addBtn">➕ Add Entry</button>
+                    <button class="btn btn-secondary" id="cancelExpEditBtn"
+                        style="display:none;background:#fbbf24;color:#0b0b10;border-color:#fbbf24;">✕ Cancel
+                        Edit</button>
                     <button class="btn btn-secondary" id="syncBtn">🔄 Sync from Sheet</button>
                 </div>
 
@@ -833,18 +950,29 @@
                 <div class="table-wrapper">
                     <div class="table-header">
                         <span>📋 Transactions</span>
-                        <span id="rowCount" class="stat-label"
-                            style="background:var(--s2);padding:2px 8px;border-radius:20px;">0
-                            entries</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <input id="expSearchBox" type="text" placeholder="🔍 Search…" oninput="render()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:160px;outline:none;" />
+                            <span id="rowCount" class="stat-label"
+                                style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+                        </div>
                     </div>
-                    <div style="max-height:420px;overflow-y:auto;">
+                    <div style="max-height:620px;overflow-y:auto;">
                         <table class="expense-table" id="expenseTable">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Category</th>
-                                    <th>Description</th>
-                                    <th>Amount</th>
+                                    <th id="expTh_date" onclick="sortExpenses('date')"
+                                        style="cursor:pointer;user-select:none">Date<span class="sort-arrow"> ↓</span>
+                                    </th>
+                                    <th id="expTh_category" onclick="sortExpenses('category')"
+                                        style="cursor:pointer;user-select:none">Category<span class="sort-arrow">
+                                            ↕</span></th>
+                                    <th id="expTh_description" onclick="sortExpenses('description')"
+                                        style="cursor:pointer;user-select:none">Description<span class="sort-arrow">
+                                            ↕</span></th>
+                                    <th id="expTh_amount" onclick="sortExpenses('amount')"
+                                        style="cursor:pointer;user-select:none">Amount<span class="sort-arrow"> ↕</span>
+                                    </th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -902,6 +1030,9 @@
                         </select>
                     </div>
                     <button class="btn btn-primary" id="addCardBtn">➕ Add Card Entry</button>
+                    <button class="btn btn-secondary" id="cancelCardEditBtn"
+                        style="display:none;background:#fbbf24;color:#0b0b10;border-color:#fbbf24;">✕ Cancel
+                        Edit</button>
                     <button class="btn btn-secondary" id="cardSyncBtn" style="margin-top:8px;">🔄 Sync Cards</button>
                 </div>
             </div>
@@ -914,20 +1045,34 @@
                 <div class="table-wrapper">
                     <div class="table-header">
                         <span>💳 Card Transactions</span>
-                        <span id="ccRowCount" class="stat-label"
-                            style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <input id="cardSearchBox" type="text" placeholder="🔍 Search…" oninput="renderCards()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:160px;outline:none;" />
+                            <span id="ccRowCount" class="stat-label"
+                                style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+                        </div>
                     </div>
-                    <div style="max-height:420px;overflow-y:auto;">
+                    <div style="max-height:620px;overflow-y:auto;">
                         <table class="expense-table" id="cardTable">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Card</th>
-                                    <th>Used By</th>
+                                    <th id="ccTh_txnDate" onclick="sortCards('txnDate')"
+                                        style="cursor:pointer;user-select:none">Date<span class="sort-arrow"> ↓</span>
+                                    </th>
+                                    <th id="ccTh_card" onclick="sortCards('card')"
+                                        style="cursor:pointer;user-select:none">Card<span class="sort-arrow"> ↕</span>
+                                    </th>
+                                    <th id="ccTh_usedBy" onclick="sortCards('usedBy')"
+                                        style="cursor:pointer;user-select:none">Used By<span class="sort-arrow">
+                                            ↕</span></th>
                                     <th>Description</th>
                                     <th>Remarks</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
+                                    <th id="ccTh_amount" onclick="sortCards('amount')"
+                                        style="cursor:pointer;user-select:none">Amount<span class="sort-arrow"> ↕</span>
+                                    </th>
+                                    <th id="ccTh_status" onclick="sortCards('status')"
+                                        style="cursor:pointer;user-select:none">Status<span class="sort-arrow"> ↕</span>
+                                    </th>
                                     <th></th>
                                 </tr>
                             </thead>

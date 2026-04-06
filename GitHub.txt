@@ -1,0 +1,56 @@
+Part 1 — one-time setup
+1
+Install Git once
+Go to https://git-scm.com/download/win → download → run installer → keep all defaults → Finish. Restart VS Code after.
+2
+Generate GitHub token once
+github.com → profile picture → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic) → tick repo → Generate → copy it immediately (looks like ghp_xxxx...)
+Save the token in Notepad — you will never see it again on GitHub.
+3
+Create repo on GitHub once
+github.com → + → New repository → name it → Public → do NOT tick README → Create repository. Copy the repo URL.
+
+Open project in VS Code once
+File → Open Folder → select your project folder → Ctrl+` to open terminal
+5
+Configure git identity once
+copygit config --global user.name "Your Name"
+git config --global user.email "your@email.com"
+Use the same email as your GitHub account.
+6
+Initialize and push once
+copygit init
+git remote add origin https://USERNAME:TOKEN@github.com/USERNAME/ExpenseGrv.git
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git push -u origin main --force
+
+Replace USERNAME with your GitHub username and TOKEN with the token from step 2.
+Part 2 — enable github pages
+1
+Turn on Pages once
+Go to your repo on GitHub → Settings → Pages (left sidebar) → Source: Deploy from a branch → Branch: main → / (root) → Save. Wait 2–3 minutes.
+Your app will be live at: https://grvthakur.github.io/ExpenseGrv/
+Part 3 — every time you update files
+→
+Push changes every update
+copygit add .
+git commit -m "describe what changed"
+git push
+
+Part 4 — when token expires
+→
+Update token when push fails
+Generate a new token (Part 1 step 2), then run:
+copygit remote set-url origin https://USERNAME:NEW_TOKEN@github.com/USERNAME/ExpenseGrv.git
+
+
+Command	What it does
+git init	Start tracking a folder with git
+git add .	Stage all changed files for commit
+git commit -m "msg"	Save a snapshot with a message
+git push	Upload commits to GitHub
+git push --force	Force upload, overwriting remote
+git status	See which files have changed
+git log --oneline	See commit history

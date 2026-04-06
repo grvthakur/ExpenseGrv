@@ -1,5 +1,6 @@
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbw6j_sc2eSMSm5fxNXushEQrJBtol8FyM4C-X6icbJXo7qdDFpKHVf5PyaVNEd3WYX2/exec";
+  "https://script.google.com/macros/s/AKfycbzHY7-DlT4xirnukyGCr8E__Jw5upTOzYrGvBx4bWMjlu251ZwyOtyT-RqHBVxg2XOu/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -41,6 +42,12 @@ let cardTxns = []; // credit card transactions
 let cardConfig = []; // [{card, cutoff, limit}]
 let currentChart = null;
 let activeTab = "expenses"; // "expenses" | "cards"
+let expSort = { col: "date", dir: "desc" };
+let cardSort = { col: "txnDate", dir: "desc" };
+let editingExpId = null;
+let editingCardId = null;
+let expSearch = "";
+let cardSearch = "";
 
 // ─── MONTH KEYS ──────────────────────────────────────────────────────────────
 function monthKey() {
@@ -236,33 +243,120 @@ function render() {
     editBtn.style.display = "none";
   }
 
+  // Apply search filter
+  const expSearchEl = document.getElementById("expSearchBox");
+  expSearch = expSearchEl ? expSearchEl.value.trim().toLowerCase() : "";
+  const filteredRows = expSearch
+    ? rows.filter(
+        (e) =>
+          (e.description || "").toLowerCase().includes(expSearch) ||
+          (e.category || "").toLowerCase().includes(expSearch) ||
+          String(e.amount).includes(expSearch) ||
+          (e.date || "").includes(expSearch),
+      )
+    : rows;
+
   const tbody = document.getElementById("tableBody");
   const emptyEl = document.getElementById("emptyMessage");
   tbody.innerHTML = "";
 
-  if (rows.length === 0) {
+  // Update sort header arrows
+  ["date", "category", "description", "amount"].forEach((col) => {
+    const th = document.getElementById("expTh_" + col);
+    if (!th) return;
+    th.querySelector(".sort-arrow").textContent =
+      expSort.col === col ? (expSort.dir === "asc" ? " ↑" : " ↓") : " ↕";
+  });
+
+  if (filteredRows.length === 0) {
     emptyEl.style.display = "block";
+    emptyEl.textContent = expSearch
+      ? `No results for "${expSearch}"`
+      : "✨ No transactions this month";
     document.getElementById("rowCount").textContent = "0 entries";
     return;
   }
   emptyEl.style.display = "none";
-  document.getElementById("rowCount").textContent = `${rows.length} entries`;
+  document.getElementById("rowCount").textContent = expSearch
+    ? `${filteredRows.length} of ${rows.length} entries`
+    : `${rows.length} entries`;
 
-  [...rows]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .forEach((exp) => {
-      const tr = tbody.insertRow();
-      tr.insertCell(0).textContent = exp.date;
-      tr.insertCell(1).innerHTML =
-        `<span style="background:#1c1c28;padding:2px 8px;border-radius:20px;font-size:0.7rem">${exp.category}</span>`;
-      tr.insertCell(2).textContent = exp.description || "—";
-      tr.insertCell(3).textContent = `₹${exp.amount.toFixed(2)}`;
-      const btn = document.createElement("button");
-      btn.textContent = "✕";
-      btn.className = "delete-btn";
-      btn.onclick = () => deleteEntry(exp.id);
-      tr.insertCell(4).appendChild(btn);
-    });
+  const sorted = [...filteredRows].sort((a, b) => {
+    let av = a[expSort.col],
+      bv = b[expSort.col];
+    if (expSort.col === "amount") {
+      av = +av;
+      bv = +bv;
+    } else {
+      av = String(av || "").toLowerCase();
+      bv = String(bv || "").toLowerCase();
+    }
+    if (av < bv) return expSort.dir === "asc" ? -1 : 1;
+    if (av > bv) return expSort.dir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  sorted.forEach((exp) => {
+    const tr = tbody.insertRow();
+    if (editingExpId === exp.id) tr.style.background = "rgba(167,139,250,0.08)";
+    tr.insertCell(0).textContent = exp.date;
+    tr.insertCell(1).innerHTML =
+      `<span style="background:#1c1c28;padding:2px 8px;border-radius:20px;font-size:0.7rem">${exp.category}</span>`;
+    tr.insertCell(2).textContent = exp.description || "—";
+    tr.insertCell(3).textContent = `₹${exp.amount.toFixed(2)}`;
+    const actCell = tr.insertCell(4);
+    actCell.style.whiteSpace = "nowrap";
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏️";
+    editBtn.className = "delete-btn";
+    editBtn.title = "Edit";
+    editBtn.style.marginRight = "4px";
+    editBtn.onclick = () => startEditExpense(exp.id);
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "✕";
+    delBtn.className = "delete-btn";
+    delBtn.title = "Delete";
+    delBtn.onclick = () => deleteEntry(exp.id);
+    actCell.appendChild(editBtn);
+    actCell.appendChild(delBtn);
+  });
+}
+
+function sortExpenses(col) {
+  if (expSort.col === col) expSort.dir = expSort.dir === "asc" ? "desc" : "asc";
+  else {
+    expSort.col = col;
+    expSort.dir = col === "amount" ? "desc" : "asc";
+  }
+  render();
+}
+
+// Fill form with existing entry data for editing
+function startEditExpense(id) {
+  const exp = expenses.find((e) => e.id === id);
+  if (!exp) return;
+  editingExpId = id;
+  document.getElementById("expenseDate").value = exp.date;
+  document.getElementById("expenseCategory").value = exp.category;
+  document.getElementById("expenseDesc").value = exp.description || "";
+  document.getElementById("expenseAmount").value = exp.amount;
+  document.getElementById("addBtn").textContent = "💾 Update Entry";
+  document.getElementById("addBtn").style.background = "#fbbf24";
+  document.getElementById("cancelExpEditBtn").style.display = "block";
+  render(); // highlight the row being edited
+  document
+    .getElementById("expenseAmount")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditExpense() {
+  editingExpId = null;
+  document.getElementById("expenseDesc").value = "";
+  document.getElementById("expenseAmount").value = "";
+  document.getElementById("addBtn").textContent = "➕ Add Entry";
+  document.getElementById("addBtn").style.background = "";
+  document.getElementById("cancelExpEditBtn").style.display = "none";
+  render();
 }
 
 function addEntry() {
@@ -274,6 +368,32 @@ function addEntry() {
   if (!date || !rawAmt) return toast("Date & amount required", true);
   const amount = parseFloat(rawAmt);
   if (isNaN(amount) || amount <= 0) return toast("Enter a valid amount", true);
+
+  if (editingExpId) {
+    // ── UPDATE MODE: delete old, save new with same id ──
+    const oldEntry = expenses.find((e) => e.id === editingExpId);
+    const updEntry = {
+      id: editingExpId,
+      date,
+      month: monthKey(),
+      category: cat,
+      description: desc,
+      amount,
+    };
+    expenses = expenses.filter((e) => e.id !== editingExpId);
+    expenses.push(updEntry);
+    saveLocal();
+    // Delete old from sheet then re-add updated
+    sheetWrite(apiUrl(`action=delete&id=${editingExpId}`));
+    sheetWrite(
+      apiUrl(
+        `action=add&id=${updEntry.id}&date=${updEntry.date}&month=${enc(updEntry.month)}&category=${enc(updEntry.category)}&description=${enc(updEntry.description)}&amount=${updEntry.amount}`,
+      ),
+    );
+    cancelEditExpense();
+    toast("Entry updated ✓");
+    return;
+  }
 
   const entry = {
     id: Date.now().toString(),
@@ -298,6 +418,7 @@ function addEntry() {
 }
 
 function deleteEntry(id) {
+  if (!confirm("Delete this entry? This cannot be undone.")) return;
   expenses = expenses.filter((e) => e.id !== id);
   saveLocal();
   render();
@@ -542,43 +663,136 @@ function renderCards() {
   const emptyEl = document.getElementById("cardEmptyMessage");
   tbody.innerHTML = "";
 
-  if (rows.length === 0) {
+  // Apply search filter
+  const cardSearchEl = document.getElementById("cardSearchBox");
+  cardSearch = cardSearchEl ? cardSearchEl.value.trim().toLowerCase() : "";
+  const filteredCardRows = cardSearch
+    ? rows.filter(
+        (t) =>
+          (t.description || "").toLowerCase().includes(cardSearch) ||
+          (t.card || "").toLowerCase().includes(cardSearch) ||
+          (t.usedBy || "").toLowerCase().includes(cardSearch) ||
+          (t.remarks || "").toLowerCase().includes(cardSearch) ||
+          String(t.amount).includes(cardSearch) ||
+          (t.status || "").toLowerCase().includes(cardSearch),
+      )
+    : rows;
+
+  // Update sort header arrows
+  ["txnDate", "card", "usedBy", "amount", "status"].forEach((col) => {
+    const th = document.getElementById("ccTh_" + col);
+    if (!th) return;
+    th.querySelector(".sort-arrow").textContent =
+      cardSort.col === col ? (cardSort.dir === "asc" ? " ↑" : " ↓") : " ↕";
+  });
+
+  if (filteredCardRows.length === 0) {
     emptyEl.style.display = "block";
+    emptyEl.textContent = cardSearch
+      ? `No results for "${cardSearch}"`
+      : "✨ No card transactions this billing month";
     document.getElementById("ccRowCount").textContent = "0 entries";
     return;
   }
   emptyEl.style.display = "none";
-  document.getElementById("ccRowCount").textContent = `${rows.length} entries`;
+  document.getElementById("ccRowCount").textContent = cardSearch
+    ? `${filteredCardRows.length} of ${rows.length} entries`
+    : `${rows.length} entries`;
 
-  [...rows]
-    .sort((a, b) => b.txnDate.localeCompare(a.txnDate))
-    .forEach((t) => {
-      const tr = tbody.insertRow();
-      const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status}</span>`;
+  const sorted = [...filteredCardRows].sort((a, b) => {
+    let av = a[cardSort.col],
+      bv = b[cardSort.col];
+    if (cardSort.col === "amount") {
+      av = +av;
+      bv = +bv;
+    } else {
+      av = String(av || "").toLowerCase();
+      bv = String(bv || "").toLowerCase();
+    }
+    if (av < bv) return cardSort.dir === "asc" ? -1 : 1;
+    if (av > bv) return cardSort.dir === "asc" ? 1 : -1;
+    return 0;
+  });
 
-      tr.insertCell(0).textContent = t.txnDate;
-      tr.insertCell(1).innerHTML =
-        `<span style="background:#1c1c28;padding:2px 6px;border-radius:20px;font-size:0.68rem">${t.card}</span>`;
-      tr.insertCell(2).textContent = t.usedBy || "—";
-      tr.insertCell(3).textContent = t.description || "—";
-      tr.insertCell(4).textContent = t.remarks || "—";
-      tr.insertCell(5).textContent = `₹${t.amount.toFixed(2)}`;
+  sorted.forEach((t) => {
+    const tr = tbody.insertRow();
+    const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status}</span>`;
 
-      const statusCell = tr.insertCell(6);
-      statusCell.innerHTML = statusBadge;
-      statusCell.style.cursor = "pointer";
-      statusCell.title = "Click to toggle status";
-      statusCell.onclick = () => toggleCardStatus(t.id);
+    tr.insertCell(0).textContent = t.txnDate;
+    tr.insertCell(1).innerHTML =
+      `<span style="background:#1c1c28;padding:2px 6px;border-radius:20px;font-size:0.68rem">${t.card}</span>`;
+    tr.insertCell(2).textContent = t.usedBy || "—";
+    tr.insertCell(3).textContent = t.description || "—";
+    tr.insertCell(4).textContent = t.remarks || "—";
+    tr.insertCell(5).textContent = `₹${t.amount.toFixed(2)}`;
 
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "✕";
-      delBtn.className = "delete-btn";
-      delBtn.onclick = () => deleteCardEntry(t.id);
-      tr.insertCell(7).appendChild(delBtn);
-    });
+    const statusCell = tr.insertCell(6);
+    statusCell.innerHTML = statusBadge;
+    statusCell.style.cursor = "pointer";
+    statusCell.title = "Click to toggle status";
+    statusCell.onclick = () => toggleCardStatus(t.id);
+
+    const actCell = tr.insertCell(7);
+    actCell.style.whiteSpace = "nowrap";
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏️";
+    editBtn.className = "delete-btn";
+    editBtn.title = "Edit";
+    editBtn.style.marginRight = "4px";
+    editBtn.onclick = () => startEditCard(t.id);
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "✕";
+    delBtn.className = "delete-btn";
+    delBtn.title = "Delete";
+    delBtn.onclick = () => deleteCardEntry(t.id);
+    actCell.appendChild(editBtn);
+    actCell.appendChild(delBtn);
+  });
+}
+
+function sortCards(col) {
+  if (cardSort.col === col)
+    cardSort.dir = cardSort.dir === "asc" ? "desc" : "asc";
+  else {
+    cardSort.col = col;
+    cardSort.dir = col === "amount" ? "desc" : "asc";
+  }
+  renderCards();
 }
 
 // Add a credit card transaction
+function startEditCard(id) {
+  const t = cardTxns.find((t) => t.id === id);
+  if (!t) return;
+  editingCardId = id;
+  document.getElementById("cardSelect").value = t.card;
+  document.getElementById("cardUsedBy").value = t.usedBy || "";
+  document.getElementById("cardDesc").value = t.description || "";
+  document.getElementById("cardTxnDate").value = t.txnDate;
+  document.getElementById("cardRemarks").value = t.remarks || "";
+  document.getElementById("cardAmount").value = t.amount;
+  document.getElementById("cardStatus").value = t.status;
+  document.getElementById("addCardBtn").textContent = "💾 Update Card Entry";
+  document.getElementById("addCardBtn").style.background = "#fbbf24";
+  document.getElementById("cancelCardEditBtn").style.display = "block";
+  renderCards();
+  document
+    .getElementById("cardAmount")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditCard() {
+  editingCardId = null;
+  document.getElementById("cardUsedBy").value = "";
+  document.getElementById("cardDesc").value = "";
+  document.getElementById("cardRemarks").value = "";
+  document.getElementById("cardAmount").value = "";
+  document.getElementById("addCardBtn").textContent = "➕ Add Card Entry";
+  document.getElementById("addCardBtn").style.background = "";
+  document.getElementById("cancelCardEditBtn").style.display = "none";
+  renderCards();
+}
+
 function addCardEntry() {
   const card = document.getElementById("cardSelect").value;
   const usedBy = document.getElementById("cardUsedBy").value.trim();
@@ -596,6 +810,33 @@ function addCardEntry() {
   const cfg = cardConfig.find((c) => c.card === card);
   const cutoff = cfg ? cfg.cutoff : 0;
   const billingMonth = calcBillingMonth(txnDate, cutoff);
+
+  if (editingCardId) {
+    // ── UPDATE MODE ──
+    const updEntry = {
+      id: editingCardId,
+      card,
+      usedBy,
+      description: desc,
+      txnDate,
+      remarks,
+      amount,
+      status,
+      billingMonth,
+    };
+    cardTxns = cardTxns.filter((t) => t.id !== editingCardId);
+    cardTxns.push(updEntry);
+    saveLocal();
+    sheetWrite(apiUrl(`action=deleteCard&id=${editingCardId}`));
+    sheetWrite(
+      apiUrl(
+        `action=addCard&id=${updEntry.id}&card=${enc(updEntry.card)}&usedBy=${enc(updEntry.usedBy)}&description=${enc(updEntry.description)}&txnDate=${enc(updEntry.txnDate)}&remarks=${enc(updEntry.remarks)}&amount=${updEntry.amount}&status=${enc(updEntry.status)}&billingMonth=${enc(updEntry.billingMonth)}`,
+      ),
+    );
+    cancelEditCard();
+    toast("Card entry updated ✓");
+    return;
+  }
 
   const entry = {
     id: Date.now().toString(),
@@ -628,6 +869,7 @@ function addCardEntry() {
 
 // Delete a card transaction
 function deleteCardEntry(id) {
+  if (!confirm("Delete this card entry? This cannot be undone.")) return;
   cardTxns = cardTxns.filter((t) => t.id !== id);
   saveLocal();
   renderCards();
@@ -843,8 +1085,33 @@ function initSelectors() {
   ys.value = now.getFullYear();
 }
 
+// ─── THEME TOGGLE ────────────────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem("theme") || "dark";
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  const btn = document.getElementById("themeToggleBtn");
+  if (theme === "light") {
+    document.body.classList.add("light-mode");
+    if (btn) btn.textContent = "☀️ Light";
+    localStorage.setItem("theme", "light");
+  } else {
+    document.body.classList.remove("light-mode");
+    if (btn) btn.textContent = "🌙 Dark";
+    localStorage.setItem("theme", "dark");
+  }
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.contains("light-mode");
+  applyTheme(isLight ? "dark" : "light");
+}
+
 // ─── BOOT ────────────────────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", async () => {
+  initTheme();
   initSelectors();
   lockDatePicker();
   loadLocal();
@@ -876,6 +1143,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Card tab wiring
   // CC Master wiring
+  document
+    .getElementById("themeToggleBtn")
+    .addEventListener("click", toggleTheme);
   document
     .getElementById("ccMasterBtn")
     .addEventListener("click", openCCMaster);
@@ -911,6 +1181,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     .getElementById("tabCards")
     .addEventListener("click", () => switchTab("cards"));
   document.getElementById("addCardBtn").addEventListener("click", addCardEntry);
+  document
+    .getElementById("cancelExpEditBtn")
+    .addEventListener("click", cancelEditExpense);
+  document
+    .getElementById("cancelCardEditBtn")
+    .addEventListener("click", cancelEditCard);
   document
     .getElementById("cardSyncBtn")
     .addEventListener("click", () => syncCardsFromSheet(true));
