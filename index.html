@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Expense Tracker — Personal Finance</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -542,8 +542,14 @@
         }
 
         canvas#summaryChart {
-            max-height: 280px;
-            max-width: 280px;
+            max-height: 240px;
+            max-width: 240px;
+        }
+
+        #modalLegend {
+            max-height: 260px;
+            overflow-y: auto;
+            text-align: left;
         }
 
         /* ── TOAST ── */
@@ -838,10 +844,12 @@
             .topbar {
                 padding: 10px 16px;
                 gap: 8px;
+                flex-wrap: wrap;
             }
 
             .controls {
                 gap: 6px;
+                flex-wrap: wrap;
             }
 
             .btn-summary {
@@ -867,13 +875,27 @@
                 font-size: 1.2rem;
             }
 
-            /* Stack brand and controls more tightly */
-            .topbar {
-                flex-wrap: wrap;
+            /* Table horizontal scroll — prevents whole page zoom */
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
 
-            .controls {
-                flex-wrap: wrap;
+            .expense-table {
+                min-width: 520px;
+            }
+
+            /* Bigger edit/delete buttons on mobile */
+            .delete-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            /* Hide less important columns on mobile to reduce clutter */
+            .expense-table th:nth-child(3),
+            .expense-table td:nth-child(3) {
+                display: none;
             }
         }
     </style>
