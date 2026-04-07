@@ -460,7 +460,7 @@ async function syncFromSheet(isManual = false, isInitial = false) {
     btn.textContent = "⏳ Syncing…";
     btn.disabled = true;
   }
-  if (isInitial) showLoading("Loading your data from Google Sheet…");
+  // No loading overlay — local data already shown instantly
 
   try {
     const [expRes, salRes] = await Promise.all([
@@ -524,7 +524,6 @@ async function syncFromSheet(isManual = false, isInitial = false) {
       btn.textContent = "🔄 Sync from Sheet";
       btn.disabled = false;
     }
-    if (isInitial) hideLoading();
   }
 }
 
@@ -1257,9 +1256,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (activeTab === "cards") syncCardsFromSheet(false);
   });
 
-  // Initial load
-  await syncFromSheet(false, true);
-  await syncCardsFromSheet(false);
+  // Show local data instantly — no blocking loader
+  // Sync runs silently in background, updates UI when done
+  syncFromSheet(false, false);
+  syncCardsFromSheet(false);
 
   setInterval(() => {
     syncFromSheet(false);

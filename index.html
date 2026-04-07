@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Expense Tracker — Personal Finance</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -898,7 +898,62 @@
                 font-size: 1rem;
             }
 
-            /* Keep all columns visible on mobile — table scrolls horizontally */
+            /* All columns visible — compact sizing to fit screen */
+            .expense-table {
+                min-width: unset;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            .expense-table td,
+            .expense-table th {
+                padding: 7px 5px;
+                font-size: 0.72rem;
+                word-break: break-word;
+            }
+
+            .expense-table td span {
+                font-size: 0.6rem;
+                padding: 1px 4px;
+                white-space: nowrap;
+            }
+
+            /* Column widths tuned for mobile */
+            .expense-table th:nth-child(1),
+            .expense-table td:nth-child(1) {
+                width: 13%;
+            }
+
+            .expense-table th:nth-child(2),
+            .expense-table td:nth-child(2) {
+                width: 24%;
+            }
+
+            .expense-table th:nth-child(3),
+            .expense-table td:nth-child(3) {
+                width: 28%;
+            }
+
+            .expense-table th:nth-child(4),
+            .expense-table td:nth-child(4) {
+                width: 20%;
+            }
+
+            .expense-table th:nth-child(5),
+            .expense-table td:nth-child(5) {
+                width: 15%;
+            }
+
+            .table-wrapper {
+                overflow-x: unset;
+            }
+
+            .delete-btn {
+                width: 28px;
+                height: 28px;
+                font-size: 0.8rem;
+                margin: 1px;
+            }
         }
     </style>
 </head>
