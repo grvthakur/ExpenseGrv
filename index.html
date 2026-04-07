@@ -532,6 +532,23 @@
             color: var(--danger);
         }
 
+        /* Clone button — teal so it stands out from edit(pencil) and delete(x) */
+        .clone-btn {
+            background: transparent;
+            border: 1px solid var(--green);
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            color: var(--green);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .clone-btn:hover {
+            background: var(--green);
+            color: #0b0b10;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px;
@@ -813,18 +830,21 @@
 
         .cc-num {
             font-family: monospace;
-            letter-spacing: 1px;
-            color: var(--accent);
-            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: #ffffff;
+            font-size: 0.88rem;
+            font-weight: 600;
         }
 
         .cc-cvv {
-            color: var(--pink);
+            color: #fbbf24;
             font-weight: 700;
+            font-size: 0.88rem;
         }
 
         .cc-exp {
             color: var(--green);
+            font-weight: 600;
         }
 
         .pwd-input {
@@ -975,6 +995,13 @@
             }
 
             .delete-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 0.85rem;
+                margin: 1px;
+            }
+
+            .clone-btn {
                 width: 30px;
                 height: 30px;
                 font-size: 0.85rem;

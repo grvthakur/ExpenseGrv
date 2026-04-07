@@ -337,7 +337,7 @@ function render() {
     editBtn.onclick = () => startEditExpense(exp.id);
     const cloneExpBtn = document.createElement("button");
     cloneExpBtn.textContent = "⧉";
-    cloneExpBtn.className = "delete-btn";
+    cloneExpBtn.className = "clone-btn";
     cloneExpBtn.title = "Clone";
     cloneExpBtn.style.marginRight = "4px";
     cloneExpBtn.onclick = () => cloneExpense(exp.id);
@@ -830,7 +830,7 @@ function renderCards() {
     editBtn.onclick = () => startEditCard(t.id);
     const cloneCardBtn = document.createElement("button");
     cloneCardBtn.textContent = "⧉";
-    cloneCardBtn.className = "delete-btn";
+    cloneCardBtn.className = "clone-btn";
     cloneCardBtn.title = "Clone";
     cloneCardBtn.style.marginRight = "4px";
     cloneCardBtn.onclick = () => cloneCard(t.id);
