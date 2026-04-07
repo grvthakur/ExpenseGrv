@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbzHY7-DlT4xirnukyGCr8E__Jw5upTOzYrGvBx4bWMjlu251ZwyOtyT-RqHBVxg2XOu/exec";
+  "https://script.google.com/macros/s/AKfycbxGtztUDrFLgunqjRHL4SAuDGOtfL5wJKTM1ilanh-uYyAUV_qEiRsHt4C_usutgDEI/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -136,16 +136,6 @@ function localDateStr(date) {
 }
 
 // ─── DATE PICKER (expenses — locked to selected month) ───────────────────────
-// Format "2026-04-07" → "7 Apr" for display only
-function formatDisplayDate(dateStr) {
-  if (!dateStr) return "—";
-  const parts = dateStr.split("-");
-  if (parts.length !== 3) return dateStr;
-  const d = parseInt(parts[2]);
-  const m = MONTHS[parseInt(parts[1]) - 1];
-  return `${d} ${m}`;
-}
-
 function lockDatePicker() {
   const m = parseInt(document.getElementById("monthSelect").value);
   const y = parseInt(document.getElementById("yearSelect").value);
@@ -309,7 +299,7 @@ function render() {
   sorted.forEach((exp) => {
     const tr = tbody.insertRow();
     if (editingExpId === exp.id) tr.style.background = "rgba(167,139,250,0.08)";
-    tr.insertCell(0).textContent = formatDisplayDate(exp.date);
+    tr.insertCell(0).textContent = exp.date;
     tr.insertCell(1).innerHTML =
       `<span style="background:#1c1c28;padding:2px 8px;border-radius:20px;font-size:0.7rem">${exp.category}</span>`;
     tr.insertCell(2).textContent = exp.description || "—";
@@ -563,20 +553,6 @@ function showSummary() {
     return;
   }
 
-  const COLORS = [
-    "#a78bfa",
-    "#34d399",
-    "#f472b6",
-    "#fbbf24",
-    "#fb923c",
-    "#60a5fa",
-    "#c084fc",
-    "#f87171",
-    "#2dd4bf",
-    "#818cf8",
-  ];
-  const total = data.reduce((a, b) => a + b, 0);
-
   const ctx = document.getElementById("summaryChart").getContext("2d");
   if (currentChart) currentChart.destroy();
   currentChart = new Chart(ctx, {
@@ -586,9 +562,18 @@ function showSummary() {
       datasets: [
         {
           data,
-          backgroundColor: COLORS,
-          borderWidth: 2,
-          borderColor: "#13131c",
+          backgroundColor: [
+            "#a78bfa",
+            "#34d399",
+            "#f472b6",
+            "#fbbf24",
+            "#fb923c",
+            "#60a5fa",
+            "#c084fc",
+            "#f87171",
+            "#2dd4bf",
+            "#818cf8",
+          ],
         },
       ],
     },
@@ -596,48 +581,53 @@ function showSummary() {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: { display: false }, // hidden — we draw custom legend below
+        legend: { position: "bottom" },
         tooltip: {
           callbacks: {
             label: (ctx) => {
               const val = ctx.parsed;
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
               const pct = ((val / total) * 100).toFixed(1);
               return ` ₹${val.toFixed(2)}  (${pct}%)`;
             },
           },
         },
+        datalabels: false,
       },
     },
+    plugins: [
+      {
+        id: "sliceLabels",
+        afterDatasetDraw(chart) {
+          const { ctx: c, data } = chart;
+          const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+          chart.getDatasetMeta(0).data.forEach((arc, i) => {
+            const val = data.datasets[0].data[i];
+            const pct = ((val / total) * 100).toFixed(1);
+            if (pct < 4) return; // skip tiny slices
+            const angle = (arc.startAngle + arc.endAngle) / 2;
+            const r = (arc.innerRadius + arc.outerRadius) / 2 + 10;
+            const x = arc.x + Math.cos(angle) * r;
+            const y = arc.y + Math.sin(angle) * r;
+            c.save();
+            c.fillStyle = "#ffffff";
+            c.font = "bold 11px DM Sans, sans-serif";
+            c.textAlign = "center";
+            c.textBaseline = "middle";
+            c.shadowColor = "rgba(0,0,0,0.6)";
+            c.shadowBlur = 3;
+            c.fillText(`₹${val % 1 === 0 ? val : val.toFixed(0)}`, x, y - 6);
+            c.fillText(`${pct}%`, x, y + 7);
+            c.restore();
+          });
+        },
+      },
+    ],
   });
 
-  // Clean custom legend with amounts
-  const legendEl = document.getElementById("modalLegend");
-  const rows = labels
-    .map((lbl, i) => {
-      const val = data[i];
-      const pct = ((val / total) * 100).toFixed(1);
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="width:10px;height:10px;border-radius:50%;background:${COLORS[i]};flex-shrink:0;display:inline-block"></span>
-        <span style="font-size:0.8rem;color:#eeeeff">${lbl}</span>
-      </div>
-      <div style="display:flex;gap:12px;font-size:0.8rem">
-        <span style="color:#a78bfa;font-weight:600">₹${val.toFixed(2)}</span>
-        <span style="color:#7878a0;min-width:42px;text-align:right">${pct}%</span>
-      </div>
-    </div>`;
-    })
-    .join("");
-
   const sal = salaries[key] || 0;
-  legendEl.innerHTML =
-    `<div style="margin-bottom:10px">${rows}</div>` +
-    `<div style="display:flex;justify-content:space-between;padding-top:8px;font-size:0.82rem;flex-wrap:wrap;gap:6px">
-       <span>Total: <b style="color:#f87171">₹${total.toFixed(2)}</b></span>
-       <span>Remaining: <b style="color:#a78bfa">₹${(sal - total).toFixed(2)}</b></span>
-       <span>Sweetie: <b style="color:#f472b6">₹${(data[labels.indexOf("Sweetie Saving")] || 0).toFixed(2)}</b></span>
-     </div>`;
-
+  document.getElementById("modalLegend").innerHTML =
+    `Total: <b>₹${totalExp.toFixed(2)}</b> &nbsp;|&nbsp; Remaining: <b>₹${(sal - totalExp).toFixed(2)}</b> &nbsp;|&nbsp; Sweetie: <b>₹${(sweetSave - sweetBorrow).toFixed(2)}</b>`;
   document.getElementById("summaryModal").style.display = "flex";
 }
 
@@ -769,7 +759,7 @@ function renderCards() {
     const tr = tbody.insertRow();
     const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status}</span>`;
 
-    tr.insertCell(0).textContent = formatDisplayDate(t.txnDate);
+    tr.insertCell(0).textContent = t.txnDate;
     tr.insertCell(1).innerHTML =
       `<span style="background:#1c1c28;padding:2px 6px;border-radius:20px;font-size:0.68rem">${t.card}</span>`;
     tr.insertCell(2).textContent = t.usedBy || "—";
