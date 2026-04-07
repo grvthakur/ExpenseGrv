@@ -833,16 +833,22 @@
                 grid-template-columns: 1fr;
             }
 
+            /* Full width alignment — all sections use same 12px padding */
             .topbar,
             .stats,
-            .main-grid {
-                padding-left: 16px;
-                padding-right: 16px;
+            .main-grid,
+            .tab-bar,
+            .cc-stats,
+            .status-banner {
+                padding-left: 12px;
+                padding-right: 12px;
+                box-sizing: border-box;
+                width: 100%;
             }
 
             /* Compact topbar on mobile */
             .topbar {
-                padding: 10px 16px;
+                padding: 10px 12px;
                 gap: 8px;
                 flex-wrap: wrap;
             }
