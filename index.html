@@ -898,60 +898,34 @@
                 font-size: 1rem;
             }
 
-            /* All columns visible — compact sizing to fit screen */
+            /* Table scrolls horizontally — full text visible, swipe left for buttons */
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
             .expense-table {
-                min-width: unset;
+                min-width: 620px;
                 width: 100%;
-                table-layout: fixed;
+                table-layout: auto;
             }
 
             .expense-table td,
             .expense-table th {
-                padding: 7px 5px;
-                font-size: 0.72rem;
-                word-break: break-word;
-            }
-
-            .expense-table td span {
-                font-size: 0.6rem;
-                padding: 1px 4px;
+                padding: 8px 10px;
+                font-size: 0.78rem;
                 white-space: nowrap;
             }
 
-            /* Column widths tuned for mobile */
-            .expense-table th:nth-child(1),
-            .expense-table td:nth-child(1) {
-                width: 13%;
-            }
-
-            .expense-table th:nth-child(2),
-            .expense-table td:nth-child(2) {
-                width: 24%;
-            }
-
-            .expense-table th:nth-child(3),
-            .expense-table td:nth-child(3) {
-                width: 28%;
-            }
-
-            .expense-table th:nth-child(4),
-            .expense-table td:nth-child(4) {
-                width: 20%;
-            }
-
-            .expense-table th:nth-child(5),
-            .expense-table td:nth-child(5) {
-                width: 15%;
-            }
-
-            .table-wrapper {
-                overflow-x: unset;
+            .expense-table td span {
+                font-size: 0.65rem;
+                padding: 2px 6px;
             }
 
             .delete-btn {
-                width: 28px;
-                height: 28px;
-                font-size: 0.8rem;
+                width: 30px;
+                height: 30px;
+                font-size: 0.85rem;
                 margin: 1px;
             }
         }
