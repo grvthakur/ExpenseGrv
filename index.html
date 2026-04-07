@@ -898,15 +898,20 @@
                 font-size: 1rem;
             }
 
-            /* Table scrolls horizontally — full text visible, swipe left for buttons */
+            /* Only the transaction table scrolls horizontally — rest of page fixed */
+            .right-col {
+                overflow: hidden;
+                max-width: 100%;
+            }
+
             .table-wrapper {
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
+                max-width: 100%;
             }
 
             .expense-table {
                 min-width: 620px;
-                width: 100%;
                 table-layout: auto;
             }
 
