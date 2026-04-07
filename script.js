@@ -136,6 +136,17 @@ function localDateStr(date) {
 }
 
 // ─── DATE PICKER (expenses — locked to selected month) ───────────────────────
+// Format "2026-04-07" → "7 Apr" for UI display only
+// Sheet data is never touched — this is display-only
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "—";
+  const parts = String(dateStr).split("-");
+  if (parts.length !== 3) return dateStr;
+  const d = parseInt(parts[2]);
+  const m = MONTHS[parseInt(parts[1]) - 1];
+  return d + " " + m;
+}
+
 function lockDatePicker() {
   const m = parseInt(document.getElementById("monthSelect").value);
   const y = parseInt(document.getElementById("yearSelect").value);
@@ -299,7 +310,7 @@ function render() {
   sorted.forEach((exp) => {
     const tr = tbody.insertRow();
     if (editingExpId === exp.id) tr.style.background = "rgba(167,139,250,0.08)";
-    tr.insertCell(0).textContent = exp.date;
+    tr.insertCell(0).textContent = formatDisplayDate(exp.date);
     tr.insertCell(1).innerHTML =
       `<span style="background:#1c1c28;padding:2px 8px;border-radius:20px;font-size:0.7rem">${exp.category}</span>`;
     tr.insertCell(2).textContent = exp.description || "—";
@@ -759,7 +770,7 @@ function renderCards() {
     const tr = tbody.insertRow();
     const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status}</span>`;
 
-    tr.insertCell(0).textContent = t.txnDate;
+    tr.insertCell(0).textContent = formatDisplayDate(t.txnDate);
     tr.insertCell(1).innerHTML =
       `<span style="background:#1c1c28;padding:2px 6px;border-radius:20px;font-size:0.68rem">${t.card}</span>`;
     tr.insertCell(2).textContent = t.usedBy || "—";
