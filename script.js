@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbxGtztUDrFLgunqjRHL4SAuDGOtfL5wJKTM1ilanh-uYyAUV_qEiRsHt4C_usutgDEI/exec";
+  "https://script.google.com/macros/s/AKfycbzbyLRdZXlOyEWNw_cMSzXUOQ29lBtRdm859q7sKn18E9DKVoC9pys8-8mlGlJJYxEo/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -136,6 +136,18 @@ function localDateStr(date) {
 }
 
 // ─── DATE PICKER (expenses — locked to selected month) ───────────────────────
+// Format billing month — handles "April 2026", Date strings, or raw Date objects
+function formatBillingMonth(val) {
+  if (!val || val === "—") return "—";
+  const s = String(val);
+  // Already correct format e.g. "April 2026"
+  if (/^[A-Za-z]+ \d{4}$/.test(s.trim())) return s.trim();
+  // ISO or Date string — parse and format
+  const d = new Date(s);
+  if (!isNaN(d)) return FULL_MONTHS[d.getMonth()] + " " + d.getFullYear();
+  return s;
+}
+
 // Format "2026-04-07" → "7 Apr" for UI display only
 // Sheet data is never touched — this is display-only
 function formatDisplayDate(dateStr) {
@@ -323,12 +335,19 @@ function render() {
     editBtn.title = "Edit";
     editBtn.style.marginRight = "4px";
     editBtn.onclick = () => startEditExpense(exp.id);
+    const cloneExpBtn = document.createElement("button");
+    cloneExpBtn.textContent = "⧉";
+    cloneExpBtn.className = "delete-btn";
+    cloneExpBtn.title = "Clone";
+    cloneExpBtn.style.marginRight = "4px";
+    cloneExpBtn.onclick = () => cloneExpense(exp.id);
     const delBtn = document.createElement("button");
     delBtn.textContent = "✕";
     delBtn.className = "delete-btn";
     delBtn.title = "Delete";
     delBtn.onclick = () => deleteEntry(exp.id);
     actCell.appendChild(editBtn);
+    actCell.appendChild(cloneExpBtn);
     actCell.appendChild(delBtn);
   });
 }
@@ -647,10 +666,14 @@ function showSummary() {
 
 // Calculate billing month from transaction date and card cutoff
 function calcBillingMonth(dateStr, cutoff) {
-  if (!dateStr || !cutoff) return billingMonthKey();
+  if (!dateStr) return billingMonthKey();
   const d = new Date(dateStr);
   const day = d.getDate();
-  if (day <= parseInt(cutoff)) {
+  const co = parseInt(cutoff) || 0;
+  // If cutoff missing (0), treat transaction month as billing month
+  // If day <= cutoff → same month billing
+  // If day > cutoff  → next month billing
+  if (co === 0 || day <= co) {
     return FULL_MONTHS[d.getMonth()] + " " + d.getFullYear();
   } else {
     const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
@@ -661,7 +684,15 @@ function calcBillingMonth(dateStr, cutoff) {
 // Render credit card stats and table for current billing month
 function renderCards() {
   const bMonth = billingMonthKey();
-  const rows = cardTxns.filter((t) => t.billingMonth === bMonth);
+  // Filter by TRANSACTION DATE month — April tab shows April transactions
+  // regardless of which billing month they fall in
+  const selMonth = parseInt(document.getElementById("monthSelect").value);
+  const selYear = parseInt(document.getElementById("yearSelect").value);
+  const rows = cardTxns.filter((t) => {
+    if (!t.txnDate) return false;
+    const d = new Date(t.txnDate);
+    return d.getMonth() === selMonth && d.getFullYear() === selYear;
+  });
 
   // Stats
   const totalSpend = rows.reduce((s, t) => s + t.amount, 0);
@@ -783,7 +814,13 @@ function renderCards() {
     statusCell.title = "Click to toggle status";
     statusCell.onclick = () => toggleCardStatus(t.id);
 
-    const actCell = tr.insertCell(7);
+    // Billing month cell — normalize in case sheet returned a Date object string
+    const bmCell = tr.insertCell(7);
+    bmCell.textContent = formatBillingMonth(t.billingMonth);
+    bmCell.style.fontSize = "0.75rem";
+    bmCell.style.color = "var(--muted)";
+
+    const actCell = tr.insertCell(8);
     actCell.style.whiteSpace = "nowrap";
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️";
@@ -791,12 +828,19 @@ function renderCards() {
     editBtn.title = "Edit";
     editBtn.style.marginRight = "4px";
     editBtn.onclick = () => startEditCard(t.id);
+    const cloneCardBtn = document.createElement("button");
+    cloneCardBtn.textContent = "⧉";
+    cloneCardBtn.className = "delete-btn";
+    cloneCardBtn.title = "Clone";
+    cloneCardBtn.style.marginRight = "4px";
+    cloneCardBtn.onclick = () => cloneCard(t.id);
     const delBtn = document.createElement("button");
     delBtn.textContent = "✕";
     delBtn.className = "delete-btn";
     delBtn.title = "Delete";
     delBtn.onclick = () => deleteCardEntry(t.id);
     actCell.appendChild(editBtn);
+    actCell.appendChild(cloneCardBtn);
     actCell.appendChild(delBtn);
   });
 }
@@ -944,6 +988,9 @@ function toggleCardStatus(id) {
 // Sync cards from sheet for current billing month
 async function syncCardsFromSheet(isManual = false) {
   const bMonth = billingMonthKey();
+  const selMonth = parseInt(document.getElementById("monthSelect").value);
+  const selYear = parseInt(document.getElementById("yearSelect").value);
+  const txnMonthPrefix = `${selYear}-${String(selMonth + 1).padStart(2, "0")}`;
   const btn = document.getElementById("cardSyncBtn");
   if (isManual) {
     btn.textContent = "⏳ Syncing…";
@@ -952,9 +999,9 @@ async function syncCardsFromSheet(isManual = false) {
 
   try {
     const [cardRes, cfgRes] = await Promise.all([
-      fetch(apiUrl(`action=getCardsByMonth&billingMonth=${enc(bMonth)}`)).then(
-        (r) => r.json(),
-      ),
+      fetch(
+        apiUrl(`action=getCardsByTxnMonth&txnMonth=${enc(txnMonthPrefix)}`),
+      ).then((r) => r.json()),
       fetch(apiUrl(`action=getCardConfig`)).then((r) => r.json()),
     ]);
 
@@ -969,13 +1016,15 @@ async function syncCardsFromSheet(isManual = false) {
           remarks: String(row[5] || ""),
           amount: parseFloat(row[6]) || 0,
           status: String(row[7] || "UNPAID"),
-          billingMonth: String(row[8] || ""),
+          billingMonth: formatBillingMonth(row[8] || ""),
         }))
         .filter((t) => t.id && t.txnDate);
 
-      const localCount = cardTxns.filter(
-        (t) => t.billingMonth === bMonth,
-      ).length;
+      const localCount = cardTxns.filter((t) => {
+        if (!t.txnDate) return false;
+        const d = new Date(t.txnDate);
+        return d.getMonth() === selMonth && d.getFullYear() === selYear;
+      }).length;
       if (fromSheet.length === 0 && localCount > 0) {
         if (isManual)
           toast(
@@ -984,8 +1033,13 @@ async function syncCardsFromSheet(isManual = false) {
             4000,
           );
       } else {
+        // Replace only this transaction month's entries
         cardTxns = [
-          ...cardTxns.filter((t) => t.billingMonth !== bMonth),
+          ...cardTxns.filter((t) => {
+            if (!t.txnDate) return true;
+            const d = new Date(t.txnDate);
+            return !(d.getMonth() === selMonth && d.getFullYear() === selYear);
+          }),
           ...fromSheet,
         ];
       }
@@ -1113,6 +1167,52 @@ function renderCCMaster(rows) {
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function enc(v) {
   return encodeURIComponent(String(v));
+}
+
+// ─── CLONE ENTRIES ────────────────────────────────────────────────────────────
+function cloneExpense(id) {
+  const exp = expenses.find((e) => e.id === id);
+  if (!exp) return;
+  const today = localDateStr(new Date());
+  const m = parseInt(document.getElementById("monthSelect").value);
+  const y = parseInt(document.getElementById("yearSelect").value);
+  const min = localDateStr(new Date(y, m, 1));
+  const max = localDateStr(new Date(y, m + 1, 0));
+  const date = today >= min && today <= max ? today : exp.date;
+  const clone = { ...exp, id: Date.now().toString(), date };
+  expenses.push(clone);
+  saveLocal();
+  render();
+  toast("Cloned ✓");
+  sheetWrite(
+    apiUrl(
+      `action=add&id=${clone.id}&date=${clone.date}&month=${enc(clone.month)}&category=${enc(clone.category)}&description=${enc(clone.description)}&amount=${clone.amount}`,
+    ),
+  );
+}
+
+function cloneCard(id) {
+  const t = cardTxns.find((t) => t.id === id);
+  if (!t) return;
+  const today = localDateStr(new Date());
+  const cfg = cardConfig.find((c) => c.card === t.card);
+  const bMonth = calcBillingMonth(today, cfg ? cfg.cutoff : 0);
+  const clone = {
+    ...t,
+    id: Date.now().toString(),
+    txnDate: today,
+    billingMonth: bMonth,
+    status: "UNPAID",
+  };
+  cardTxns.push(clone);
+  saveLocal();
+  renderCards();
+  toast("Cloned ✓");
+  sheetWrite(
+    apiUrl(
+      `action=addCard&id=${clone.id}&card=${enc(clone.card)}&usedBy=${enc(clone.usedBy)}&description=${enc(clone.description)}&txnDate=${enc(clone.txnDate)}&remarks=${enc(clone.remarks)}&amount=${clone.amount}&status=${enc(clone.status)}&billingMonth=${enc(clone.billingMonth)}`,
+    ),
+  );
 }
 
 // ─── INIT SELECTORS ──────────────────────────────────────────────────────────
