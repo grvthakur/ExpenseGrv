@@ -204,6 +204,28 @@ function doGet(e) {
       return jsonOut(out);
     }
 
+    // Fetch cards by transaction date month prefix e.g. "2026-04"
+    if (action === "getCardsByTxnMonth") {
+      const txnMonth = String(e.parameter.txnMonth || "").trim();
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      const out = rows
+        .slice(1)
+        .filter((row) => toDateStr(row[4]).startsWith(txnMonth))
+        .map((row) => [
+          String(row[0] || ""),
+          String(row[1] || ""),
+          String(row[2] || ""),
+          String(row[3] || ""),
+          toDateStr(row[4]),
+          String(row[5] || ""),
+          typeof row[6] === "number" ? row[6] : parseFloat(row[6]) || 0,
+          String(row[7] || "UNPAID"),
+          String(row[8] || ""),
+        ]);
+      return jsonOut(out);
+    }
+
     if (action === "addCard") {
       const cardSheet = getOrCreateCardsSheet(ss);
       const id = String(e.parameter.id || Date.now()).trim();

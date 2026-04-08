@@ -24,7 +24,7 @@
             --surface: #13131c;
             --s2: #1c1c28;
             --border: #2a2a3d;
-            --accent: #a78bfa;
+            --accent: #22d3ee;
             --green: #34d399;
             --pink: #f472b6;
             --danger: #f87171;
@@ -39,7 +39,7 @@
             --surface: #ffffff;
             --s2: #f0f0f5;
             --border: #d0d0e0;
-            --accent: #7c3aed;
+            --accent: #0891b2;
             --green: #059669;
             --pink: #db2777;
             --danger: #dc2626;
@@ -482,11 +482,11 @@
             text-align: left;
             padding: 12px 16px;
             background: var(--s2);
-            color: var(--accent);
+            color: #a78bfa;
             font-size: 0.7rem;
             font-weight: 700;
             letter-spacing: 0.5px;
-            border-bottom: 2px solid var(--accent);
+            border-bottom: 2px solid #a78bfa;
         }
 
         .expense-table td {
@@ -510,26 +510,46 @@
             font-weight: 600;
         }
 
-        /* Date column */
+        /* Date column — teal */
         .expense-table td:nth-child(1) {
-            color: var(--muted);
-            font-size: 0.8rem;
+            color: #22d3ee;
+            font-size: 0.82rem;
+            font-weight: 600;
         }
 
         .delete-btn {
             background: transparent;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(248, 113, 113, 0.5);
             width: 28px;
             height: 28px;
             border-radius: 6px;
-            color: var(--muted);
+            color: var(--danger);
             cursor: pointer;
             font-size: 0.75rem;
         }
 
         .delete-btn:hover {
+            background: var(--danger);
+            color: #fff;
             border-color: var(--danger);
-            color: var(--danger);
+        }
+
+        /* Edit button — amber/yellow, distinct from red delete */
+        .edit-btn {
+            background: transparent;
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            color: #fbbf24;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .edit-btn:hover {
+            background: #fbbf24;
+            color: #0b0b10;
+            border-color: #fbbf24;
         }
 
         /* Clone button — teal so it stands out from edit(pencil) and delete(x) */
@@ -799,52 +819,92 @@
         }
 
         /* ── CC MASTER MODAL ── */
-        .cc-master-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.82rem;
+        /* CC Master — card grid layout */
+        .cc-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            padding: 4px 2px;
         }
 
-        .cc-master-table th {
-            background: var(--s2);
-            color: var(--muted);
-            font-size: 0.68rem;
+        .cc-card-item {
+            background: linear-gradient(135deg, #1c1c2e 0%, #16213e 100%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cc-card-item::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: var(--accent);
+            opacity: 0.06;
+            border-radius: 50%;
+        }
+
+        .cc-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cc-card-name {
             font-weight: 700;
-            letter-spacing: 0.5px;
-            padding: 10px 14px;
-            text-align: left;
-        }
-
-        .cc-master-table td {
-            padding: 10px 14px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .cc-master-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .cc-master-table tr:hover td {
-            background: var(--s2);
-        }
-
-        .cc-num {
-            font-family: monospace;
-            letter-spacing: 2px;
+            font-size: 0.85rem;
             color: #ffffff;
-            font-size: 0.88rem;
-            font-weight: 600;
-        }
-
-        .cc-cvv {
-            color: #fbbf24;
-            font-weight: 700;
-            font-size: 0.88rem;
+            letter-spacing: 0.5px;
         }
 
         .cc-exp {
             color: var(--green);
             font-weight: 600;
+            font-size: 0.78rem;
+        }
+
+        .cc-num {
+            font-family: monospace;
+            letter-spacing: 3px;
+            color: #e2e8f0;
+            font-size: 0.88rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            word-spacing: 6px;
+        }
+
+        .cc-card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cc-cvv-label {
+            font-size: 0.6rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cc-cvv {
+            color: #fbbf24;
+            font-weight: 700;
+            font-size: 0.95rem;
+            font-family: monospace;
+            letter-spacing: 3px;
+        }
+
+        .cc-full-num {
+            font-family: monospace;
+            font-size: 0.65rem;
+            color: var(--muted);
+            letter-spacing: 1px;
+            margin-top: 4px;
         }
 
         .pwd-input {
@@ -975,6 +1035,7 @@
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
                 max-width: 100%;
+                touch-action: pan-x pan-y pinch-zoom;
             }
 
             .expense-table {
@@ -1007,6 +1068,13 @@
                 font-size: 0.85rem;
                 margin: 1px;
             }
+
+            .edit-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 0.85rem;
+                margin: 1px;
+            }
         }
     </style>
 </head>
@@ -1027,7 +1095,7 @@
             <button class="btn-summary" id="summaryBtn">📊 Summary</button>
             <button class="btn-summary" id="ccMasterBtn" style="color:#f472b6;border-color:#f472b6;">🔒 CC
                 Master</button>
-            <button class="btn-summary" id="themeToggleBtn" title="Toggle light/dark mode">🌙 Dark</button>
+            <button class="btn-summary" id="themeToggleBtn" title="Toggle light/dark mode">☀️ Light</button>
         </div>
     </div>
 
@@ -1297,23 +1365,10 @@
                 <h3 style="font-family:'DM Serif Display'">💳 CC Master List</h3>
                 <button class="close-modal" id="closeCCMasterBtn">&times;</button>
             </div>
-            <div style="overflow-x:auto;max-height:70vh;overflow-y:auto;">
-                <table class="cc-master-table" id="ccMasterTable">
-                    <thead>
-                        <tr>
-                            <th>Bank</th>
-                            <th>Card Name</th>
-                            <th>Card Number</th>
-                            <th>Number / CVV</th>
-                            <th>Exp Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ccMasterBody">
-                        <tr>
-                            <td colspan="5" style="text-align:center;color:var(--muted);padding:30px;">Loading…</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div style="max-height:70vh;overflow-y:auto;padding-right:4px;">
+                <div id="ccMasterBody">
+                    <p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>
+                </div>
             </div>
             <div style="margin-top:12px;font-size:0.72rem;color:var(--muted);text-align:center;">🔒 Data fetched live
                 from sheet — never stored in browser</div>

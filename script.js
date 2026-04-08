@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbzbyLRdZXlOyEWNw_cMSzXUOQ29lBtRdm859q7sKn18E9DKVoC9pys8-8mlGlJJYxEo/exec";
+  "https://script.google.com/macros/s/AKfycby5TRLTlmE3HsJT6Ds_V5gC6ZgsUhvbTgqn_DPipUd2WWOVGebPJRLtM3zkbTpPsA6c/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -225,10 +225,11 @@ function render() {
 
   let totalExp = 0,
     sweetSave = 0,
-    sweetBorrow = 0;
+    sweetBorrow = 0,
+    totalReceived = 0;
   rows.forEach(({ category: cat, amount: amt }) => {
     if (cat === "Received") {
-      /* ignore */
+      totalReceived += amt; // loan returned — adds to remaining
     } else if (cat === "Sweetie Saving") {
       sweetSave += amt;
       totalExp += amt;
@@ -240,7 +241,7 @@ function render() {
   });
 
   const salary = salaries[key] || 0;
-  const remaining = salary - totalExp;
+  const remaining = salary + totalReceived - totalExp;
   const sweetBal = sweetSave - sweetBorrow;
 
   document.getElementById("statTotalExpenses").textContent =
@@ -331,7 +332,7 @@ function render() {
     actCell.style.whiteSpace = "nowrap";
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️";
-    editBtn.className = "delete-btn";
+    editBtn.className = "edit-btn";
     editBtn.title = "Edit";
     editBtn.style.marginRight = "4px";
     editBtn.onclick = () => startEditExpense(exp.id);
@@ -385,6 +386,8 @@ function cancelEditExpense() {
   document.getElementById("expenseAmount").value = "";
   document.getElementById("addBtn").textContent = "➕ Add Entry";
   document.getElementById("addBtn").style.background = "";
+  document.getElementById("addBtn").style.color = "";
+  document.getElementById("cancelExpEditBtn").textContent = "✕ Cancel Edit";
   document.getElementById("cancelExpEditBtn").style.display = "none";
   render();
 }
@@ -439,6 +442,11 @@ function addEntry() {
   toast("Entry added ✓");
   document.getElementById("expenseDesc").value = "";
   document.getElementById("expenseAmount").value = "";
+  document.getElementById("addBtn").textContent = "➕ Add Entry";
+  document.getElementById("addBtn").style.background = "";
+  document.getElementById("addBtn").style.color = "";
+  document.getElementById("cancelExpEditBtn").style.display = "none";
+  document.getElementById("cancelExpEditBtn").textContent = "✕ Cancel Edit";
 
   sheetWrite(
     apiUrl(
@@ -556,6 +564,8 @@ function showSummary() {
 
   rows.forEach(({ category: cat, amount: amt }) => {
     if (cat === "Received") {
+      totalExp -= amt; // loan returned — reduces net expense, increases remaining
+      map.set(cat, (map.get(cat) || 0) + amt);
       return;
     } else if (cat === "Sweetie Saving") {
       sweetSave += amt;
@@ -592,7 +602,7 @@ function showSummary() {
         {
           data,
           backgroundColor: [
-            "#a78bfa",
+            "#22d3ee",
             "#34d399",
             "#f472b6",
             "#fbbf24",
@@ -824,7 +834,7 @@ function renderCards() {
     actCell.style.whiteSpace = "nowrap";
     const editBtn = document.createElement("button");
     editBtn.textContent = "✏️";
-    editBtn.className = "delete-btn";
+    editBtn.className = "edit-btn";
     editBtn.title = "Edit";
     editBtn.style.marginRight = "4px";
     editBtn.onclick = () => startEditCard(t.id);
@@ -884,6 +894,8 @@ function cancelEditCard() {
   document.getElementById("cardAmount").value = "";
   document.getElementById("addCardBtn").textContent = "➕ Add Card Entry";
   document.getElementById("addCardBtn").style.background = "";
+  document.getElementById("addCardBtn").style.color = "";
+  document.getElementById("cancelCardEditBtn").textContent = "✕ Cancel Edit";
   document.getElementById("cancelCardEditBtn").style.display = "none";
   renderCards();
 }
@@ -953,6 +965,11 @@ function addCardEntry() {
   document.getElementById("cardUsedBy").value = "";
   document.getElementById("cardDesc").value = "";
   document.getElementById("cardRemarks").value = "";
+  document.getElementById("addCardBtn").textContent = "➕ Add Card Entry";
+  document.getElementById("addCardBtn").style.background = "";
+  document.getElementById("addCardBtn").style.color = "";
+  document.getElementById("cancelCardEditBtn").style.display = "none";
+  document.getElementById("cancelCardEditBtn").textContent = "✕ Cancel Edit";
   document.getElementById("cardAmount").value = "";
 
   sheetWrite(
@@ -1145,23 +1162,46 @@ function formatExpDate(val) {
 }
 
 function renderCCMaster(rows) {
-  const tbody = document.getElementById("ccMasterBody");
+  const container = document.getElementById("ccMasterBody");
   if (!rows || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px;">No entries in CC sheet</td></tr>`;
+    container.innerHTML = `<p style="text-align:center;color:var(--muted);padding:30px;">No entries in CC sheet</p>`;
     return;
   }
-  tbody.innerHTML = rows
-    .map(
-      (row) => `
-    <tr>
-      <td><span class="cc-bank-badge">${row[0] || "—"}</span></td>
-      <td style="font-weight:600">${row[1] || "—"}</td>
-      <td class="cc-num">${row[2] || "—"}</td>
-      <td><span class="cc-num">${(row[3] || "—").split("/")[0] || ""}</span>${row[3] && row[3].includes("/") ? ` / <span class="cc-cvv">${row[3].split("/")[1].trim()}</span>` : ""}</td>
-      <td class="cc-exp">${formatExpDate(row[4])}</td>
-    </tr>`,
-    )
+  const cards = rows
+    .map((row) => {
+      const bank = row[0] || "";
+      const name = row[1] || "—";
+      const numRaw = (row[2] || "").toString().replace(/\s+/g, "");
+      const numCvv = row[3] || "";
+      const expDate = formatExpDate(row[4]);
+      const numFmt = numRaw.match(/.{1,4}/g)
+        ? numRaw.match(/.{1,4}/g).join("  ")
+        : numRaw;
+      const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
+      return `
+      <div class="cc-card-item">
+        <div class="cc-card-top">
+          <div>
+            ${bank ? `<span class="cc-bank-badge">${bank}</span>` : ""}
+            <div class="cc-card-name" style="margin-top:6px">${name}</div>
+          </div>
+          <div class="cc-exp">${expDate}</div>
+        </div>
+        <div class="cc-num">${numFmt}</div>
+        <div class="cc-card-bottom">
+          <div>
+            <div class="cc-cvv-label">CVV</div>
+            <div class="cc-cvv">${cvv || "—"}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="cc-cvv-label">Full Number</div>
+            <div class="cc-full-num">${numRaw}</div>
+          </div>
+        </div>
+      </div>`;
+    })
     .join("");
+  container.innerHTML = `<div class="cc-card-grid">${cards}</div>`;
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -1173,46 +1213,52 @@ function enc(v) {
 function cloneExpense(id) {
   const exp = expenses.find((e) => e.id === id);
   if (!exp) return;
-  const today = localDateStr(new Date());
+  // Fill form just like edit — but with today's date and no editingExpId set
+  // so saving creates a NEW entry, not overwriting the original
   const m = parseInt(document.getElementById("monthSelect").value);
   const y = parseInt(document.getElementById("yearSelect").value);
   const min = localDateStr(new Date(y, m, 1));
   const max = localDateStr(new Date(y, m + 1, 0));
-  const date = today >= min && today <= max ? today : exp.date;
-  const clone = { ...exp, id: Date.now().toString(), date };
-  expenses.push(clone);
-  saveLocal();
-  render();
-  toast("Cloned ✓");
-  sheetWrite(
-    apiUrl(
-      `action=add&id=${clone.id}&date=${clone.date}&month=${enc(clone.month)}&category=${enc(clone.category)}&description=${enc(clone.description)}&amount=${clone.amount}`,
-    ),
-  );
+  const today = localDateStr(new Date());
+  document.getElementById("expenseDate").value =
+    today >= min && today <= max ? today : exp.date;
+  document.getElementById("expenseCategory").value = exp.category;
+  document.getElementById("expenseDesc").value = exp.description || "";
+  document.getElementById("expenseAmount").value = exp.amount;
+  // Mark as clone mode — shows yellow banner but saves as new
+  editingExpId = null;
+  document.getElementById("addBtn").textContent = "⧉ Save Clone";
+  document.getElementById("addBtn").style.background = "#34d399";
+  document.getElementById("addBtn").style.color = "#0b0b10";
+  document.getElementById("cancelExpEditBtn").style.display = "block";
+  document.getElementById("cancelExpEditBtn").textContent = "✕ Cancel Clone";
+  toast("Edit details then click Save Clone", false, 3000);
+  document
+    .getElementById("expenseAmount")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 function cloneCard(id) {
   const t = cardTxns.find((t) => t.id === id);
   if (!t) return;
-  const today = localDateStr(new Date());
-  const cfg = cardConfig.find((c) => c.card === t.card);
-  const bMonth = calcBillingMonth(today, cfg ? cfg.cutoff : 0);
-  const clone = {
-    ...t,
-    id: Date.now().toString(),
-    txnDate: today,
-    billingMonth: bMonth,
-    status: "UNPAID",
-  };
-  cardTxns.push(clone);
-  saveLocal();
-  renderCards();
-  toast("Cloned ✓");
-  sheetWrite(
-    apiUrl(
-      `action=addCard&id=${clone.id}&card=${enc(clone.card)}&usedBy=${enc(clone.usedBy)}&description=${enc(clone.description)}&txnDate=${enc(clone.txnDate)}&remarks=${enc(clone.remarks)}&amount=${clone.amount}&status=${enc(clone.status)}&billingMonth=${enc(clone.billingMonth)}`,
-    ),
-  );
+  // Fill form just like edit — new entry when saved
+  document.getElementById("cardSelect").value = t.card;
+  document.getElementById("cardUsedBy").value = t.usedBy || "";
+  document.getElementById("cardDesc").value = t.description || "";
+  document.getElementById("cardTxnDate").value = localDateStr(new Date());
+  document.getElementById("cardRemarks").value = t.remarks || "";
+  document.getElementById("cardAmount").value = t.amount;
+  document.getElementById("cardStatus").value = "UNPAID";
+  editingCardId = null;
+  document.getElementById("addCardBtn").textContent = "⧉ Save Clone";
+  document.getElementById("addCardBtn").style.background = "#34d399";
+  document.getElementById("addCardBtn").style.color = "#0b0b10";
+  document.getElementById("cancelCardEditBtn").style.display = "block";
+  document.getElementById("cancelCardEditBtn").textContent = "✕ Cancel Clone";
+  toast("Edit details then click Save Clone", false, 3000);
+  document
+    .getElementById("cardAmount")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 // ─── INIT SELECTORS ──────────────────────────────────────────────────────────
@@ -1246,11 +1292,11 @@ function applyTheme(theme) {
   const btn = document.getElementById("themeToggleBtn");
   if (theme === "light") {
     document.body.classList.add("light-mode");
-    if (btn) btn.textContent = "☀️ Light";
+    if (btn) btn.textContent = "🌙 Dark";
     localStorage.setItem("theme", "light");
   } else {
     document.body.classList.remove("light-mode");
-    if (btn) btn.textContent = "🌙 Dark";
+    if (btn) btn.textContent = "☀️ Light";
     localStorage.setItem("theme", "dark");
   }
 }
