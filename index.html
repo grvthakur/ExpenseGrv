@@ -456,6 +456,8 @@
             border-color: var(--accent);
         }
 
+
+
         /* ── TABLE ── */
         .table-wrapper {
             background: var(--surface);
@@ -1008,24 +1010,7 @@
                 font-size: 1.2rem;
             }
 
-            /* Table horizontal scroll — prevents whole page zoom */
-            .table-wrapper {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .expense-table {
-                min-width: 520px;
-            }
-
-            /* Bigger edit/delete buttons on mobile */
-            .delete-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 1rem;
-            }
-
-            /* Only the transaction table scrolls horizontally — rest of page fixed */
+            /* Table scrolls horizontally on mobile */
             .right-col {
                 overflow: hidden;
                 max-width: 100%;
@@ -1035,37 +1020,36 @@
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
                 max-width: 100%;
-                touch-action: pan-x pan-y pinch-zoom;
             }
 
             .expense-table {
-                min-width: 620px;
-                table-layout: auto;
+                min-width: 560px;
+                width: 100%;
             }
 
             .expense-table td,
             .expense-table th {
-                padding: 8px 10px;
-                font-size: 0.78rem;
+                padding: 8px 8px;
+                font-size: 0.8rem;
                 white-space: nowrap;
             }
 
             .expense-table td span {
                 font-size: 0.65rem;
-                padding: 2px 6px;
+                padding: 2px 5px;
             }
 
             .delete-btn {
-                width: 30px;
-                height: 30px;
-                font-size: 0.85rem;
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
                 margin: 1px;
             }
 
             .clone-btn {
-                width: 30px;
-                height: 30px;
-                font-size: 0.85rem;
+                width: 32px;
+                height: 32px;
+                font-size: 0.9rem;
                 margin: 1px;
             }
 
@@ -1194,7 +1178,7 @@
                         <span>📋 Transactions</span>
                         <div style="display:flex;align-items:center;gap:8px;">
                             <input id="expSearchBox" type="text" placeholder="🔍 Search…" oninput="render()"
-                                style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:160px;outline:none;" />
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:130px;outline:none;" />
                             <span id="rowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
                         </div>
@@ -1231,6 +1215,11 @@
 
     <!-- ═══ CREDIT CARDS SECTION ═══ -->
     <div id="cardSection" style="display:none;">
+
+        <!-- 3-month range label -->
+        <div style="padding:10px 12px 0;font-size:0.78rem;color:var(--muted);">
+            Showing last 3 months: <span id="ccRangeLabel" style="color:var(--accent);font-weight:600;"></span>
+        </div>
 
         <!-- CC Stats -->
         <div class="cc-stats">

@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycby5TRLTlmE3HsJT6Ds_V5gC6ZgsUhvbTgqn_DPipUd2WWOVGebPJRLtM3zkbTpPsA6c/exec";
+  "https://script.google.com/macros/s/AKfycby9uqib0uUVAKj-qw33BZ5k_S6qiFmGBmjqsjQgRkBvDPaZZC5ups60KFBeSYLjxQhg/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -304,6 +304,8 @@ function render() {
   document.getElementById("rowCount").textContent = expSearch
     ? `${filteredRows.length} of ${rows.length} entries`
     : `${rows.length} entries`;
+
+  // Attach column resizers after render
 
   const sorted = [...filteredRows].sort((a, b) => {
     let av = a[expSort.col],
@@ -694,14 +696,35 @@ function calcBillingMonth(dateStr, cutoff) {
 // Render credit card stats and table for current billing month
 function renderCards() {
   const bMonth = billingMonthKey();
-  // Filter by TRANSACTION DATE month — April tab shows April transactions
-  // regardless of which billing month they fall in
   const selMonth = parseInt(document.getElementById("monthSelect").value);
   const selYear = parseInt(document.getElementById("yearSelect").value);
+
+  // Build last 3 months list (including selected month)
+  const last3 = [];
+  for (let i = 0; i < 3; i++) {
+    let m = selMonth - i;
+    let y = selYear;
+    if (m < 0) {
+      m += 12;
+      y -= 1;
+    }
+    last3.push({ m, y });
+  }
+
+  // Show range label e.g. "Feb - Apr 2026"
+  const oldest = last3[last3.length - 1];
+  const newest = last3[0];
+  const rangeLabel = `${MONTHS[oldest.m]} - ${MONTHS[newest.m]} ${newest.y}`;
+  const rangeEl = document.getElementById("ccRangeLabel");
+  if (rangeEl) rangeEl.textContent = rangeLabel;
+
+  // Show transactions from last 3 months
   const rows = cardTxns.filter((t) => {
     if (!t.txnDate) return false;
     const d = new Date(t.txnDate);
-    return d.getMonth() === selMonth && d.getFullYear() === selYear;
+    return last3.some(
+      ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
+    );
   });
 
   // Stats
@@ -1007,7 +1030,21 @@ async function syncCardsFromSheet(isManual = false) {
   const bMonth = billingMonthKey();
   const selMonth = parseInt(document.getElementById("monthSelect").value);
   const selYear = parseInt(document.getElementById("yearSelect").value);
-  const txnMonthPrefix = `${selYear}-${String(selMonth + 1).padStart(2, "0")}`;
+
+  // Last 3 months
+  const last3Prefixes = [];
+  const last3Months = [];
+  for (let i = 0; i < 3; i++) {
+    let m = selMonth - i,
+      y = selYear;
+    if (m < 0) {
+      m += 12;
+      y -= 1;
+    }
+    last3Prefixes.push(`${y}-${String(m + 1).padStart(2, "0")}`);
+    last3Months.push({ m, y });
+  }
+  const txnMonthPrefix = last3Prefixes.join(",");
   const btn = document.getElementById("cardSyncBtn");
   if (isManual) {
     btn.textContent = "⏳ Syncing…";
@@ -1040,7 +1077,9 @@ async function syncCardsFromSheet(isManual = false) {
       const localCount = cardTxns.filter((t) => {
         if (!t.txnDate) return false;
         const d = new Date(t.txnDate);
-        return d.getMonth() === selMonth && d.getFullYear() === selYear;
+        return last3Months.some(
+          ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
+        );
       }).length;
       if (fromSheet.length === 0 && localCount > 0) {
         if (isManual)
@@ -1055,7 +1094,9 @@ async function syncCardsFromSheet(isManual = false) {
           ...cardTxns.filter((t) => {
             if (!t.txnDate) return true;
             const d = new Date(t.txnDate);
-            return !(d.getMonth() === selMonth && d.getFullYear() === selYear);
+            return !last3Months.some(
+              ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
+            );
           }),
           ...fromSheet,
         ];
