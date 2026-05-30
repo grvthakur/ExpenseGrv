@@ -196,8 +196,8 @@ function switchTab(tab) {
     render();
   } else {
     renderCards();
-    // Populate card dropdown from config
     populateCardDropdown();
+    syncCardsFromSheet(false); // sync latest 3 months whenever cards tab is opened
   }
 }
 
@@ -1433,14 +1433,16 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("monthSelect").addEventListener("change", () => {
     lockDatePicker();
     render();
+    renderCards();
     syncFromSheet(false);
-    if (activeTab === "cards") syncCardsFromSheet(false);
+    syncCardsFromSheet(false); // always sync cards — month change affects 3-month window
   });
   document.getElementById("yearSelect").addEventListener("change", () => {
     lockDatePicker();
     render();
+    renderCards();
     syncFromSheet(false);
-    if (activeTab === "cards") syncCardsFromSheet(false);
+    syncCardsFromSheet(false);
   });
 
   // Show local data instantly — no blocking loader
