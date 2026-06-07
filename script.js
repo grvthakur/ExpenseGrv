@@ -48,6 +48,7 @@ let editingExpId = null;
 let editingCardId = null;
 let expSearch = "";
 let cardSearch = "";
+let cardStatusFilter = "ALL"; // ALL, PAID, UNPAID
 
 // ─── MONTH KEYS ──────────────────────────────────────────────────────────────
 function monthKey() {
@@ -213,6 +214,32 @@ function populateCardDropdown() {
     sel.appendChild(o);
   });
   if (current) sel.value = current;
+}
+
+// ─── SET CARD STATUS FILTER ──────────────────────────────────────────────────
+function setCardStatusFilter(status) {
+  cardStatusFilter = status;
+  // Update button styles
+  document.getElementById("ccFilterAll").style.background =
+    status === "ALL" ? "var(--accent)" : "var(--s2)";
+  document.getElementById("ccFilterAll").style.color =
+    status === "ALL" ? "black" : "var(--muted)";
+  document.getElementById("ccFilterAll").style.border =
+    status === "ALL" ? "none" : "1px solid var(--border)";
+
+  document.getElementById("ccFilterPaid").style.background =
+    status === "PAID" ? "var(--accent)" : "var(--s2)";
+  document.getElementById("ccFilterPaid").style.color =
+    status === "PAID" ? "black" : "var(--muted)";
+  document.getElementById("ccFilterPaid").style.border =
+    status === "PAID" ? "none" : "1px solid var(--border)";
+
+  document.getElementById("ccFilterUnpaid").style.background =
+    status === "UNPAID" ? "var(--accent)" : "var(--s2)";
+  document.getElementById("ccFilterUnpaid").style.color =
+    status === "UNPAID" ? "black" : "var(--muted)";
+  document.getElementById("ccFilterUnpaid").style.border =
+    status === "UNPAID" ? "none" : "1px solid var(--border)";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -778,20 +805,26 @@ function renderCards() {
   const emptyEl = document.getElementById("cardEmptyMessage");
   tbody.innerHTML = "";
 
-  // Apply search filter
+  // Apply search and status filters
   const cardSearchEl = document.getElementById("cardSearchBox");
   cardSearch = cardSearchEl ? cardSearchEl.value.trim().toLowerCase() : "";
-  const filteredCardRows = cardSearch
-    ? rows.filter(
-        (t) =>
-          (t.description || "").toLowerCase().includes(cardSearch) ||
-          (t.card || "").toLowerCase().includes(cardSearch) ||
-          (t.usedBy || "").toLowerCase().includes(cardSearch) ||
-          (t.remarks || "").toLowerCase().includes(cardSearch) ||
-          String(t.amount).includes(cardSearch) ||
-          (t.status || "").toLowerCase().includes(cardSearch),
-      )
-    : rows;
+  const filteredCardRows = rows.filter((t) => {
+    // Search filter
+    const matchSearch =
+      !cardSearch ||
+      (t.description || "").toLowerCase().includes(cardSearch) ||
+      (t.card || "").toLowerCase().includes(cardSearch) ||
+      (t.usedBy || "").toLowerCase().includes(cardSearch) ||
+      (t.remarks || "").toLowerCase().includes(cardSearch) ||
+      String(t.amount).includes(cardSearch) ||
+      (t.status || "").toLowerCase().includes(cardSearch);
+
+    // Status filter
+    const matchStatus =
+      cardStatusFilter === "ALL" || t.status === cardStatusFilter;
+
+    return matchSearch && matchStatus;
+  });
 
   // Update sort header arrows
   ["txnDate", "card", "usedBy", "amount", "status"].forEach((col) => {
@@ -1449,6 +1482,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Sync runs silently in background, updates UI when done
   syncFromSheet(false, false);
   syncCardsFromSheet(false);
+  setCardStatusFilter("ALL"); // init filter button styles
 
   setInterval(() => {
     syncFromSheet(false);

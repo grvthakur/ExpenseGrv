@@ -1,3 +1,9 @@
+git add .
+git commit -m "Add PAID/UNPAID filter for credit card transactions"
+git push
+
+
+
 Part 1 — one-time setup
 1
 Install Git once

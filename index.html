@@ -1276,9 +1276,26 @@
                 <div class="table-wrapper">
                     <div class="table-header">
                         <span>💳 Card Transactions</span>
-                        <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <input id="cardSearchBox" type="text" placeholder="🔍 Search…" oninput="renderCards()"
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:160px;outline:none;" />
+
+                            <!-- Status filter buttons -->
+                            <div style="display:flex;gap:4px;margin:0 4px;">
+                                <button onclick="setCardStatusFilter('ALL'); renderCards()" id="ccFilterAll"
+                                    style="background:var(--accent);color:black;border:none;border-radius:16px;padding:4px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;">
+                                    ALL
+                                </button>
+                                <button onclick="setCardStatusFilter('PAID'); renderCards()" id="ccFilterPaid"
+                                    style="background:var(--s2);color:var(--muted);border:1px solid var(--border);border-radius:16px;padding:4px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;">
+                                    PAID
+                                </button>
+                                <button onclick="setCardStatusFilter('UNPAID'); renderCards()" id="ccFilterUnpaid"
+                                    style="background:var(--s2);color:var(--muted);border:1px solid var(--border);border-radius:16px;padding:4px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;">
+                                    UNPAID
+                                </button>
+                            </div>
+
                             <span id="ccRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
                         </div>
