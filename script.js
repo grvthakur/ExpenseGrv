@@ -859,7 +859,8 @@ function renderCards() {
     }
     if (av < bv) return cardSort.dir === "asc" ? -1 : 1;
     if (av > bv) return cardSort.dir === "asc" ? 1 : -1;
-    return 0;
+    // Tie-break: newest entry (highest ID = added last) comes first
+    return String(b.id) > String(a.id) ? 1 : -1;
   });
 
   sorted.forEach((t) => {
