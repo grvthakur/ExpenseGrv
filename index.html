@@ -1301,6 +1301,24 @@
                                 </button>
                             </div>
 
+                            <!-- Month range filter -->
+                            <div style="display:flex;gap:4px;margin:0 4px;">
+                                <button onclick="setCardMonthFilter('3'); renderCards()" id="ccFilter3M"
+                                    style="background:var(--accent);color:black;border:none;border-radius:16px;padding:4px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;">
+                                    3 Months
+                                </button>
+                                <button onclick="setCardMonthFilter('1'); renderCards()" id="ccFilter1M"
+                                    style="background:var(--s2);color:var(--muted);border:1px solid var(--border);border-radius:16px;padding:4px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;">
+                                    This Month
+                                </button>
+                            </div>
+
+                            <!-- Card dropdown filter -->
+                            <select id="ccCardFilter" onchange="renderCards()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;color:var(--text);font-size:0.75rem;cursor:pointer;outline:none;">
+                                <option value="ALL">All Cards</option>
+                            </select>
+
                             <span id="ccRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
                         </div>

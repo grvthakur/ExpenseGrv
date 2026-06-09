@@ -49,6 +49,8 @@ let editingCardId = null;
 let expSearch = "";
 let cardSearch = "";
 let cardStatusFilter = "ALL"; // ALL, PAID, UNPAID
+let cardMonthFilter = "3"; // "1" = current month only, "3" = last 3 months
+let cardCardFilter = "ALL"; // ALL or specific card name
 
 // ─── MONTH KEYS ──────────────────────────────────────────────────────────────
 function monthKey() {
@@ -198,6 +200,7 @@ function switchTab(tab) {
   } else {
     renderCards();
     populateCardDropdown();
+    populateCCCardFilter();
     syncCardsFromSheet(false); // sync latest 3 months whenever cards tab is opened
   }
 }
@@ -219,27 +222,51 @@ function populateCardDropdown() {
 // ─── SET CARD STATUS FILTER ──────────────────────────────────────────────────
 function setCardStatusFilter(status) {
   cardStatusFilter = status;
-  // Update button styles
-  document.getElementById("ccFilterAll").style.background =
-    status === "ALL" ? "var(--accent)" : "var(--s2)";
-  document.getElementById("ccFilterAll").style.color =
-    status === "ALL" ? "black" : "var(--muted)";
-  document.getElementById("ccFilterAll").style.border =
-    status === "ALL" ? "none" : "1px solid var(--border)";
+  const btns = {
+    ALL: "ccFilterAll",
+    PAID: "ccFilterPaid",
+    UNPAID: "ccFilterUnpaid",
+  };
+  Object.entries(btns).forEach(([key, id]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const active = key === status;
+    btn.style.background = active ? "var(--accent)" : "var(--s2)";
+    btn.style.color = active ? "black" : "var(--muted)";
+    btn.style.border = active ? "none" : "1px solid var(--border)";
+  });
+}
 
-  document.getElementById("ccFilterPaid").style.background =
-    status === "PAID" ? "var(--accent)" : "var(--s2)";
-  document.getElementById("ccFilterPaid").style.color =
-    status === "PAID" ? "black" : "var(--muted)";
-  document.getElementById("ccFilterPaid").style.border =
-    status === "PAID" ? "none" : "1px solid var(--border)";
+// ─── SET CARD MONTH FILTER ───────────────────────────────────────────────────
+function setCardMonthFilter(months) {
+  cardMonthFilter = months;
+  const btn3 = document.getElementById("ccFilter3M");
+  const btn1 = document.getElementById("ccFilter1M");
+  if (!btn3 || !btn1) return;
+  const is3 = months === "3";
+  btn3.style.background = is3 ? "var(--accent)" : "var(--s2)";
+  btn3.style.color = is3 ? "black" : "var(--muted)";
+  btn3.style.border = is3 ? "none" : "1px solid var(--border)";
+  btn1.style.background = !is3 ? "var(--accent)" : "var(--s2)";
+  btn1.style.color = !is3 ? "black" : "var(--muted)";
+  btn1.style.border = !is3 ? "none" : "1px solid var(--border)";
+}
 
-  document.getElementById("ccFilterUnpaid").style.background =
-    status === "UNPAID" ? "var(--accent)" : "var(--s2)";
-  document.getElementById("ccFilterUnpaid").style.color =
-    status === "UNPAID" ? "black" : "var(--muted)";
-  document.getElementById("ccFilterUnpaid").style.border =
-    status === "UNPAID" ? "none" : "1px solid var(--border)";
+// ─── POPULATE CC CARD FILTER DROPDOWN ────────────────────────────────────────
+function populateCCCardFilter() {
+  const sel = document.getElementById("ccCardFilter");
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="ALL">All Cards</option>';
+  cardConfig.forEach((cfg) => {
+    const o = document.createElement("option");
+    o.value = cfg.card;
+    o.text = cfg.card;
+    sel.appendChild(o);
+  });
+  // restore selection if still valid
+  if (current && [...sel.options].some((o) => o.value === current))
+    sel.value = current;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -726,9 +753,10 @@ function renderCards() {
   const selMonth = parseInt(document.getElementById("monthSelect").value);
   const selYear = parseInt(document.getElementById("yearSelect").value);
 
-  // Build last 3 months list (including selected month)
+  // Build month list based on filter (1 = current month only, 3 = last 3 months)
+  const monthCount = cardMonthFilter === "1" ? 1 : 3;
   const last3 = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < monthCount; i++) {
     let m = selMonth - i;
     let y = selYear;
     if (m < 0) {
@@ -738,14 +766,17 @@ function renderCards() {
     last3.push({ m, y });
   }
 
-  // Show range label e.g. "Feb - Apr 2026"
+  // Update range label
   const oldest = last3[last3.length - 1];
   const newest = last3[0];
-  const rangeLabel = `${MONTHS[oldest.m]} - ${MONTHS[newest.m]} ${newest.y}`;
+  const rangeLabel =
+    monthCount === 1
+      ? `${MONTHS[newest.m]} ${newest.y}`
+      : `${MONTHS[oldest.m]} - ${MONTHS[newest.m]} ${newest.y}`;
   const rangeEl = document.getElementById("ccRangeLabel");
   if (rangeEl) rangeEl.textContent = rangeLabel;
 
-  // Show transactions from last 3 months
+  // Filter by month range
   const rows = cardTxns.filter((t) => {
     if (!t.txnDate) return false;
     const d = new Date(t.txnDate);
@@ -823,7 +854,12 @@ function renderCards() {
     const matchStatus =
       cardStatusFilter === "ALL" || t.status === cardStatusFilter;
 
-    return matchSearch && matchStatus;
+    // Card filter
+    const selCard = document.getElementById("ccCardFilter");
+    cardCardFilter = selCard ? selCard.value : "ALL";
+    const matchCard = cardCardFilter === "ALL" || t.card === cardCardFilter;
+
+    return matchSearch && matchStatus && matchCard;
   });
 
   // Update sort header arrows
@@ -1484,6 +1520,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   syncFromSheet(false, false);
   syncCardsFromSheet(false);
   setCardStatusFilter("ALL"); // init filter button styles
+  setCardMonthFilter("3"); // init month filter button styles
+  populateCCCardFilter(); // init card dropdown
 
   setInterval(() => {
     syncFromSheet(false);
