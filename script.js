@@ -920,8 +920,9 @@ function renderCards() {
     // Billing month cell — normalize in case sheet returned a Date object string
     const bmCell = tr.insertCell(7);
     bmCell.textContent = formatBillingMonth(t.billingMonth);
-    bmCell.style.fontSize = "0.75rem";
-    bmCell.style.color = "var(--muted)";
+    bmCell.style.fontSize = "0.8rem";
+    bmCell.style.color = "var(--accent)";
+    bmCell.style.fontWeight = "500";
 
     const actCell = tr.insertCell(8);
     actCell.style.whiteSpace = "nowrap";
