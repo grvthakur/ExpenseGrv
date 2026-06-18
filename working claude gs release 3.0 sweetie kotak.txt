@@ -79,30 +79,6 @@ function forceText(sheet, row, col) {
   }
 }
 
-// ─── AUTO-RECALC ON MANUAL SHEET EDITS ───────────────────────────────────────
-// Apps Script "simple trigger" — runs automatically whenever ANY cell in the
-// spreadsheet is edited directly (typing into the sheet, not via the app).
-// If the edit happened on the Sweetie sheet, recalculate the running balance
-// so Remaining Amount stays correct even for manually-typed rows.
-//
-// SAFETY: recalcSweetieBalances() writes into column 4 (Remaining Amount),
-// which would normally re-fire this same onEdit trigger. We guard against
-// that infinite loop with a short-lived script lock — if a recalc is already
-// in progress, any nested trigger call just returns immediately.
-function onEdit(e) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(0)) return; // already recalculating — skip this nested call
-  try {
-    const sheet = e.range.getSheet();
-    if (sheet.getName() !== "Sweetie") return;
-    recalcSweetieBalances(sheet);
-  } catch (err) {
-    // Simple triggers can't show alerts; fail silently so manual typing never breaks
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 // ─── MAIN ENTRY POINT ────────────────────────────────────────────────────────
 function doGet(e) {
   try {
@@ -231,28 +207,19 @@ function doGet(e) {
     // Fetch cards by transaction date month prefix(es) e.g. "2026-04" or "2026-04,2026-03,2026-02"
     if (action === "getCardsByTxnMonth") {
       const txnMonthParam = String(e.parameter.txnMonth || "").trim();
-      const prefixes = txnMonthParam
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const cardSheet = getOrCreateCardsSheet(ss);
-      const rows = cardSheet.getDataRange().getValues();
-      const out = rows
-        .slice(1)
-        .filter((row) => {
+      const prefixes      = txnMonthParam.split(",").map(s => s.trim()).filter(Boolean);
+      const cardSheet     = getOrCreateCardsSheet(ss);
+      const rows          = cardSheet.getDataRange().getValues();
+      const out = rows.slice(1)
+        .filter(row => {
           const dateStr = toDateStr(row[4]);
-          return prefixes.some((p) => dateStr.startsWith(p));
+          return prefixes.some(p => dateStr.startsWith(p));
         })
-        .map((row) => [
-          String(row[0] || ""),
-          String(row[1] || ""),
-          String(row[2] || ""),
-          String(row[3] || ""),
-          toDateStr(row[4]),
-          String(row[5] || ""),
+        .map(row => [
+          String(row[0]||""), String(row[1]||""), String(row[2]||""),
+          String(row[3]||""), toDateStr(row[4]), String(row[5]||""),
           typeof row[6] === "number" ? row[6] : parseFloat(row[6]) || 0,
-          String(row[7] || "UNPAID"),
-          String(row[8] || ""),
+          String(row[7]||"UNPAID"), String(row[8]||""),
         ]);
       return jsonOut(out);
     }
@@ -311,56 +278,6 @@ function doGet(e) {
       return textOut("NotFound");
     }
 
-    // ── SWEETIE TRACKER ──────────────────────────────────────────────────
-    // Sweetie sheet columns: ID | TYPE | AMOUNT | Remaining Amount | DATE | Description
-    // Remaining Amount is calculated server-side and WRITTEN BACK to the sheet
-    // every time the sheet changes — exactly like a bank passbook.
-    if (action === "getSweetie") {
-      const sweetieSheet = getOrCreateSweetieSheet(ss);
-      const rows = sweetieSheet.getDataRange().getValues();
-      const out = rows
-        .slice(1)
-        .filter((row) => row[0] && row[1]) // ID and TYPE both required
-        .map((row) => [
-          String(row[0] || ""),
-          String(row[1] || ""),
-          typeof row[2] === "number" ? row[2] : parseFloat(row[2]) || 0,
-          typeof row[3] === "number" ? row[3] : parseFloat(row[3]) || 0,
-          toDateStr(row[4]),
-          String(row[5] || ""),
-        ]);
-      return jsonOut(out);
-    }
-
-    if (action === "addSweetie") {
-      const sweetieSheet = getOrCreateSweetieSheet(ss);
-      const id = String(e.parameter.id || Date.now()).trim();
-      const type = String(e.parameter.type || "").trim();
-      const amount = parseFloat(e.parameter.amount || "0");
-      const date = String(e.parameter.date || "").trim();
-      const description = String(e.parameter.description || "").trim();
-      if (!type || !date || isNaN(amount))
-        return textOut("ERROR: missing fields");
-      // Remaining Amount column written as 0 here — recalcSweetieBalances() fixes it below
-      sweetieSheet.appendRow([id, type, amount, 0, date, description]);
-      recalcSweetieBalances(sweetieSheet);
-      return textOut("Added");
-    }
-
-    if (action === "deleteSweetie") {
-      const id = String(e.parameter.id || "").trim();
-      const sweetieSheet = getOrCreateSweetieSheet(ss);
-      const rows = sweetieSheet.getDataRange().getValues();
-      for (let i = 1; i < rows.length; i++) {
-        if (String(rows[i][0]).trim() === id) {
-          sweetieSheet.deleteRow(i + 1);
-          recalcSweetieBalances(sweetieSheet);
-          return textOut("Deleted");
-        }
-      }
-      return textOut("NotFound");
-    }
-
     // ── CC MASTER LIST ───────────────────────────────────────────────────
     // Password verified against PropertiesService — never sent back to browser
     if (action === "getCCMaster") {
@@ -404,74 +321,6 @@ function getOrCreateCardsSheet(ss) {
     ]);
   }
   return sheet;
-}
-
-// ─── SWEETIE SHEET ───────────────────────────────────────────────────────────
-function getOrCreateSweetieSheet(ss) {
-  let sheet = ss.getSheetByName("Sweetie");
-  if (!sheet) {
-    sheet = ss.insertSheet("Sweetie");
-    sheet.appendRow([
-      "ID",
-      "TYPE",
-      "AMOUNT",
-      "Remaining Amount",
-      "DATE",
-      "Description",
-    ]);
-  }
-  return sheet;
-}
-
-// Recalculate Remaining Amount column for every row, in chronological order
-// (oldest -> newest by DATE, tie-broken by ID), then WRITE the result back
-// into the sheet's "Remaining Amount" column — passbook style.
-function recalcSweetieBalances(sheet) {
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return; // header only, nothing to calc
-
-  // Build row objects with their original sheet row index (1-based, +1 for header)
-  const items = [];
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    if (!row[0] || !row[1]) continue; // ID and TYPE both required
-    items.push({
-      sheetRow: i + 1,
-      type: String(row[1] || "").trim(),
-      amount: typeof row[2] === "number" ? row[2] : parseFloat(row[2]) || 0,
-      date: row[4],
-      id: String(row[0] || ""),
-    });
-  }
-
-  // Sort chronologically — oldest first. Tie-break by ID (lower id = added earlier).
-  items.sort((a, b) => {
-    const ad = a.date instanceof Date ? a.date : new Date(a.date);
-    const bd = b.date instanceof Date ? b.date : new Date(b.date);
-    const at = isNaN(ad) ? 0 : ad.getTime();
-    const bt = isNaN(bd) ? 0 : bd.getTime();
-    if (at !== bt) return at - bt;
-    return String(a.id) > String(b.id) ? 1 : -1;
-  });
-
-  // Walk chronologically, accumulate running balance, write back to each row
-  // — but ONLY if the value actually changed, to avoid unnecessary re-writes
-  // (important since writing also re-fires the onEdit trigger below).
-  let running = 0;
-  items.forEach((item) => {
-    const signedAmt =
-      item.type.toUpperCase() === "DEBIT"
-        ? -Math.abs(item.amount)
-        : Math.abs(item.amount);
-    running += signedAmt;
-    const cell = sheet.getRange(item.sheetRow, 4);
-    const current = cell.getValue();
-    const currentNum =
-      typeof current === "number" ? current : parseFloat(current) || 0;
-    if (Math.round(currentNum * 100) !== Math.round(running * 100)) {
-      cell.setValue(running);
-    }
-  });
 }
 
 // ─── SUMMARY SHEET ───────────────────────────────────────────────────────────

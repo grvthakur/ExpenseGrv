@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycby9uqib0uUVAKj-qw33BZ5k_S6qiFmGBmjqsjQgRkBvDPaZZC5ups60KFBeSYLjxQhg/exec";
+  "https://script.google.com/macros/s/AKfycbzaK31mqlJt_Q5aEjLOxiPGD2i7Cx2bIzInkUQo4oEJ4VijY55XAMB0jQEG8OziDXMk/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -52,6 +52,13 @@ let cardStatusFilter = "ALL"; // ALL, PAID, UNPAID
 let cardMonthFilter = "3"; // "1" = current month only, "3" = last 3 months
 let cardCardFilter = "ALL"; // ALL or specific card name
 
+// Sweetie tracker state
+let sweetieTxns = []; // raw entries from sheet [{id,type,amount,date,description}]
+let sweetieSort = { col: "date", dir: "desc" };
+let editingSweetieId = null;
+let sweetieSearch = "";
+let sweetieMonthFilter = "ALL";
+
 // ─── MONTH KEYS ──────────────────────────────────────────────────────────────
 function monthKey() {
   const m = parseInt(document.getElementById("monthSelect").value);
@@ -84,6 +91,7 @@ function saveLocal() {
     localStorage.setItem("sal_v3", JSON.stringify(salaries));
     localStorage.setItem("cards_v1", JSON.stringify(cardTxns));
     localStorage.setItem("cardcfg", JSON.stringify(cardConfig));
+    localStorage.setItem("sweetie_v1", JSON.stringify(sweetieTxns));
   } catch (e) {
     console.warn("localStorage write failed:", e);
   }
@@ -94,15 +102,18 @@ function loadLocal() {
     const s = localStorage.getItem("sal_v3");
     const c = localStorage.getItem("cards_v1");
     const g = localStorage.getItem("cardcfg");
+    const sw = localStorage.getItem("sweetie_v1");
     if (e) expenses = JSON.parse(e);
     if (s) salaries = JSON.parse(s);
     if (c) cardTxns = JSON.parse(c);
     if (g) cardConfig = JSON.parse(g);
+    if (sw) sweetieTxns = JSON.parse(sw);
   } catch (e) {
     expenses = [];
     salaries = {};
     cardTxns = [];
     cardConfig = [];
+    sweetieTxns = [];
   }
 }
 
@@ -190,18 +201,26 @@ function switchTab(tab) {
   document
     .getElementById("tabCards")
     .classList.toggle("tab-active", tab === "cards");
+  document
+    .getElementById("tabSweetie")
+    .classList.toggle("tab-active", tab === "sweetie");
   document.getElementById("expenseSection").style.display =
     tab === "expenses" ? "" : "none";
   document.getElementById("cardSection").style.display =
     tab === "cards" ? "" : "none";
+  document.getElementById("sweetieSection").style.display =
+    tab === "sweetie" ? "" : "none";
 
   if (tab === "expenses") {
     render();
-  } else {
+  } else if (tab === "cards") {
     renderCards();
     populateCardDropdown();
     populateCCCardFilter();
     syncCardsFromSheet(false); // sync latest 3 months whenever cards tab is opened
+  } else if (tab === "sweetie") {
+    renderSweetie();
+    syncSweetieFromSheet(false); // sync full consolidated list whenever sweetie tab is opened
   }
 }
 
@@ -1429,6 +1448,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Set card date default to today
   document.getElementById("cardTxnDate").value = localDateStr(new Date());
 
+  // Set sweetie date default to today
+  document.getElementById("sweetieDate").value = localDateStr(new Date());
+
   // Expense tab wiring
   document.getElementById("addBtn").addEventListener("click", addEntry);
   document
@@ -1489,6 +1511,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   document
     .getElementById("tabCards")
     .addEventListener("click", () => switchTab("cards"));
+  document
+    .getElementById("tabSweetie")
+    .addEventListener("click", () => switchTab("sweetie"));
   document.getElementById("addCardBtn").addEventListener("click", addCardEntry);
   document
     .getElementById("cancelExpEditBtn")
@@ -1499,6 +1524,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   document
     .getElementById("cardSyncBtn")
     .addEventListener("click", () => syncCardsFromSheet(true));
+  document
+    .getElementById("addSweetieBtn")
+    .addEventListener("click", addSweetieEntry);
+  document
+    .getElementById("cancelSweetieEditBtn")
+    .addEventListener("click", cancelEditSweetie);
+  document
+    .getElementById("sweetieSyncBtn")
+    .addEventListener("click", () => syncSweetieFromSheet(true));
 
   // Month/year change — refresh both tabs
   document.getElementById("monthSelect").addEventListener("change", () => {
@@ -1520,6 +1554,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Sync runs silently in background, updates UI when done
   syncFromSheet(false, false);
   syncCardsFromSheet(false);
+  syncSweetieFromSheet(false);
   setCardStatusFilter("ALL"); // init filter button styles
   setCardMonthFilter("3"); // init month filter button styles
   populateCCCardFilter(); // init card dropdown
@@ -1527,5 +1562,405 @@ window.addEventListener("DOMContentLoaded", async () => {
   setInterval(() => {
     syncFromSheet(false);
     if (activeTab === "cards") syncCardsFromSheet(false);
+    if (activeTab === "sweetie") syncSweetieFromSheet(false);
   }, 60000);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── SWEETIE TRACKER SECTION ─────────────────────────────────────────────────
+// Consolidated list across ALL months. Remaining balance is always computed
+// chronologically (oldest -> newest), independent of how the table is sorted
+// or filtered for display.
+// CREDIT/SAVING add to balance, DEBIT subtracts.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Compute running balance in true chronological order, return map id -> remaining
+function computeSweetieRunningBalance(list) {
+  const chrono = [...list].sort((a, b) => {
+    const ad = new Date(a.date),
+      bd = new Date(b.date);
+    if (ad - bd !== 0) return ad - bd;
+    // Tie-break: entry added first (lower numeric id/timestamp) comes first chronologically
+    return String(a.id) > String(b.id) ? 1 : -1;
+  });
+  let running = 0;
+  const balanceMap = new Map();
+  chrono.forEach((t) => {
+    const signedAmt =
+      t.type === "DEBIT" ? -Math.abs(t.amount) : Math.abs(t.amount);
+    running += signedAmt;
+    balanceMap.set(t.id, running);
+  });
+  return { balanceMap, finalBalance: running };
+}
+
+function populateSweetieMonthFilter() {
+  const sel = document.getElementById("sweetieMonthFilter");
+  if (!sel) return;
+  const current = sel.value;
+  const monthsSet = new Set();
+  sweetieTxns.forEach((t) => {
+    if (!t.date) return;
+    const d = new Date(t.date);
+    if (isNaN(d)) return;
+    monthsSet.add(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+    );
+  });
+  const sortedMonths = [...monthsSet].sort().reverse();
+  sel.innerHTML = '<option value="ALL">All Months</option>';
+  sortedMonths.forEach((key) => {
+    const [y, m] = key.split("-").map(Number);
+    const label = `${MONTHS[m - 1]} ${y}`;
+    const o = document.createElement("option");
+    o.value = key;
+    o.text = label;
+    sel.appendChild(o);
+  });
+  if (current && [...sel.options].some((o) => o.value === current))
+    sel.value = current;
+}
+
+function renderSweetie() {
+  // Always compute the running balance over the FULL consolidated list first —
+  // filters/search/sort below only affect what's displayed, never the math.
+  const { balanceMap, finalBalance } =
+    computeSweetieRunningBalance(sweetieTxns);
+
+  // Stats (always over full list, not just filtered view)
+  const totalSaved = sweetieTxns
+    .filter((t) => t.type === "SAVING" || t.type === "CREDIT")
+    .reduce((s, t) => s + Math.abs(t.amount), 0);
+  const totalSpent = sweetieTxns
+    .filter((t) => t.type === "DEBIT")
+    .reduce((s, t) => s + Math.abs(t.amount), 0);
+
+  const balEl = document.getElementById("sweetieStatBalance");
+  const savedEl = document.getElementById("sweetieStatSaved");
+  const spentEl = document.getElementById("sweetieStatSpent");
+  if (balEl) balEl.textContent = `₹${finalBalance.toFixed(2)}`;
+  if (savedEl) savedEl.textContent = `₹${totalSaved.toFixed(2)}`;
+  if (spentEl) spentEl.textContent = `₹${totalSpent.toFixed(2)}`;
+
+  populateSweetieMonthFilter();
+
+  // Range label
+  const rangeEl = document.getElementById("sweetieRangeLabel");
+  if (rangeEl) {
+    const monthSelEl = document.getElementById("sweetieMonthFilter");
+    const monthSel = monthSelEl ? monthSelEl.value : "ALL";
+    if (monthSel === "ALL") {
+      rangeEl.textContent = `All time (${sweetieTxns.length} entries)`;
+    } else {
+      const [y, m] = monthSel.split("-").map(Number);
+      rangeEl.textContent = `${MONTHS[m - 1]} ${y}`;
+    }
+  }
+
+  // Apply month filter
+  const monthSelEl = document.getElementById("sweetieMonthFilter");
+  const monthFilterVal = monthSelEl ? monthSelEl.value : "ALL";
+  let rows = sweetieTxns;
+  if (monthFilterVal !== "ALL") {
+    const [fy, fm] = monthFilterVal.split("-").map(Number);
+    rows = rows.filter((t) => {
+      if (!t.date) return false;
+      const d = new Date(t.date);
+      return d.getFullYear() === fy && d.getMonth() === fm - 1;
+    });
+  }
+
+  // Apply search filter
+  const searchEl = document.getElementById("sweetieSearchBox");
+  sweetieSearch = searchEl ? searchEl.value.trim().toLowerCase() : "";
+  const filtered = rows.filter((t) => {
+    if (!sweetieSearch) return true;
+    return (
+      (t.description || "").toLowerCase().includes(sweetieSearch) ||
+      (t.type || "").toLowerCase().includes(sweetieSearch) ||
+      String(t.amount).includes(sweetieSearch)
+    );
+  });
+
+  // Update sort header arrows
+  ["date", "type", "amount"].forEach((col) => {
+    const th = document.getElementById("swTh_" + col);
+    if (!th) return;
+    th.querySelector(".sort-arrow").textContent =
+      sweetieSort.col === col
+        ? sweetieSort.dir === "asc"
+          ? " ↑"
+          : " ↓"
+        : " ↕";
+  });
+
+  const tbody = document.getElementById("sweetieTableBody");
+  const emptyEl = document.getElementById("sweetieEmptyMessage");
+  tbody.innerHTML = "";
+
+  if (filtered.length === 0) {
+    emptyEl.style.display = "block";
+    emptyEl.textContent = sweetieSearch
+      ? `No results for "${sweetieSearch}"`
+      : "✨ No sweetie transactions found";
+    document.getElementById("sweetieRowCount").textContent = "0 entries";
+    return;
+  }
+  emptyEl.style.display = "none";
+  document.getElementById("sweetieRowCount").textContent = sweetieSearch
+    ? `${filtered.length} of ${rows.length} entries`
+    : `${rows.length} entries`;
+
+  const sorted = [...filtered].sort((a, b) => {
+    let av = a[sweetieSort.col],
+      bv = b[sweetieSort.col];
+    if (sweetieSort.col === "amount") {
+      av = +av;
+      bv = +bv;
+    } else if (sweetieSort.col === "date") {
+      av = new Date(a.date).getTime() || 0;
+      bv = new Date(b.date).getTime() || 0;
+    } else {
+      av = String(av || "").toLowerCase();
+      bv = String(bv || "").toLowerCase();
+    }
+    if (av < bv) return sweetieSort.dir === "asc" ? -1 : 1;
+    if (av > bv) return sweetieSort.dir === "asc" ? 1 : -1;
+    // Tie-break: most recently added entry shows first (matches "last transaction on top")
+    return String(b.id) > String(a.id) ? 1 : -1;
+  });
+
+  sorted.forEach((t) => {
+    const tr = tbody.insertRow();
+    const remaining = balanceMap.get(t.id) ?? 0;
+    const isDebit = t.type === "DEBIT";
+    const sign = isDebit ? "-" : "+";
+
+    tr.insertCell(0).textContent = formatDisplayDate(t.date);
+
+    const typeCell = tr.insertCell(1);
+    const typeBadgeClass =
+      t.type === "SAVING"
+        ? "badge-paid"
+        : t.type === "CREDIT"
+          ? "badge-paid"
+          : "badge-unpaid";
+    typeCell.innerHTML = `<span class="status-badge ${typeBadgeClass}">${t.type}</span>`;
+
+    const amtCell = tr.insertCell(2);
+    amtCell.textContent = `${sign}₹${Math.abs(t.amount).toFixed(2)}`;
+    amtCell.style.color = isDebit ? "var(--danger)" : "var(--green)";
+    amtCell.style.fontWeight = "600";
+
+    const remCell = tr.insertCell(3);
+    remCell.textContent = `₹${remaining.toFixed(2)}`;
+    remCell.style.color = "var(--accent)";
+    remCell.style.fontWeight = "500";
+
+    tr.insertCell(4).textContent = t.description || "—";
+
+    const actCell = tr.insertCell(5);
+    actCell.style.whiteSpace = "nowrap";
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏️";
+    editBtn.className = "edit-btn";
+    editBtn.title = "Edit";
+    editBtn.style.marginRight = "4px";
+    editBtn.onclick = () => startEditSweetie(t.id);
+    const cloneBtn = document.createElement("button");
+    cloneBtn.textContent = "⧉";
+    cloneBtn.className = "clone-btn";
+    cloneBtn.title = "Clone";
+    cloneBtn.style.marginRight = "4px";
+    cloneBtn.onclick = () => cloneSweetie(t.id);
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "✕";
+    delBtn.className = "delete-btn";
+    delBtn.title = "Delete";
+    delBtn.onclick = () => deleteSweetieEntry(t.id);
+    actCell.appendChild(editBtn);
+    actCell.appendChild(cloneBtn);
+    actCell.appendChild(delBtn);
+  });
+}
+
+function sortSweetie(col) {
+  if (sweetieSort.col === col)
+    sweetieSort.dir = sweetieSort.dir === "asc" ? "desc" : "asc";
+  else {
+    sweetieSort.col = col;
+    sweetieSort.dir = col === "amount" ? "desc" : "asc";
+  }
+  renderSweetie();
+}
+
+function startEditSweetie(id) {
+  const t = sweetieTxns.find((t) => t.id === id);
+  if (!t) return;
+  editingSweetieId = id;
+  document.getElementById("sweetieType").value = t.type;
+  document.getElementById("sweetieAmount").value = Math.abs(t.amount);
+  document.getElementById("sweetieDate").value = t.date;
+  document.getElementById("sweetieDesc").value = t.description || "";
+  document.getElementById("addSweetieBtn").textContent = "💾 Update Entry";
+  document.getElementById("addSweetieBtn").style.background = "#fbbf24";
+  document.getElementById("cancelSweetieEditBtn").style.display = "block";
+  renderSweetie();
+  document
+    .getElementById("sweetieAmount")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditSweetie() {
+  editingSweetieId = null;
+  document.getElementById("sweetieAmount").value = "";
+  document.getElementById("sweetieDesc").value = "";
+  document.getElementById("addSweetieBtn").textContent = "➕ Add Entry";
+  document.getElementById("addSweetieBtn").style.background = "";
+  document.getElementById("addSweetieBtn").style.color = "";
+  document.getElementById("cancelSweetieEditBtn").style.display = "none";
+  document.getElementById("cancelSweetieEditBtn").textContent = "✕ Cancel Edit";
+  renderSweetie();
+}
+
+function cloneSweetie(id) {
+  const t = sweetieTxns.find((t) => t.id === id);
+  if (!t) return;
+  // Fill form just like edit, but with today's date — saving creates a NEW entry
+  document.getElementById("sweetieType").value = t.type;
+  document.getElementById("sweetieAmount").value = Math.abs(t.amount);
+  document.getElementById("sweetieDate").value = localDateStr(new Date());
+  document.getElementById("sweetieDesc").value = t.description || "";
+  editingSweetieId = null;
+  document.getElementById("addSweetieBtn").textContent = "⧉ Save Clone";
+  document.getElementById("addSweetieBtn").style.background = "#34d399";
+  document.getElementById("addSweetieBtn").style.color = "#0b0b10";
+  document.getElementById("cancelSweetieEditBtn").style.display = "block";
+  document.getElementById("cancelSweetieEditBtn").textContent =
+    "✕ Cancel Clone";
+  toast("Edit details then click Save Clone", false, 3000);
+  document
+    .getElementById("sweetieAmount")
+    .scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function addSweetieEntry() {
+  const type = document.getElementById("sweetieType").value;
+  const rawAmt = document.getElementById("sweetieAmount").value;
+  const date = document.getElementById("sweetieDate").value;
+  const desc = document.getElementById("sweetieDesc").value.trim();
+
+  if (!type || !date || !rawAmt)
+    return toast("Type, date & amount required", true);
+  const amount = parseFloat(rawAmt);
+  if (isNaN(amount) || amount <= 0) return toast("Enter a valid amount", true);
+
+  if (editingSweetieId) {
+    // ── UPDATE MODE ──
+    const updEntry = {
+      id: editingSweetieId,
+      type,
+      amount,
+      date,
+      description: desc,
+    };
+    sweetieTxns = sweetieTxns.filter((t) => t.id !== editingSweetieId);
+    sweetieTxns.push(updEntry);
+    saveLocal();
+    sheetWrite(apiUrl(`action=deleteSweetie&id=${editingSweetieId}`));
+    sheetWrite(
+      apiUrl(
+        `action=addSweetie&id=${updEntry.id}&type=${enc(updEntry.type)}&amount=${updEntry.amount}&date=${enc(updEntry.date)}&description=${enc(updEntry.description)}`,
+      ),
+    );
+    cancelEditSweetie();
+    toast("Sweetie entry updated ✓");
+    return;
+  }
+
+  const entry = {
+    id: Date.now().toString(),
+    type,
+    amount,
+    date,
+    description: desc,
+  };
+
+  sweetieTxns.push(entry);
+  saveLocal();
+  renderSweetie();
+  toast("Sweetie entry added ✓");
+
+  document.getElementById("sweetieAmount").value = "";
+  document.getElementById("sweetieDesc").value = "";
+  document.getElementById("addSweetieBtn").textContent = "➕ Add Entry";
+  document.getElementById("addSweetieBtn").style.background = "";
+  document.getElementById("addSweetieBtn").style.color = "";
+  document.getElementById("cancelSweetieEditBtn").style.display = "none";
+  document.getElementById("cancelSweetieEditBtn").textContent = "✕ Cancel Edit";
+
+  sheetWrite(
+    apiUrl(
+      `action=addSweetie&id=${entry.id}&type=${enc(entry.type)}&amount=${entry.amount}&date=${enc(entry.date)}&description=${enc(entry.description)}`,
+    ),
+  );
+}
+
+function deleteSweetieEntry(id) {
+  if (!confirm("Delete this sweetie entry? This cannot be undone.")) return;
+  sweetieTxns = sweetieTxns.filter((t) => t.id !== id);
+  saveLocal();
+  renderSweetie();
+  toast("Deleted ✓");
+  sheetWrite(apiUrl(`action=deleteSweetie&id=${id}`));
+}
+
+async function syncSweetieFromSheet(isManual = false) {
+  const btn = document.getElementById("sweetieSyncBtn");
+  if (isManual) {
+    btn.textContent = "⏳ Syncing…";
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await fetch(apiUrl(`action=getSweetie`)).then((r) => r.json());
+
+    if (Array.isArray(res)) {
+      const fromSheet = res
+        .map((row) => ({
+          id: String(row[0] || "").trim(),
+          type: String(row[1] || "").trim(),
+          amount: parseFloat(row[2]) || 0,
+          remaining: parseFloat(row[3]) || 0, // pre-calculated by server, passbook style
+          date: String(row[4] || "").trim(),
+          description: String(row[5] || ""),
+        }))
+        .filter((t) => t.id && t.type && t.date);
+
+      // Safety guard — never wipe local data if sheet returns empty unexpectedly
+      if (fromSheet.length === 0 && sweetieTxns.length > 0) {
+        if (isManual)
+          toast(
+            `⚠️ Sheet empty — kept ${sweetieTxns.length} local entries`,
+            true,
+            4000,
+          );
+      } else {
+        sweetieTxns = fromSheet;
+      }
+    }
+
+    saveLocal();
+    renderSweetie();
+    if (isManual) toast("Sweetie synced ✓");
+  } catch (err) {
+    console.error("Sweetie sync error:", err);
+    if (isManual) toast("⚠️ Sweetie sync failed — showing local data", true);
+    renderSweetie();
+  } finally {
+    if (isManual) {
+      btn.textContent = "🔄 Sync Sweetie";
+      btn.disabled = false;
+    }
+  }
+}

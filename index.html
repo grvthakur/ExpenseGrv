@@ -1101,6 +1101,7 @@
     <div class="tab-bar">
         <button class="tab-btn tab-active" id="tabExpenses">💰 Expenses</button>
         <button class="tab-btn" id="tabCards">💳 Credit Cards</button>
+        <button class="tab-btn" id="tabSweetie">🍯 Sweetie</button>
     </div>
 
     <!-- ═══ EXPENSES STATS (shown when Expenses tab active) ═══ -->
@@ -1359,6 +1360,103 @@
             </div>
         </div>
     </div><!-- /cardSection -->
+
+    <!-- ═══ SWEETIE SECTION (shown when Sweetie tab active) ═══ -->
+    <div id="sweetieSection" style="display:none;">
+
+        <!-- Month range label -->
+        <div style="padding:10px 12px 0;font-size:0.78rem;color:var(--muted);">
+            Showing: <span id="sweetieRangeLabel" style="color:var(--accent);font-weight:600;"></span>
+        </div>
+
+        <!-- Sweetie Stats -->
+        <div class="cc-stats">
+            <div class="stat">
+                <div class="stat-label">Current Balance</div>
+                <div class="stat-value c-green" id="sweetieStatBalance">₹0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Total Saved</div>
+                <div class="stat-value c-pink" id="sweetieStatSaved">₹0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Total Spent</div>
+                <div class="stat-value c-red" id="sweetieStatSpent">₹0</div>
+            </div>
+        </div>
+
+        <div class="main-grid" style="padding-top:20px;">
+            <!-- Left: Add Sweetie Transaction -->
+            <div class="left-col">
+                <div class="card">
+                    <div class="card-title">Add Sweetie Entry</div>
+                    <div class="field">
+                        <label>Type</label>
+                        <select id="sweetieType">
+                            <option value="SAVING">SAVING</option>
+                            <option value="CREDIT">CREDIT</option>
+                            <option value="DEBIT">DEBIT</option>
+                        </select>
+                    </div>
+                    <div class="field"><label>Amount (₹)</label><input type="number" id="sweetieAmount" /></div>
+                    <div class="field"><label>Date</label><input type="date" id="sweetieDate" /></div>
+                    <div class="field"><label>Description</label><input type="text" id="sweetieDesc"
+                            placeholder="What was this for" /></div>
+                    <button class="btn btn-primary" id="addSweetieBtn">➕ Add Entry</button>
+                    <button class="btn btn-secondary" id="cancelSweetieEditBtn"
+                        style="display:none;background:#fbbf24;color:#0b0b10;border-color:#fbbf24;">✕ Cancel
+                        Edit</button>
+                    <button class="btn btn-secondary" id="sweetieSyncBtn" style="margin-top:8px;">🔄 Sync
+                        Sweetie</button>
+                </div>
+            </div>
+
+            <!-- Right: Sweetie transactions table -->
+            <div class="right-col">
+                <div class="table-wrapper">
+                    <div class="table-header">
+                        <span>🍯 Sweetie Transactions</span>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <input id="sweetieSearchBox" type="text" placeholder="🔍 Search…" oninput="renderSweetie()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:160px;outline:none;" />
+
+                            <!-- Month filter -->
+                            <select id="sweetieMonthFilter" onchange="renderSweetie()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;color:var(--text);font-size:0.75rem;cursor:pointer;outline:none;">
+                                <option value="ALL">All Months</option>
+                            </select>
+
+                            <span id="sweetieRowCount" class="stat-label"
+                                style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+                        </div>
+                    </div>
+                    <div style="max-height:620px;overflow-y:auto;">
+                        <table class="expense-table" id="sweetieTable">
+                            <thead>
+                                <tr>
+                                    <th id="swTh_date" onclick="sortSweetie('date')"
+                                        style="cursor:pointer;user-select:none">Date<span class="sort-arrow"> ↓</span>
+                                    </th>
+                                    <th id="swTh_type" onclick="sortSweetie('type')"
+                                        style="cursor:pointer;user-select:none">Type<span class="sort-arrow"> ↕</span>
+                                    </th>
+                                    <th id="swTh_amount" onclick="sortSweetie('amount')"
+                                        style="cursor:pointer;user-select:none">Amount<span class="sort-arrow"> ↕</span>
+                                    </th>
+                                    <th>Remaining</th>
+                                    <th>Description</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="sweetieTableBody"></tbody>
+                        </table>
+                        <div id="sweetieEmptyMessage" class="empty-state" style="display:none;">✨ No sweetie
+                            transactions found</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div><!-- /sweetieSection -->
 
     <!-- Summary Modal -->
     <div id="summaryModal" class="modal">
