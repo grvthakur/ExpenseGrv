@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbzaK31mqlJt_Q5aEjLOxiPGD2i7Cx2bIzInkUQo4oEJ4VijY55XAMB0jQEG8OziDXMk/exec";
+  "https://script.google.com/macros/s/AKfycbxLvAoy5Mcn1v392AWW53DcFBKvcHAq_2I3lYMqBmAHQ03-h-gnMegnoKKq3dkzWGf3/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -195,21 +195,28 @@ function sheetWrite(url) {
 // ─── TAB SWITCHING ───────────────────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
-  document
-    .getElementById("tabExpenses")
-    .classList.toggle("tab-active", tab === "expenses");
-  document
-    .getElementById("tabCards")
-    .classList.toggle("tab-active", tab === "cards");
-  document
-    .getElementById("tabSweetie")
-    .classList.toggle("tab-active", tab === "sweetie");
-  document.getElementById("expenseSection").style.display =
-    tab === "expenses" ? "" : "none";
-  document.getElementById("cardSection").style.display =
-    tab === "cards" ? "" : "none";
-  document.getElementById("sweetieSection").style.display =
-    tab === "sweetie" ? "" : "none";
+  const elExpenses = document.getElementById("tabExpenses");
+  const elCards = document.getElementById("tabCards");
+  const elSweetie = document.getElementById("tabSweetie");
+  const secExpenses = document.getElementById("expenseSection");
+  const secCards = document.getElementById("cardSection");
+  const secSweetie = document.getElementById("sweetieSection");
+
+  if (!elSweetie || !secSweetie) {
+    console.warn(
+      "[switchTab] Sweetie tab elements not found in DOM — tabSweetie:",
+      !!elSweetie,
+      "sweetieSection:",
+      !!secSweetie,
+    );
+  }
+
+  if (elExpenses) elExpenses.classList.toggle("tab-active", tab === "expenses");
+  if (elCards) elCards.classList.toggle("tab-active", tab === "cards");
+  if (elSweetie) elSweetie.classList.toggle("tab-active", tab === "sweetie");
+  if (secExpenses) secExpenses.style.display = tab === "expenses" ? "" : "none";
+  if (secCards) secCards.style.display = tab === "cards" ? "" : "none";
+  if (secSweetie) secSweetie.style.display = tab === "sweetie" ? "" : "none";
 
   if (tab === "expenses") {
     render();
@@ -1438,6 +1445,21 @@ function toggleTheme() {
 }
 
 // ─── BOOT ────────────────────────────────────────────────────────────────────
+// ─── SAFE EVENT WIRING ────────────────────────────────────────────────────────
+// If any single element is missing (stale deploy, typo, race condition), this
+// logs a warning instead of throwing — so one missing element never blocks
+// every listener registered after it in the boot sequence.
+function on(id, event, handler) {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.warn(
+      `[wiring] Element #${id} not found — skipping listener for "${event}"`,
+    );
+    return;
+  }
+  el.addEventListener(event, handler);
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   initSelectors();
@@ -1446,103 +1468,78 @@ window.addEventListener("DOMContentLoaded", async () => {
   render();
 
   // Set card date default to today
-  document.getElementById("cardTxnDate").value = localDateStr(new Date());
+  const cardTxnDateEl = document.getElementById("cardTxnDate");
+  if (cardTxnDateEl) cardTxnDateEl.value = localDateStr(new Date());
 
   // Set sweetie date default to today
-  document.getElementById("sweetieDate").value = localDateStr(new Date());
+  const sweetieDateEl = document.getElementById("sweetieDate");
+  if (sweetieDateEl) sweetieDateEl.value = localDateStr(new Date());
 
   // Expense tab wiring
-  document.getElementById("addBtn").addEventListener("click", addEntry);
-  document
-    .getElementById("saveSalaryBtn")
-    .addEventListener("click", saveSalaryEntry);
-  document.getElementById("editSalaryBtn").addEventListener("click", () => {
+  on("addBtn", "click", addEntry);
+  on("saveSalaryBtn", "click", saveSalaryEntry);
+  on("editSalaryBtn", "click", () => {
     document.getElementById("salaryEditGroup").style.display = "flex";
     document.getElementById("editSalaryBtn").style.display = "none";
   });
-  document
-    .getElementById("syncBtn")
-    .addEventListener("click", () => syncFromSheet(true));
-  document.getElementById("summaryBtn").addEventListener("click", showSummary);
-  document.getElementById("closeModalBtn").addEventListener("click", () => {
+  on("syncBtn", "click", () => syncFromSheet(true));
+  on("summaryBtn", "click", showSummary);
+  on("closeModalBtn", "click", () => {
     document.getElementById("summaryModal").style.display = "none";
   });
   window.addEventListener("click", (e) => {
-    if (e.target === document.getElementById("summaryModal"))
-      document.getElementById("summaryModal").style.display = "none";
+    const modal = document.getElementById("summaryModal");
+    if (modal && e.target === modal) modal.style.display = "none";
   });
 
   // Card tab wiring
   // CC Master wiring
-  document
-    .getElementById("themeToggleBtn")
-    .addEventListener("click", toggleTheme);
-  document
-    .getElementById("ccMasterBtn")
-    .addEventListener("click", openCCMaster);
-  document.getElementById("closePwdModalBtn").addEventListener("click", () => {
+  on("themeToggleBtn", "click", toggleTheme);
+  on("ccMasterBtn", "click", openCCMaster);
+  on("closePwdModalBtn", "click", () => {
     document.getElementById("pwdModal").style.display = "none";
   });
-  document
-    .getElementById("pwdSubmitBtn")
-    .addEventListener("click", submitPassword);
-  document.getElementById("pwdInput").addEventListener("keydown", (e) => {
+  on("pwdSubmitBtn", "click", submitPassword);
+  on("pwdInput", "keydown", (e) => {
     if (e.key === "Enter") submitPassword();
   });
-  document.getElementById("closeCCMasterBtn").addEventListener("click", () => {
+  on("closeCCMasterBtn", "click", () => {
     document.getElementById("ccMasterModal").style.display = "none";
     // Clear table for security — data only shown while modal is open
     document.getElementById("ccMasterBody").innerHTML =
       "<tr><td colspan='5' style='text-align:center;color:var(--muted);padding:30px;'>Loading…</td></tr>";
   });
   window.addEventListener("click", (e) => {
-    if (e.target === document.getElementById("pwdModal"))
-      document.getElementById("pwdModal").style.display = "none";
-    if (e.target === document.getElementById("ccMasterModal")) {
-      document.getElementById("ccMasterModal").style.display = "none";
+    const pwdModal = document.getElementById("pwdModal");
+    const ccModal = document.getElementById("ccMasterModal");
+    if (pwdModal && e.target === pwdModal) pwdModal.style.display = "none";
+    if (ccModal && e.target === ccModal) {
+      ccModal.style.display = "none";
       document.getElementById("ccMasterBody").innerHTML =
         "<tr><td colspan='5' style='text-align:center;color:var(--muted);padding:30px;'>Loading…</td></tr>";
     }
   });
 
-  document
-    .getElementById("tabExpenses")
-    .addEventListener("click", () => switchTab("expenses"));
-  document
-    .getElementById("tabCards")
-    .addEventListener("click", () => switchTab("cards"));
-  document
-    .getElementById("tabSweetie")
-    .addEventListener("click", () => switchTab("sweetie"));
-  document.getElementById("addCardBtn").addEventListener("click", addCardEntry);
-  document
-    .getElementById("cancelExpEditBtn")
-    .addEventListener("click", cancelEditExpense);
-  document
-    .getElementById("cancelCardEditBtn")
-    .addEventListener("click", cancelEditCard);
-  document
-    .getElementById("cardSyncBtn")
-    .addEventListener("click", () => syncCardsFromSheet(true));
-  document
-    .getElementById("addSweetieBtn")
-    .addEventListener("click", addSweetieEntry);
-  document
-    .getElementById("cancelSweetieEditBtn")
-    .addEventListener("click", cancelEditSweetie);
-  document
-    .getElementById("sweetieSyncBtn")
-    .addEventListener("click", () => syncSweetieFromSheet(true));
+  on("tabExpenses", "click", () => switchTab("expenses"));
+  on("tabCards", "click", () => switchTab("cards"));
+  on("tabSweetie", "click", () => switchTab("sweetie"));
+  on("addCardBtn", "click", addCardEntry);
+  on("cancelExpEditBtn", "click", cancelEditExpense);
+  on("cancelCardEditBtn", "click", cancelEditCard);
+  on("cardSyncBtn", "click", () => syncCardsFromSheet(true));
+  on("addSweetieBtn", "click", addSweetieEntry);
+  on("cancelSweetieEditBtn", "click", cancelEditSweetie);
+  on("sweetieSyncBtn", "click", () => syncSweetieFromSheet(true));
 
   // Month/year change — refresh both tabs
-  document.getElementById("monthSelect").addEventListener("change", () => {
+  on("monthSelect", "change", () => {
     lockDatePicker();
     render();
     renderCards();
     syncFromSheet(false);
     syncCardsFromSheet(false); // always sync cards — month change affects 3-month window
   });
-  document.getElementById("yearSelect").addEventListener("change", () => {
+  on("yearSelect", "change", () => {
     lockDatePicker();
     render();
     renderCards();
