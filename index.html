@@ -1029,117 +1029,122 @@
                 max-width: 100%;
             }
 
-            .expense-table {
+            /* ── EXPENSES: wrap text, no horizontal scroll ── */
+            #expenseTable {
                 min-width: unset;
                 width: 100%;
                 table-layout: fixed;
             }
 
-            /* Expenses table column widths on mobile */
             #expenseTable th:nth-child(1),
             #expenseTable td:nth-child(1) {
                 width: 52px;
             }
 
-            /* Date */
             #expenseTable th:nth-child(2),
             #expenseTable td:nth-child(2) {
                 width: 80px;
             }
 
-            /* Category */
             #expenseTable th:nth-child(3),
             #expenseTable td:nth-child(3) {
                 width: auto;
             }
 
-            /* Description */
             #expenseTable th:nth-child(4),
             #expenseTable td:nth-child(4) {
                 width: 68px;
             }
 
-            /* Amount */
             #expenseTable th:nth-child(5),
             #expenseTable td:nth-child(5) {
                 width: 82px;
             }
 
-            /* Actions */
-
-            /* Cards table column widths on mobile */
-            #cardTable th:nth-child(1),
-            #cardTable td:nth-child(1) {
-                width: 46px;
-            }
-
-            /* Date */
-            #cardTable th:nth-child(2),
-            #cardTable td:nth-child(2) {
-                width: 72px;
-            }
-
-            /* Card */
-            #cardTable th:nth-child(3),
-            #cardTable td:nth-child(3) {
-                width: 52px;
-            }
-
-            /* Used By */
-            #cardTable th:nth-child(4),
-            #cardTable td:nth-child(4) {
-                width: auto;
-            }
-
-            /* Description */
-            #cardTable th:nth-child(5),
-            #cardTable td:nth-child(5) {
-                width: 0;
-                display: none;
-            }
-
-            /* Remarks — hidden on mobile */
-            #cardTable th:nth-child(6),
-            #cardTable td:nth-child(6) {
-                width: 60px;
-            }
-
-            /* Amount */
-            #cardTable th:nth-child(7),
-            #cardTable td:nth-child(7) {
-                width: 52px;
-            }
-
-            /* Status */
-            #cardTable th:nth-child(8),
-            #cardTable td:nth-child(8) {
-                width: 0;
-                display: none;
-            }
-
-            /* Billing Month — hidden on mobile */
-            #cardTable th:nth-child(9),
-            #cardTable td:nth-child(9) {
-                width: 72px;
-            }
-
-            /* Actions */
-
-            .expense-table td,
-            .expense-table th {
+            #expenseTable td,
+            #expenseTable th {
                 padding: 5px 6px;
                 font-size: 0.72rem;
                 white-space: normal;
-                /* allow text to wrap to next line */
                 word-break: break-word;
                 overflow-wrap: break-word;
                 vertical-align: top;
             }
 
-            .expense-table td span {
+            #expenseTable td span {
                 font-size: 0.6rem;
                 padding: 1px 4px;
                 white-space: normal;
+            }
+
+            /* ── CREDIT CARDS: horizontal scroll, compact font, nowrap ── */
+            #cardTable {
+                min-width: 580px;
+                width: 100%;
+            }
+
+            #cardTable td,
+            #cardTable th {
+                padding: 5px 6px;
+                font-size: 0.72rem;
+                white-space: nowrap;
+            }
+
+            #cardTable td span {
+                font-size: 0.6rem;
+                padding: 1px 4px;
+            }
+
+            /* ── SWEETIE: wrap text like expenses ── */
+            #sweetieTable {
+                min-width: unset;
+                width: 100%;
+                table-layout: fixed;
+            }
+
+            #sweetieTable th:nth-child(1),
+            #sweetieTable td:nth-child(1) {
+                width: 52px;
+            }
+
+            #sweetieTable th:nth-child(2),
+            #sweetieTable td:nth-child(2) {
+                width: 58px;
+            }
+
+            #sweetieTable th:nth-child(3),
+            #sweetieTable td:nth-child(3) {
+                width: 72px;
+            }
+
+            #sweetieTable th:nth-child(4),
+            #sweetieTable td:nth-child(4) {
+                width: 72px;
+            }
+
+            #sweetieTable th:nth-child(5),
+            #sweetieTable td:nth-child(5) {
+                width: auto;
+            }
+
+            #sweetieTable th:nth-child(6),
+            #sweetieTable td:nth-child(6) {
+                width: 72px;
+            }
+
+            #sweetieTable td,
+            #sweetieTable th {
+                padding: 5px 6px;
+                font-size: 0.72rem;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: break-word;
+                vertical-align: top;
+            }
+
+            #sweetieTable td span {
+                font-size: 0.6rem;
+                padding: 1px 4px;
             }
 
             .delete-btn {

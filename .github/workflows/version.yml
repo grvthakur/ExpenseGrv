@@ -1,0 +1,29 @@
+name: Write version.json
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write version.json
+        run: |
+          echo "{
+            \"commit\": \"$(git log -1 --pretty=%s)\",
+            \"hash\": \"$(git rev-parse --short HEAD)\",
+            \"time\": \"$(git log -1 --format=%cd --date=format:'%d %b %Y, %I:%M %p')\"
+          }" > version.json
+
+      - name: Commit version.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json
+          git diff --staged --quiet || git commit -m "chore: update version.json [skip ci]"
+          git push

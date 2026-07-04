@@ -989,9 +989,6 @@ function renderCards() {
   });
 
   cardMap.forEach((val, cardName) => {
-    // Skip cards with zero unpaid — fully paid, no need to show
-    if (val.unpaid === 0) return;
-
     const cfg = cardConfig.find((c) => c.card === cardName);
     const lim = cfg ? cfg.limit : 0;
     const maxUse = lim ? Math.round(lim * 0.3) : 0;
@@ -1002,7 +999,7 @@ function renderCards() {
     cardSummaryEl.innerHTML += `
       <div class="card-summary-item">
         <div class="cs-name">${cardName}</div>
-        <div class="cs-row"><span>Spent</span><span class="c-red">₹${val.unpaid.toFixed(2)}</span></div>
+        <div class="cs-row"><span>Spent</span><span class="c-red">₹${val.spent.toFixed(2)}</span></div>
         ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString()}</span></div>` : ""}
         ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${rem.toLocaleString()}</span></div>` : ""}
         ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : ""}" style="width:${pct}%"></div></div>` : ""}
@@ -1586,6 +1583,45 @@ function initSelectors() {
 }
 
 // ─── THEME TOGGLE ────────────────────────────────────────────────────────────
+// ─── VERSION INFO ─────────────────────────────────────────────────────────────
+let versionLoaded = false;
+
+function toggleVersionInfo() {
+  const popup = document.getElementById("versionPopup");
+  if (!popup) return;
+  const isOpen = popup.style.display !== "none";
+  popup.style.display = isOpen ? "none" : "block";
+  if (!isOpen && !versionLoaded) fetchVersionInfo();
+}
+
+async function fetchVersionInfo() {
+  try {
+    const res = await fetch(`version.json?cb=${Date.now()}`);
+    if (!res.ok) throw new Error("not found");
+    const v = await res.json();
+    const commitEl = document.getElementById("versionCommit");
+    const hashEl = document.getElementById("versionHash");
+    const timeEl = document.getElementById("versionTime");
+    if (commitEl) commitEl.textContent = v.commit || "—";
+    if (hashEl) hashEl.textContent = v.hash || "—";
+    if (timeEl) timeEl.textContent = v.time || "—";
+    versionLoaded = true;
+  } catch {
+    const commitEl = document.getElementById("versionCommit");
+    if (commitEl)
+      commitEl.textContent = "version.json not found — push to generate";
+  }
+}
+
+// Close popup when clicking outside
+document.addEventListener("click", (e) => {
+  const popup = document.getElementById("versionPopup");
+  const btn = document.getElementById("versionBtn");
+  if (popup && btn && !popup.contains(e.target) && e.target !== btn) {
+    popup.style.display = "none";
+  }
+});
+
 function initTheme() {
   const saved = localStorage.getItem("theme") || "dark";
   applyTheme(saved);
