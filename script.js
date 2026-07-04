@@ -246,6 +246,57 @@ function populateCardDropdown() {
 }
 
 // ─── SET CARD STATUS FILTER ──────────────────────────────────────────────────
+// ─── DATE FILTER HELPERS ─────────────────────────────────────────────────────
+function clearExpDateFilter() {
+  const f = document.getElementById("expDateFrom");
+  const t = document.getElementById("expDateTo");
+  if (f) f.value = "";
+  if (t) t.value = "";
+  render();
+}
+
+function clearCardDateFilter() {
+  const f = document.getElementById("cardDateFrom");
+  const t = document.getElementById("cardDateTo");
+  if (f) f.value = "";
+  if (t) t.value = "";
+  renderCards();
+}
+
+function clearSweetieDateFilter() {
+  const f = document.getElementById("sweetieDateFrom");
+  const t = document.getElementById("sweetieDateTo");
+  if (f) f.value = "";
+  if (t) t.value = "";
+  renderSweetie();
+}
+
+// ─── MARK ALL PAID ────────────────────────────────────────────────────────────
+function markAllPaid() {
+  // Count visible UNPAID transactions
+  const unpaidVisible = cardTxns.filter((t) => t.status === "UNPAID");
+  if (unpaidVisible.length === 0) {
+    toast("No UNPAID transactions found", true);
+    return;
+  }
+  if (
+    !confirm(
+      `Mark ALL ${unpaidVisible.length} UNPAID transaction(s) as PAID?\n\nThis cannot be undone easily.`,
+    )
+  )
+    return;
+
+  // Update local state
+  unpaidVisible.forEach((t) => {
+    t.status = "PAID";
+    sheetWrite(apiUrl(`action=updateCardStatus&id=${t.id}&status=PAID`));
+  });
+
+  saveLocal();
+  renderCards();
+  toast(`✓ Marked ${unpaidVisible.length} transactions as PAID`);
+}
+
 function setCardStatusFilter(status) {
   cardStatusFilter = status;
   const btns = {
@@ -347,18 +398,24 @@ function render() {
     editBtn.style.display = "none";
   }
 
-  // Apply search filter
+  // Apply search + date range filters
   const expSearchEl = document.getElementById("expSearchBox");
   expSearch = expSearchEl ? expSearchEl.value.trim().toLowerCase() : "";
-  const filteredRows = expSearch
-    ? rows.filter(
-        (e) =>
-          (e.description || "").toLowerCase().includes(expSearch) ||
-          (e.category || "").toLowerCase().includes(expSearch) ||
-          String(e.amount).includes(expSearch) ||
-          (e.date || "").includes(expSearch),
-      )
-    : rows;
+  const expDateFrom =
+    (document.getElementById("expDateFrom") || {}).value || "";
+  const expDateTo = (document.getElementById("expDateTo") || {}).value || "";
+
+  const filteredRows = rows.filter((e) => {
+    const matchSearch =
+      !expSearch ||
+      (e.description || "").toLowerCase().includes(expSearch) ||
+      (e.category || "").toLowerCase().includes(expSearch) ||
+      String(e.amount).includes(expSearch) ||
+      (e.date || "").includes(expSearch);
+    const matchFrom = !expDateFrom || e.date >= expDateFrom;
+    const matchTo = !expDateTo || e.date <= expDateTo;
+    return matchSearch && matchFrom && matchTo;
+  });
 
   const tbody = document.getElementById("tableBody");
   const emptyEl = document.getElementById("emptyMessage");
@@ -399,7 +456,8 @@ function render() {
     }
     if (av < bv) return expSort.dir === "asc" ? -1 : 1;
     if (av > bv) return expSort.dir === "asc" ? 1 : -1;
-    return 0;
+    // Tie-break: newest entry (highest ID = added last) comes first
+    return String(b.id) > String(a.id) ? 1 : -1;
   });
 
   sorted.forEach((exp) => {
@@ -862,9 +920,15 @@ function renderCards() {
   const emptyEl = document.getElementById("cardEmptyMessage");
   tbody.innerHTML = "";
 
-  // Apply search and status filters
+  // Apply search, status, date range and card filters
   const cardSearchEl = document.getElementById("cardSearchBox");
   cardSearch = cardSearchEl ? cardSearchEl.value.trim().toLowerCase() : "";
+  const cardDateFrom =
+    (document.getElementById("cardDateFrom") || {}).value || "";
+  const cardDateTo = (document.getElementById("cardDateTo") || {}).value || "";
+  const selCard = document.getElementById("ccCardFilter");
+  cardCardFilter = selCard ? selCard.value : "ALL";
+
   const filteredCardRows = rows.filter((t) => {
     // Search filter
     const matchSearch =
@@ -881,11 +945,14 @@ function renderCards() {
       cardStatusFilter === "ALL" || t.status === cardStatusFilter;
 
     // Card filter
-    const selCard = document.getElementById("ccCardFilter");
-    cardCardFilter = selCard ? selCard.value : "ALL";
     const matchCard = cardCardFilter === "ALL" || t.card === cardCardFilter;
 
-    return matchSearch && matchStatus && matchCard;
+    // Date range filter
+    const txnDate = t.txnDate || "";
+    const matchFrom = !cardDateFrom || txnDate >= cardDateFrom;
+    const matchTo = !cardDateTo || txnDate <= cardDateTo;
+
+    return matchSearch && matchStatus && matchCard && matchFrom && matchTo;
   });
 
   // Update sort header arrows
@@ -1667,16 +1734,23 @@ function renderSweetie() {
     });
   }
 
-  // Apply search filter
+  // Apply search + date range filters
   const searchEl = document.getElementById("sweetieSearchBox");
   sweetieSearch = searchEl ? searchEl.value.trim().toLowerCase() : "";
+  const sweetieDateFrom =
+    (document.getElementById("sweetieDateFrom") || {}).value || "";
+  const sweetieDateTo =
+    (document.getElementById("sweetieDateTo") || {}).value || "";
+
   const filtered = rows.filter((t) => {
-    if (!sweetieSearch) return true;
-    return (
+    const matchSearch =
+      !sweetieSearch ||
       (t.description || "").toLowerCase().includes(sweetieSearch) ||
       (t.type || "").toLowerCase().includes(sweetieSearch) ||
-      String(t.amount).includes(sweetieSearch)
-    );
+      String(t.amount).includes(sweetieSearch);
+    const matchFrom = !sweetieDateFrom || (t.date || "") >= sweetieDateFrom;
+    const matchTo = !sweetieDateTo || (t.date || "") <= sweetieDateTo;
+    return matchSearch && matchFrom && matchTo;
   });
 
   // Update sort header arrows

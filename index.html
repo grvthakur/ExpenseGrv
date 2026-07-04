@@ -1180,11 +1180,19 @@
 
             <div class="right-col">
                 <div class="table-wrapper">
-                    <div class="table-header">
+                    <div class="table-header" style="flex-wrap:wrap;gap:8px;">
                         <span>📋 Transactions</span>
-                        <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <input id="expSearchBox" type="text" placeholder="🔍 Search…" oninput="render()"
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;color:white;font-family:inherit;font-size:0.78rem;width:130px;outline:none;" />
+                            <!-- Date range filter -->
+                            <input type="date" id="expDateFrom" onchange="render()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
+                            <span style="color:var(--muted);font-size:0.75rem;">to</span>
+                            <input type="date" id="expDateTo" onchange="render()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
+                            <button onclick="clearExpDateFilter()" title="Clear date filter"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--muted);font-size:0.75rem;cursor:pointer;">✕</button>
                             <span id="rowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
                         </div>
@@ -1315,6 +1323,15 @@
                             </div>
 
                             <!-- Card dropdown filter -->
+                            <!-- Date range filter for cards -->
+                            <input type="date" id="cardDateFrom" onchange="renderCards()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
+                            <span style="color:var(--muted);font-size:0.75rem;">to</span>
+                            <input type="date" id="cardDateTo" onchange="renderCards()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
+                            <button onclick="clearCardDateFilter()" title="Clear date filter"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--muted);font-size:0.75rem;cursor:pointer;">✕</button>
+
                             <select id="ccCardFilter" onchange="renderCards()"
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;color:var(--text);font-size:0.75rem;cursor:pointer;outline:none;">
                                 <option value="ALL">All Cards</option>
@@ -1322,6 +1339,13 @@
 
                             <span id="ccRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+
+                            <!-- Mark All Paid button -->
+                            <button onclick="markAllPaid()"
+                                style="background:#ef4444;color:white;border:none;border-radius:16px;padding:4px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;"
+                                title="Mark all visible UNPAID transactions as PAID">
+                                ✓ Mark All Paid
+                            </button>
                         </div>
                     </div>
                     <div style="max-height:620px;overflow-y:auto;">
@@ -1425,6 +1449,15 @@
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;color:var(--text);font-size:0.75rem;cursor:pointer;outline:none;">
                                 <option value="ALL">All Months</option>
                             </select>
+
+                            <!-- Date range filter -->
+                            <input type="date" id="sweetieDateFrom" onchange="renderSweetie()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
+                            <span style="color:var(--muted);font-size:0.75rem;">to</span>
+                            <input type="date" id="sweetieDateTo" onchange="renderSweetie()"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
+                            <button onclick="clearSweetieDateFilter()" title="Clear date filter"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--muted);font-size:0.75rem;cursor:pointer;">✕</button>
 
                             <span id="sweetieRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
