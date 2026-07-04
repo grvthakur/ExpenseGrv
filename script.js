@@ -1622,6 +1622,36 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// Close popup immediately on scroll or touch-start, so it never lingers
+// on screen while the user is scrolling the page.
+window.addEventListener(
+  "scroll",
+  () => {
+    const popup = document.getElementById("versionPopup");
+    if (popup && popup.style.display !== "none") {
+      popup.style.display = "none";
+    }
+  },
+  { passive: true, capture: true },
+);
+
+document.addEventListener(
+  "touchstart",
+  (e) => {
+    const popup = document.getElementById("versionPopup");
+    const btn = document.getElementById("versionBtn");
+    if (
+      popup &&
+      popup.style.display !== "none" &&
+      !popup.contains(e.target) &&
+      e.target !== btn
+    ) {
+      popup.style.display = "none";
+    }
+  },
+  { passive: true, capture: true },
+);
+
 function initTheme() {
   const saved = localStorage.getItem("theme") || "dark";
   applyTheme(saved);
