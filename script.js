@@ -989,6 +989,9 @@ function renderCards() {
   });
 
   cardMap.forEach((val, cardName) => {
+    // Skip cards with zero unpaid — fully paid, no need to show
+    if (val.unpaid === 0) return;
+
     const cfg = cardConfig.find((c) => c.card === cardName);
     const lim = cfg ? cfg.limit : 0;
     const maxUse = lim ? Math.round(lim * 0.3) : 0;
@@ -999,7 +1002,7 @@ function renderCards() {
     cardSummaryEl.innerHTML += `
       <div class="card-summary-item">
         <div class="cs-name">${cardName}</div>
-        <div class="cs-row"><span>Spent</span><span class="c-red">₹${val.spent.toFixed(2)}</span></div>
+        <div class="cs-row"><span>Spent</span><span class="c-red">₹${val.unpaid.toFixed(2)}</span></div>
         ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString()}</span></div>` : ""}
         ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${rem.toLocaleString()}</span></div>` : ""}
         ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : ""}" style="width:${pct}%"></div></div>` : ""}
