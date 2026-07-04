@@ -1029,58 +1029,53 @@
                 max-width: 100%;
             }
 
-            /* ── EXPENSES: wrap text, no horizontal scroll ── */
+            /* ── EXPENSES: wrap description only, amount always 1 line ── */
             #expenseTable {
                 min-width: unset;
                 width: 100%;
-                table-layout: fixed;
-            }
-
-            #expenseTable th:nth-child(1),
-            #expenseTable td:nth-child(1) {
-                width: 52px;
-            }
-
-            #expenseTable th:nth-child(2),
-            #expenseTable td:nth-child(2) {
-                width: 80px;
-            }
-
-            #expenseTable th:nth-child(3),
-            #expenseTable td:nth-child(3) {
-                width: auto;
-            }
-
-            #expenseTable th:nth-child(4),
-            #expenseTable td:nth-child(4) {
-                width: 68px;
-            }
-
-            #expenseTable th:nth-child(5),
-            #expenseTable td:nth-child(5) {
-                width: 82px;
+                table-layout: auto;
             }
 
             #expenseTable td,
             #expenseTable th {
                 padding: 5px 6px;
                 font-size: 0.72rem;
-                white-space: normal;
-                word-break: break-word;
-                overflow-wrap: break-word;
                 vertical-align: top;
+            }
+
+            /* Date, Category, Amount, actions — never wrap */
+            #expenseTable th:nth-child(1),
+            #expenseTable td:nth-child(1),
+            #expenseTable th:nth-child(2),
+            #expenseTable td:nth-child(2),
+            #expenseTable th:nth-child(4),
+            #expenseTable td:nth-child(4),
+            #expenseTable th:nth-child(5),
+            #expenseTable td:nth-child(5) {
+                white-space: nowrap;
+            }
+
+            /* Description — wraps onto ~2 lines, never breaks mid-word */
+            #expenseTable th:nth-child(3),
+            #expenseTable td:nth-child(3) {
+                white-space: normal;
+                overflow-wrap: normal;
+                word-break: normal;
+                hyphens: none;
+                max-width: 140px;
             }
 
             #expenseTable td span {
                 font-size: 0.6rem;
                 padding: 1px 4px;
-                white-space: normal;
+                white-space: nowrap;
             }
 
-            /* ── CREDIT CARDS: horizontal scroll, compact font, nowrap ── */
+            /* ── CREDIT CARDS: compact font, description/remarks wrap to shrink width ── */
             #cardTable {
-                min-width: 580px;
+                min-width: unset;
                 width: 100%;
+                table-layout: auto;
             }
 
             #cardTable td,
@@ -1088,6 +1083,20 @@
                 padding: 5px 6px;
                 font-size: 0.72rem;
                 white-space: nowrap;
+                vertical-align: top;
+            }
+
+            /* Description (4th) & Remarks (5th) — narrower, wrap onto ~2 lines,
+               never break a single word, so overall table width shrinks */
+            #cardTable th:nth-child(4),
+            #cardTable td:nth-child(4),
+            #cardTable th:nth-child(5),
+            #cardTable td:nth-child(5) {
+                white-space: normal;
+                overflow-wrap: normal;
+                word-break: normal;
+                hyphens: none;
+                max-width: 90px;
             }
 
             #cardTable td span {
@@ -1095,56 +1104,48 @@
                 padding: 1px 4px;
             }
 
-            /* ── SWEETIE: wrap text like expenses ── */
+            /* ── SWEETIE: wrap description only, amount/remaining always 1 line ── */
             #sweetieTable {
                 min-width: unset;
                 width: 100%;
-                table-layout: fixed;
-            }
-
-            #sweetieTable th:nth-child(1),
-            #sweetieTable td:nth-child(1) {
-                width: 52px;
-            }
-
-            #sweetieTable th:nth-child(2),
-            #sweetieTable td:nth-child(2) {
-                width: 58px;
-            }
-
-            #sweetieTable th:nth-child(3),
-            #sweetieTable td:nth-child(3) {
-                width: 72px;
-            }
-
-            #sweetieTable th:nth-child(4),
-            #sweetieTable td:nth-child(4) {
-                width: 72px;
-            }
-
-            #sweetieTable th:nth-child(5),
-            #sweetieTable td:nth-child(5) {
-                width: auto;
-            }
-
-            #sweetieTable th:nth-child(6),
-            #sweetieTable td:nth-child(6) {
-                width: 72px;
+                table-layout: auto;
             }
 
             #sweetieTable td,
             #sweetieTable th {
                 padding: 5px 6px;
                 font-size: 0.72rem;
-                white-space: normal;
-                word-break: break-word;
-                overflow-wrap: break-word;
                 vertical-align: top;
+            }
+
+            /* Date, Type, Amount, Remaining, actions — never wrap */
+            #sweetieTable th:nth-child(1),
+            #sweetieTable td:nth-child(1),
+            #sweetieTable th:nth-child(2),
+            #sweetieTable td:nth-child(2),
+            #sweetieTable th:nth-child(3),
+            #sweetieTable td:nth-child(3),
+            #sweetieTable th:nth-child(4),
+            #sweetieTable td:nth-child(4),
+            #sweetieTable th:nth-child(6),
+            #sweetieTable td:nth-child(6) {
+                white-space: nowrap;
+            }
+
+            /* Description — wraps onto ~2 lines, never breaks mid-word */
+            #sweetieTable th:nth-child(5),
+            #sweetieTable td:nth-child(5) {
+                white-space: normal;
+                overflow-wrap: normal;
+                word-break: normal;
+                hyphens: none;
+                max-width: 130px;
             }
 
             #sweetieTable td span {
                 font-size: 0.6rem;
                 padding: 1px 4px;
+                white-space: nowrap;
             }
 
             .delete-btn {
