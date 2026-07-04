@@ -2,7 +2,10 @@ git add .
 git commit -m "Add PAID/UNPAID filter for credit card transactions"
 git push
 
-
+git add .
+git commit -m "Close version info popup on scroll/touch"
+git pull origin main
+git push
 
 Part 1 — one-time setup
 1
