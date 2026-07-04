@@ -1193,6 +1193,10 @@
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--text);font-size:0.75rem;outline:none;cursor:pointer;" />
                             <button onclick="clearExpDateFilter()" title="Clear date filter"
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--muted);font-size:0.75rem;cursor:pointer;">✕</button>
+                            <button onclick="clearAllExpFilters()" title="Clear all filters"
+                                style="background:#6366f1;color:white;border:none;border-radius:12px;padding:3px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">
+                                🧹 Clear Filters
+                            </button>
                             <span id="rowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
                         </div>
@@ -1340,6 +1344,11 @@
                             <span id="ccRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
 
+                            <button onclick="clearAllCardFilters()" title="Clear all filters"
+                                style="background:#6366f1;color:white;border:none;border-radius:12px;padding:3px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">
+                                🧹 Clear Filters
+                            </button>
+
                             <!-- Mark All Paid button -->
                             <button onclick="markAllPaid()"
                                 style="background:#ef4444;color:white;border:none;border-radius:16px;padding:4px 14px;font-size:0.75rem;font-weight:600;cursor:pointer;transition:0.2s;"
@@ -1459,6 +1468,10 @@
                             <button onclick="clearSweetieDateFilter()" title="Clear date filter"
                                 style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:3px 8px;color:var(--muted);font-size:0.75rem;cursor:pointer;">✕</button>
 
+                            <button onclick="clearAllSweetieFilters()" title="Clear all filters"
+                                style="background:#6366f1;color:white;border:none;border-radius:12px;padding:3px 10px;font-size:0.75rem;font-weight:600;cursor:pointer;">
+                                🧹 Clear Filters
+                            </button>
                             <span id="sweetieRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
                         </div>

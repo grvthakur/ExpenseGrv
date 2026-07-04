@@ -255,6 +255,16 @@ function clearExpDateFilter() {
   render();
 }
 
+function clearAllExpFilters() {
+  const s = document.getElementById("expSearchBox");
+  const f = document.getElementById("expDateFrom");
+  const t = document.getElementById("expDateTo");
+  if (s) s.value = "";
+  if (f) f.value = "";
+  if (t) t.value = "";
+  render();
+}
+
 function clearCardDateFilter() {
   const f = document.getElementById("cardDateFrom");
   const t = document.getElementById("cardDateTo");
@@ -263,11 +273,38 @@ function clearCardDateFilter() {
   renderCards();
 }
 
+function clearAllCardFilters() {
+  const s = document.getElementById("cardSearchBox");
+  const f = document.getElementById("cardDateFrom");
+  const t = document.getElementById("cardDateTo");
+  const c = document.getElementById("ccCardFilter");
+  if (s) s.value = "";
+  if (f) f.value = "";
+  if (t) t.value = "";
+  if (c) c.value = "ALL";
+  setCardStatusFilter("ALL");
+  setCardMonthFilter("3");
+  cardCardFilter = "ALL";
+  renderCards();
+}
+
 function clearSweetieDateFilter() {
   const f = document.getElementById("sweetieDateFrom");
   const t = document.getElementById("sweetieDateTo");
   if (f) f.value = "";
   if (t) t.value = "";
+  renderSweetie();
+}
+
+function clearAllSweetieFilters() {
+  const s = document.getElementById("sweetieSearchBox");
+  const f = document.getElementById("sweetieDateFrom");
+  const t = document.getElementById("sweetieDateTo");
+  const m = document.getElementById("sweetieMonthFilter");
+  if (s) s.value = "";
+  if (f) f.value = "";
+  if (t) t.value = "";
+  if (m) m.value = "ALL";
   renderSweetie();
 }
 
