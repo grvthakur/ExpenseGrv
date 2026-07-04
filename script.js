@@ -273,28 +273,86 @@ function clearSweetieDateFilter() {
 
 // ─── MARK ALL PAID ────────────────────────────────────────────────────────────
 function markAllPaid() {
-  // Count visible UNPAID transactions
-  const unpaidVisible = cardTxns.filter((t) => t.status === "UNPAID");
-  if (unpaidVisible.length === 0) {
-    toast("No UNPAID transactions found", true);
+  // Get ONLY the transactions currently visible in the table
+  // by applying all active filters (same logic as renderCards)
+  const selMonth = parseInt(document.getElementById("monthSelect").value);
+  const selYear = parseInt(document.getElementById("yearSelect").value);
+  const monthCount = cardMonthFilter === "1" ? 1 : 3;
+  const last3 = [];
+  for (let i = 0; i < monthCount; i++) {
+    let m = selMonth - i,
+      y = selYear;
+    if (m < 0) {
+      m += 12;
+      y -= 1;
+    }
+    last3.push({ m, y });
+  }
+
+  const cardDateFrom =
+    (document.getElementById("cardDateFrom") || {}).value || "";
+  const cardDateTo = (document.getElementById("cardDateTo") || {}).value || "";
+  const selCard =
+    (document.getElementById("ccCardFilter") || {}).value || "ALL";
+  const search = ((document.getElementById("cardSearchBox") || {}).value || "")
+    .trim()
+    .toLowerCase();
+
+  // Apply ALL active filters — identical to renderCards logic
+  const visibleUnpaid = cardTxns.filter((t) => {
+    if (!t.txnDate) return false;
+    const d = new Date(t.txnDate);
+
+    // Month range
+    const matchMonth = last3.some(
+      ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
+    );
+    // Date range
+    const matchFrom = !cardDateFrom || t.txnDate >= cardDateFrom;
+    const matchTo = !cardDateTo || t.txnDate <= cardDateTo;
+    // Card filter
+    const matchCard = selCard === "ALL" || t.card === selCard;
+    // Search
+    const matchSearch =
+      !search ||
+      (t.description || "").toLowerCase().includes(search) ||
+      (t.card || "").toLowerCase().includes(search) ||
+      (t.usedBy || "").toLowerCase().includes(search) ||
+      (t.remarks || "").toLowerCase().includes(search) ||
+      String(t.amount).includes(search);
+    // Must be UNPAID
+    const isUnpaid = t.status === "UNPAID";
+
+    return (
+      matchMonth && matchFrom && matchTo && matchCard && matchSearch && isUnpaid
+    );
+  });
+
+  if (visibleUnpaid.length === 0) {
+    toast("No UNPAID transactions in current view", true);
     return;
   }
+
+  // Confirm — show exactly what will be marked
+  const cardLabel = selCard !== "ALL" ? ` for ${selCard}` : "";
   if (
-    !confirm(
-      `Mark ALL ${unpaidVisible.length} UNPAID transaction(s) as PAID?\n\nThis cannot be undone easily.`,
-    )
+    !confirm(`Mark ${visibleUnpaid.length} visible UNPAID transaction(s)${cardLabel} as PAID?
+
+Only transactions matching your current filters will be marked.
+
+This cannot be undone easily.`)
   )
     return;
 
-  // Update local state
-  unpaidVisible.forEach((t) => {
+  // Mark only the visible UNPAID ones
+  visibleUnpaid.forEach((t) => {
     t.status = "PAID";
     sheetWrite(apiUrl(`action=updateCardStatus&id=${t.id}&status=PAID`));
   });
 
   saveLocal();
   renderCards();
-  toast(`✓ Marked ${unpaidVisible.length} transactions as PAID`);
+  toast(`✓ Marked ${visibleUnpaid.length} transactions as PAID`);
 }
 
 function setCardStatusFilter(status) {
