@@ -960,7 +960,7 @@
         }
 
         /* ── RESPONSIVE ── */
-        @media (max-width: 750px) {
+        @media (max-width: 768px) {
             .stats {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -1029,7 +1029,7 @@
                 max-width: 100%;
             }
 
-            /* ── EXPENSES: wrap description only, amount always 1 line ── */
+            /* ── EXPENSES: Description wraps, Amount/Date/actions stay compact ── */
             #expenseTable {
                 min-width: unset;
                 width: 100%;
@@ -1038,12 +1038,13 @@
 
             #expenseTable td,
             #expenseTable th {
-                padding: 5px 6px;
+                padding: 8px 6px;
                 font-size: 0.72rem;
+                line-height: 1.4;
                 vertical-align: top;
             }
 
-            /* Date, Category, Amount, actions — never wrap */
+            /* Date, Category, Amount, actions — compact, never wrap */
             #expenseTable th:nth-child(1),
             #expenseTable td:nth-child(1),
             #expenseTable th:nth-child(2),
@@ -1053,16 +1054,17 @@
             #expenseTable th:nth-child(5),
             #expenseTable td:nth-child(5) {
                 white-space: nowrap !important;
+                width: 1%;
             }
 
-            /* Description — wraps onto ~2 lines, never breaks mid-word */
+            /* Description — takes remaining width, wraps onto multiple lines */
             #expenseTable th:nth-child(3),
             #expenseTable td:nth-child(3) {
                 white-space: normal !important;
-                overflow-wrap: normal !important;
-                word-break: normal !important;
-                hyphens: none !important;
-                max-width: 140px;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                vertical-align: top;
+                width: auto;
             }
 
             #expenseTable td span {
@@ -1071,7 +1073,7 @@
                 white-space: nowrap;
             }
 
-            /* ── CREDIT CARDS: compact font, description/remarks wrap to shrink width ── */
+            /* ── CREDIT CARDS: Description/Remarks wrap, other columns compact ── */
             #cardTable {
                 min-width: unset;
                 width: 100%;
@@ -1080,23 +1082,43 @@
 
             #cardTable td,
             #cardTable th {
-                padding: 5px 6px;
+                padding: 8px 6px;
                 font-size: 0.72rem;
-                white-space: nowrap !important;
+                line-height: 1.4;
                 vertical-align: top;
             }
 
-            /* Description (4th) & Remarks (5th) — narrower, wrap onto ~2 lines,
-               never break a single word, so overall table width shrinks */
+            /* Date, Card, Used By, Amount, Status, Billing Month, actions —
+               compact, never wrap */
+            #cardTable th:nth-child(1),
+            #cardTable td:nth-child(1),
+            #cardTable th:nth-child(2),
+            #cardTable td:nth-child(2),
+            #cardTable th:nth-child(3),
+            #cardTable td:nth-child(3),
+            #cardTable th:nth-child(6),
+            #cardTable td:nth-child(6),
+            #cardTable th:nth-child(7),
+            #cardTable td:nth-child(7),
+            #cardTable th:nth-child(8),
+            #cardTable td:nth-child(8),
+            #cardTable th:nth-child(9),
+            #cardTable td:nth-child(9) {
+                white-space: nowrap !important;
+                width: 1%;
+            }
+
+            /* Description (4th) & Remarks (5th) — take remaining width,
+               wrap onto multiple lines instead of stretching the table */
             #cardTable th:nth-child(4),
             #cardTable td:nth-child(4),
             #cardTable th:nth-child(5),
             #cardTable td:nth-child(5) {
                 white-space: normal !important;
-                overflow-wrap: normal !important;
-                word-break: normal !important;
-                hyphens: none !important;
-                max-width: 90px;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                vertical-align: top;
+                width: auto;
             }
 
             #cardTable td span {
@@ -1104,7 +1126,7 @@
                 padding: 1px 4px;
             }
 
-            /* ── SWEETIE: wrap description only, amount/remaining always 1 line ── */
+            /* ── SWEETIE: Description wraps, other columns stay compact ── */
             #sweetieTable {
                 min-width: unset;
                 width: 100%;
@@ -1113,12 +1135,13 @@
 
             #sweetieTable td,
             #sweetieTable th {
-                padding: 5px 6px;
+                padding: 8px 6px;
                 font-size: 0.72rem;
+                line-height: 1.4;
                 vertical-align: top;
             }
 
-            /* Date, Type, Amount, Remaining, actions — never wrap */
+            /* Date, Type, Amount, Remaining, actions — compact, never wrap */
             #sweetieTable th:nth-child(1),
             #sweetieTable td:nth-child(1),
             #sweetieTable th:nth-child(2),
@@ -1130,16 +1153,17 @@
             #sweetieTable th:nth-child(6),
             #sweetieTable td:nth-child(6) {
                 white-space: nowrap !important;
+                width: 1%;
             }
 
-            /* Description — wraps onto ~2 lines, never breaks mid-word */
+            /* Description — takes remaining width, wraps onto multiple lines */
             #sweetieTable th:nth-child(5),
             #sweetieTable td:nth-child(5) {
                 white-space: normal !important;
-                overflow-wrap: normal !important;
-                word-break: normal !important;
-                hyphens: none !important;
-                max-width: 130px;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                vertical-align: top;
+                width: auto;
             }
 
             #sweetieTable td span {
