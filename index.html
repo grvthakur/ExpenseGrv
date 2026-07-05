@@ -1077,14 +1077,18 @@
                 width: 1%;
             }
 
-            /* Description — takes remaining width, wraps onto multiple lines */
+            /* Description — takes remaining width, wraps onto multiple lines.
+               min-width guarantees it can never be crushed down to a sliver
+               by the other columns (which is what caused text to fragment
+               into 1-2 character chunks). */
             #expenseTable th:nth-child(3),
             #expenseTable td:nth-child(3) {
                 white-space: normal !important;
-                word-break: break-word !important;
-                overflow-wrap: anywhere !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
                 vertical-align: top;
                 width: auto;
+                min-width: 110px;
             }
 
             #expenseTable td span {
@@ -1141,16 +1145,22 @@
             }
 
             /* Description (4th) & Remarks (5th) — take remaining width,
-               wrap onto multiple lines instead of stretching the table */
+               wrap onto multiple lines instead of stretching the table.
+               min-width guarantees neither can be crushed down to a sliver
+               by the other nowrap columns (Card, Used By, Amount, etc.) —
+               that crush is what caused text to fragment into 1-2 character
+               chunks. If the row still doesn't fit, the table scrolls
+               horizontally instead of destroying the text. */
             #cardTable th:nth-child(4),
             #cardTable td:nth-child(4),
             #cardTable th:nth-child(5),
             #cardTable td:nth-child(5) {
                 white-space: normal !important;
-                word-break: break-word !important;
-                overflow-wrap: anywhere !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
                 vertical-align: top;
                 width: auto;
+                min-width: 90px;
             }
 
             #cardTable td span {
@@ -1188,14 +1198,16 @@
                 width: 1%;
             }
 
-            /* Description — takes remaining width, wraps onto multiple lines */
+            /* Description — takes remaining width, wraps onto multiple lines.
+               min-width guarantees it can never be crushed down to a sliver. */
             #sweetieTable th:nth-child(5),
             #sweetieTable td:nth-child(5) {
                 white-space: normal !important;
-                word-break: break-word !important;
-                overflow-wrap: anywhere !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
                 vertical-align: top;
                 width: auto;
+                min-width: 110px;
             }
 
             #sweetieTable td span {
