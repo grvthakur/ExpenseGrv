@@ -1126,17 +1126,18 @@
                 width: 1%;
             }
 
-            /* Used By (3rd) — wraps onto 2 lines when it's more than one word,
-               keeps this column narrow instead of stretching the table.
-               NOTE: uses a fixed width (not max-width) because max-width is
-               ignored by browsers for cells inside an auto-layout table. */
+            /* Used By (3rd) — wraps onto 2 lines when it's more than one word.
+               Breaks only at spaces (never mid-word); a single very long
+               word may overflow slightly, which is preferable to chopping
+               letters apart. */
             #cardTable th:nth-child(3),
             #cardTable td:nth-child(3) {
                 white-space: normal !important;
-                word-break: break-word !important;
-                overflow-wrap: anywhere !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
+                hyphens: none !important;
                 vertical-align: top;
-                width: 60px !important;
+                width: 72px !important;
             }
 
             /* Description (4th) & Remarks (5th) — take remaining width,
