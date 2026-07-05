@@ -1,5 +1,5 @@
 git add .
-git commit -m "Add PAID/UNPAID filter for credit card transactions"
+git commit -m "fixed mobile view"
 git push
 
 git add .

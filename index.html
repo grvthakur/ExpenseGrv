@@ -277,6 +277,26 @@
             transform: translateY(-2px);
         }
 
+        /* Sweetie tab — make the Current Balance card stand out a little */
+        #sweetieBalanceCard {
+            border: 1px solid var(--green);
+            background: color-mix(in srgb, var(--green) 10%, var(--surface));
+            box-shadow:
+                0 0 0 1px color-mix(in srgb, var(--green) 25%, transparent),
+                0 8px 22px -10px color-mix(in srgb, var(--green) 55%, transparent);
+        }
+
+        #sweetieBalanceCard .stat-value {
+            font-size: 1.75rem;
+        }
+
+        #sweetieBalanceCard:hover {
+            border-color: var(--green);
+            box-shadow:
+                0 0 0 1px color-mix(in srgb, var(--green) 35%, transparent),
+                0 10px 26px -10px color-mix(in srgb, var(--green) 65%, transparent);
+        }
+
         .stat-label {
             font-size: 0.65rem;
             font-weight: 700;
@@ -1548,7 +1568,7 @@
 
         <!-- Sweetie Stats -->
         <div class="cc-stats">
-            <div class="stat">
+            <div class="stat" id="sweetieBalanceCard">
                 <div class="stat-label">Current Balance</div>
                 <div class="stat-value c-green" id="sweetieStatBalance">₹0</div>
             </div>
