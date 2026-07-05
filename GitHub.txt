@@ -1,9 +1,5 @@
 git add .
-git commit -m "fixed mobile view"
-git push
-
-git add .
-git commit -m "Close version info popup on scroll/touch"
+git commit -m "Mobile: wrap Used By column onto 2 lines for multi-word names in card table"
 git pull origin main
 git push
 

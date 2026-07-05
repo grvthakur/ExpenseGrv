@@ -1108,14 +1108,12 @@
                 vertical-align: top;
             }
 
-            /* Date, Card, Used By, Amount, Status, Billing Month, actions —
+            /* Date, Card, Amount, Status, Billing Month, actions —
                compact, never wrap */
             #cardTable th:nth-child(1),
             #cardTable td:nth-child(1),
             #cardTable th:nth-child(2),
             #cardTable td:nth-child(2),
-            #cardTable th:nth-child(3),
-            #cardTable td:nth-child(3),
             #cardTable th:nth-child(6),
             #cardTable td:nth-child(6),
             #cardTable th:nth-child(7),
@@ -1126,6 +1124,17 @@
             #cardTable td:nth-child(9) {
                 white-space: nowrap !important;
                 width: 1%;
+            }
+
+            /* Used By (3rd) — wraps onto 2 lines when it's more than one word,
+               keeps this column narrow instead of stretching the table */
+            #cardTable th:nth-child(3),
+            #cardTable td:nth-child(3) {
+                white-space: normal !important;
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+                vertical-align: top;
+                max-width: 70px;
             }
 
             /* Description (4th) & Remarks (5th) — take remaining width,
