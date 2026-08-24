@@ -10,6 +10,8 @@
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 
     <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -987,6 +989,45 @@
             color: #fff;
         }
 
+        /* ── EXPORT DROPDOWN ── */
+        .export-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .export-menu {
+            display: none;
+            position: absolute;
+            top: 110%;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 6px;
+            z-index: 60;
+            min-width: 130px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        }
+
+        .export-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            padding: 7px 10px;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .export-menu button:hover {
+            background: var(--s2);
+            color: var(--accent);
+        }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
             .stats {
@@ -1395,6 +1436,16 @@
                             </button>
                             <span id="rowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+                            <div class="export-wrap">
+                                <button class="btn-summary" onclick="toggleExportMenu('exp')">⬇️ Export</button>
+                                <div class="export-menu" id="exportMenu_exp">
+                                    <button onclick="exportTable('expenseTable','csv','Expenses')">📄 CSV</button>
+                                    <button onclick="exportTable('expenseTable','xls','Expenses')">📊 Excel</button>
+                                    <button onclick="exportTable('expenseTable','doc','Expenses')">📝 Word</button>
+                                    <button onclick="exportTable('expenseTable','txt','Expenses')">🗒️ Notes</button>
+                                    <button onclick="exportTable('expenseTable','pdf','Expenses')">📕 PDF</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div style="max-height:620px;overflow-y:auto;">
@@ -1551,6 +1602,17 @@
                                 title="Mark all visible UNPAID transactions as PAID">
                                 ✓ Mark All Paid
                             </button>
+
+                            <div class="export-wrap">
+                                <button class="btn-summary" onclick="toggleExportMenu('cards')">⬇️ Export</button>
+                                <div class="export-menu" id="exportMenu_cards">
+                                    <button onclick="exportTable('cardTable','csv','Cards')">📄 CSV</button>
+                                    <button onclick="exportTable('cardTable','xls','Cards')">📊 Excel</button>
+                                    <button onclick="exportTable('cardTable','doc','Cards')">📝 Word</button>
+                                    <button onclick="exportTable('cardTable','txt','Cards')">🗒️ Notes</button>
+                                    <button onclick="exportTable('cardTable','pdf','Cards')">📕 PDF</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div style="max-height:620px;overflow-y:auto;">
@@ -1670,6 +1732,17 @@
                             </button>
                             <span id="sweetieRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
+
+                            <div class="export-wrap">
+                                <button class="btn-summary" onclick="toggleExportMenu('sweetie')">⬇️ Export</button>
+                                <div class="export-menu" id="exportMenu_sweetie">
+                                    <button onclick="exportTable('sweetieTable','csv','Sweetie')">📄 CSV</button>
+                                    <button onclick="exportTable('sweetieTable','xls','Sweetie')">📊 Excel</button>
+                                    <button onclick="exportTable('sweetieTable','doc','Sweetie')">📝 Word</button>
+                                    <button onclick="exportTable('sweetieTable','txt','Sweetie')">🗒️ Notes</button>
+                                    <button onclick="exportTable('sweetieTable','pdf','Sweetie')">📕 PDF</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div style="max-height:620px;overflow-y:auto;">
@@ -1747,6 +1820,8 @@
     <div id="toastMsg" class="toast"></div>
 
     <script src="script.js"></script>
+    <!-- Export layer — reads rendered tables only, touches no app logic -->
+    <script src="export.js"></script>
     <!-- Premium animation layer — wraps existing functions for transitions,
          changes no business logic. Must load AFTER script.js. -->
     <script src="animations.js"></script>
