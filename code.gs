@@ -1,3 +1,5 @@
+#######24rth Aug
+
 // ─── DATE / MONTH NORMALIZERS ────────────────────────────────────────────────
 const MONTH_NAMES = [
   "Jan",
@@ -231,28 +233,19 @@ function doGet(e) {
     // Fetch cards by transaction date month prefix(es) e.g. "2026-04" or "2026-04,2026-03,2026-02"
     if (action === "getCardsByTxnMonth") {
       const txnMonthParam = String(e.parameter.txnMonth || "").trim();
-      const prefixes = txnMonthParam
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const cardSheet = getOrCreateCardsSheet(ss);
-      const rows = cardSheet.getDataRange().getValues();
-      const out = rows
-        .slice(1)
-        .filter((row) => {
+      const prefixes      = txnMonthParam.split(",").map(s => s.trim()).filter(Boolean);
+      const cardSheet     = getOrCreateCardsSheet(ss);
+      const rows          = cardSheet.getDataRange().getValues();
+      const out = rows.slice(1)
+        .filter(row => {
           const dateStr = toDateStr(row[4]);
-          return prefixes.some((p) => dateStr.startsWith(p));
+          return prefixes.some(p => dateStr.startsWith(p));
         })
-        .map((row) => [
-          String(row[0] || ""),
-          String(row[1] || ""),
-          String(row[2] || ""),
-          String(row[3] || ""),
-          toDateStr(row[4]),
-          String(row[5] || ""),
+        .map(row => [
+          String(row[0]||""), String(row[1]||""), String(row[2]||""),
+          String(row[3]||""), toDateStr(row[4]), String(row[5]||""),
           typeof row[6] === "number" ? row[6] : parseFloat(row[6]) || 0,
-          String(row[7] || "UNPAID"),
-          String(row[8] || ""),
+          String(row[7]||"UNPAID"), String(row[8]||""),
         ]);
       return jsonOut(out);
     }
@@ -411,14 +404,7 @@ function getOrCreateSweetieSheet(ss) {
   let sheet = ss.getSheetByName("Sweetie");
   if (!sheet) {
     sheet = ss.insertSheet("Sweetie");
-    sheet.appendRow([
-      "ID",
-      "TYPE",
-      "AMOUNT",
-      "Remaining Amount",
-      "DATE",
-      "Description",
-    ]);
+    sheet.appendRow(["ID", "TYPE", "AMOUNT", "Remaining Amount", "DATE", "Description"]);
   }
   return sheet;
 }
@@ -459,15 +445,11 @@ function recalcSweetieBalances(sheet) {
   // (important since writing also re-fires the onEdit trigger below).
   let running = 0;
   items.forEach((item) => {
-    const signedAmt =
-      item.type.toUpperCase() === "DEBIT"
-        ? -Math.abs(item.amount)
-        : Math.abs(item.amount);
+    const signedAmt = item.type.toUpperCase() === "DEBIT" ? -Math.abs(item.amount) : Math.abs(item.amount);
     running += signedAmt;
     const cell = sheet.getRange(item.sheetRow, 4);
     const current = cell.getValue();
-    const currentNum =
-      typeof current === "number" ? current : parseFloat(current) || 0;
+    const currentNum = typeof current === "number" ? current : parseFloat(current) || 0;
     if (Math.round(currentNum * 100) !== Math.round(running * 100)) {
       cell.setValue(running);
     }
