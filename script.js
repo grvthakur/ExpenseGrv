@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbw_EZLrUlkc8DEb55SvzZLyxwxYBkFaz3bugsPLjnBW7fxNfN5FAbWrOQwAXs2ZNVZ0/exec";
+  "https://script.google.com/macros/s/AKfycbyK0A2BRusRFnxuhVtKNAz1BUrPia5-AKJgGNodIOMjxQrbGYSPDxn7lJBsVrvh4F-c/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
