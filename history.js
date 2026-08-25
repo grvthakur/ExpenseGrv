@@ -88,7 +88,7 @@ function logExpenseHistory(
     status,
     todayStr(),
   ]);
-  forceText(sheet, sheet.getLastRow(), 3); // Month stays text
+  forceText(sheet, sheet.getLastRow(), 3); // Month stays text — forceText now flushes+catches safely
 }
 
 function logCardHistory(
@@ -141,6 +141,111 @@ function logSweetieHistory(
     status,
     todayStr(),
   ]);
+}
+
+// ─── ONE-TIME BACKFILL ────────────────────────────────────────────────────
+// Run this ONCE from the Apps Script editor (select function → Run) before
+// using the app further. It fetches every existing record already sitting
+// in Expenses / Cards / Sweetie and logs a starting "Existing" row for each
+// into the matching History sheet — so old data isn't invisible in history.
+// Safe to re-run: it checks each History sheet's existing IDs and skips any
+// record already logged, so it never creates duplicate rows.
+function backfillAllHistory() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  backfillExpenseHistory(ss);
+  backfillCardHistory(ss);
+  backfillSweetieHistory(ss);
+  Logger.log("Backfill complete.");
+}
+
+function backfillExpenseHistory(ss) {
+  const expSheet = ss.getSheetByName("Expenses");
+  if (!expSheet) return;
+  const histSheet = getOrCreateExpenseHistorySheet(ss);
+  const alreadyLogged = new Set(
+    histSheet
+      .getDataRange()
+      .getValues()
+      .slice(1)
+      .map((r) => String(r[0]).trim()),
+  );
+  const rows = expSheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const r = normalizeExpRow(rows[i]);
+    if (!r.id || alreadyLogged.has(r.id)) continue;
+    logExpenseHistory(
+      ss,
+      r.id,
+      r.date,
+      r.month,
+      r.category,
+      r.description,
+      r.amount,
+      "Existing",
+    );
+    alreadyLogged.add(r.id);
+  }
+}
+
+function backfillCardHistory(ss) {
+  const cardSheet = getOrCreateCardsSheet(ss);
+  const histSheet = getOrCreateCardHistorySheet(ss);
+  const alreadyLogged = new Set(
+    histSheet
+      .getDataRange()
+      .getValues()
+      .slice(1)
+      .map((r) => String(r[0]).trim()),
+  );
+  const rows = cardSheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const id = String(row[0] || "").trim();
+    if (!id || alreadyLogged.has(id)) continue;
+    logCardHistory(
+      ss,
+      id,
+      String(row[1] || ""),
+      String(row[2] || ""),
+      String(row[3] || ""),
+      toDateStr(row[4]),
+      String(row[5] || ""),
+      typeof row[6] === "number" ? row[6] : parseFloat(row[6]) || 0,
+      String(row[7] || "UNPAID"),
+      String(row[8] || ""),
+      "Existing",
+    );
+    alreadyLogged.add(id);
+  }
+}
+
+function backfillSweetieHistory(ss) {
+  const sweetieSheet = getOrCreateSweetieSheet(ss);
+  const histSheet = getOrCreateSweetieHistorySheet(ss);
+  const alreadyLogged = new Set(
+    histSheet
+      .getDataRange()
+      .getValues()
+      .slice(1)
+      .map((r) => String(r[0]).trim()),
+  );
+  const rows = sweetieSheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const id = String(row[0] || "").trim();
+    if (!id || !row[1] || alreadyLogged.has(id)) continue;
+    logSweetieHistory(
+      ss,
+      id,
+      String(row[1] || ""),
+      typeof row[2] === "number" ? row[2] : parseFloat(row[2]) || 0,
+      typeof row[3] === "number" ? row[3] : parseFloat(row[3]) || 0,
+      toDateStr(row[4]),
+      String(row[5] || ""),
+      "Existing",
+    );
+    alreadyLogged.add(id);
+  }
 }
 
 // ─── UPDATE HANDLERS (in-place edit → single "Updated" history row) ──────
