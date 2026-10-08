@@ -1939,35 +1939,7 @@
         .grv-bill-mark:disabled{opacity:.38}
         @media(max-width:1100px){.grv-bills-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:700px){.grv-bills-dialog{width:calc(100% - 12px);max-height:calc(100vh - 12px);margin:6px auto;padding:12px}.grv-bills-summary{grid-template-columns:1fr}.grv-bills-grid{grid-template-columns:1fr}.grv-actual-bill-row{grid-template-columns:1fr}.grv-match-result{padding-top:1px}}
-
-        /* V25 dashboard stat accents */
-        #expenseSection .stats .stat, #grvCCSection .grv-cc-stats .stat{--sc:34,211,238;border:1px solid rgb(var(--sc));background:linear-gradient(rgba(var(--sc),.10),rgba(var(--sc),.10)),var(--surface);box-shadow:0 0 0 1px rgba(var(--sc),.25),0 8px 22px -10px rgba(var(--sc),.55);transition:transform .2s ease,box-shadow .2s ease}
-        #expenseSection .stats .stat .stat-label, #grvCCSection .grv-cc-stats .stat .stat-label{color:rgba(var(--sc),.9)}
-        #expenseSection .stats .stat .stat-value, #grvCCSection .grv-cc-stats .stat .stat-value{font-size:1.75rem;color:rgb(var(--sc))}
-        #expenseSection .stats .stat:hover, #grvCCSection .grv-cc-stats .stat:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(var(--sc),.38),0 12px 30px -10px rgba(var(--sc),.7)}
-        #expenseSection .stats .stat:nth-child(1){--sc:248,113,113}
-        #expenseSection .stats .stat:nth-child(2){--sc:251,191,36}
-        #expenseSection .stats .stat:nth-child(3){--sc:34,211,238}
-        #expenseSection .stats .stat:nth-child(4){--sc:244,114,182}
-        #grvCCSection .grv-cc-stats .stat:nth-child(1){--sc:167,139,250}
-        #grvCCSection .grv-cc-stats .stat:nth-child(2){--sc:251,146,60}
-
-        /* V25 main navigation: one glass rail, four tabs */
-        .tab-bar{display:flex;flex-wrap:nowrap;gap:4px;width:fit-content;max-width:calc(100% - 56px);margin:16px 28px 0;padding:5px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01)),var(--s2);border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 30px -14px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02) inset;overflow-x:auto;scrollbar-width:none}
-        .tab-bar::-webkit-scrollbar{display:none}
-        .tab-bar .tab-btn.tb{--c:34,211,238;position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:10px;height:46px;padding:0 20px 0 9px;border-radius:15px;background:transparent;border:1px solid transparent;color:var(--muted);font-weight:700;font-size:.88rem;letter-spacing:.01em;white-space:nowrap;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .2s ease,color .2s ease,border-color .2s ease,box-shadow .25s ease}
-        #tabExpenses{--c:52,211,153} #tabCards{--c:34,211,238} #tabGrvCC{--c:167,139,250} #tabSweetie{--c:244,114,182}
-        .tab-bar .tb .tb-ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-style:normal;font-size:.95rem;background:rgba(var(--c),.14);border:1px solid rgba(var(--c),.28);transition:transform .25s ease,background .2s ease,box-shadow .25s ease}
-        .tab-bar .tb:hover:not(.tab-active){color:var(--text);background:rgba(var(--c),.10);border-color:rgba(var(--c),.25)}
-        .tab-bar .tb:hover:not(.tab-active) .tb-ic{transform:scale(1.08)}
-        .tab-bar .tb.tab-active{color:var(--text);background:linear-gradient(180deg,rgba(var(--c),.24),rgba(var(--c),.07));border-color:rgba(var(--c),.6);box-shadow:0 8px 24px -10px rgba(var(--c),.75)}
-        .tab-bar .tb.tab-active .tb-ic{background:rgb(var(--c));border-color:transparent;color:#0b0b10;box-shadow:0 0 16px rgba(var(--c),.65)}
-        .tab-bar .tb.tab-active::after{content:"";position:absolute;left:20%;right:20%;bottom:0;height:3px;border-radius:3px 3px 0 0;background:rgb(var(--c));box-shadow:0 0 12px rgb(var(--c))}
-        .tab-bar .tb:focus-visible{outline:2px solid rgb(var(--c));outline-offset:2px}
-        @media(max-width:768px){.tab-bar{margin:12px 12px 0;max-width:calc(100% - 24px)}.tab-bar .tab-btn.tb{padding:0 14px 0 8px;font-size:.8rem}}
-        @media(prefers-reduced-motion:reduce){.tab-bar .tb,.tab-bar .tb *{transition:none!important}#expenseSection .stats .stat,#grvCCSection .grv-cc-stats .stat{transition:none!important}}
-
-    </style>
+</style>
 
 <style>
 /* GRV CC action toolbar — unified premium pill design */
@@ -2011,29 +1983,6 @@
 .grv-page-actions .gb.gb-sync:hover .gb-ic{transform:rotate(35deg)}
 @media(max-width:768px){.grv-page-actions{justify-content:stretch}.grv-page-actions .gb{flex:1 1 calc(50% - 10px);justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){.grv-page-actions .gb,.grv-page-actions .gb *{transition:none!important;animation:none!important}}
-</style>
-
-<style>
-/* CC Master premium search + bank-tinted cards */
-.cc-master-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px}
-.cc-master-search-wrap{position:relative;display:flex;align-items:center;flex:1;min-width:0}
-.cc-master-search-icon{position:absolute;left:14px;z-index:2;color:var(--muted);font-size:1.15rem;line-height:1;pointer-events:none}
-.cc-master-search{width:100%;box-sizing:border-box;padding:11px 42px 11px 40px;border:1px solid rgba(148,163,184,.28);border-radius:14px;background:rgba(15,23,42,.72);color:var(--text);outline:none;font:inherit;transition:border-color .2s,box-shadow .2s,background .2s}
-.cc-master-search::placeholder{color:var(--muted)}
-.cc-master-search:focus{border-color:rgba(34,211,238,.65);background:rgba(15,23,42,.9);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
-.cc-master-search-clear{position:absolute;right:8px;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--muted);font-size:1.25rem;cursor:pointer;line-height:1}
-.cc-master-search-clear:hover{background:rgba(148,163,184,.14);color:var(--text)}
-.cc-master-search-count{flex:0 0 auto;color:var(--muted);font-size:.78rem;white-space:nowrap}
-.cc-card-item{--bc:34,211,238;padding:16px 18px;border:1px solid rgba(var(--bc),.45);background:radial-gradient(circle at 100% 0,rgba(var(--bc),.28),transparent 55%),linear-gradient(135deg,#1c1c2e,#12182e);box-shadow:0 10px 26px -14px rgba(var(--bc),.8);transition:transform .2s,box-shadow .2s}
-.cc-card-item:hover{transform:translateY(-3px);box-shadow:0 16px 34px -12px rgba(var(--bc),.9)}
-.cc-card-item::before{background:rgb(var(--bc));opacity:.12}
-.cc-card-item .cc-bank-badge{background:rgb(var(--bc));color:#fff}
-.cc-chip{width:34px;height:25px;border-radius:6px;margin:2px 0 10px;background:linear-gradient(135deg,#fde68a,#f59e0b 55%,#fcd34d);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
-.cc-num{font-size:1rem;letter-spacing:3px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-.cc-copy-btn{position:relative;z-index:1;border:1px solid rgba(var(--bc),.6);background:rgba(var(--bc),.14);color:#fff;border-radius:999px;padding:5px 12px;font:700 .7rem inherit;cursor:pointer;transition:.2s}
-.cc-copy-btn:hover{background:rgb(var(--bc));transform:scale(1.05)}
-.cc-copy-btn.done{background:#34d399;border-color:#34d399;color:#0b0b10}
-@media(max-width:600px){.cc-master-toolbar{align-items:stretch;flex-direction:column}.cc-master-search-count{padding-left:4px}.cc-master-search{font-size:.9rem}}
 </style>
 </head>
 
@@ -2084,10 +2033,10 @@
 
     <!-- Tab switcher -->
     <div class="tab-bar">
-        <button class="tab-btn tb tab-active" id="tabExpenses"><i class="tb-ic">💰</i><span>Expenses</span></button>
-        <button class="tab-btn tb" id="tabCards"><i class="tb-ic">💳</i><span>Credit Cards</span></button>
-        <button class="tab-btn tb" id="tabGrvCC"><i class="tb-ic">👤</i><span>GRV CC</span></button>
-        <button class="tab-btn tb" id="tabSweetie"><i class="tb-ic">❤️</i><span>Sweetie</span></button>
+        <button class="tab-btn tab-active" id="tabExpenses">💰 Expenses</button>
+        <button class="tab-btn" id="tabCards">💳 Credit Cards</button>
+        <button class="tab-btn" id="tabGrvCC">👤 GRV CC</button>
+        <button class="tab-btn" id="tabSweetie">❤️ Sweetie</button>
     </div>
 
     <!-- ═══ EXPENSES STATS (shown when Expenses tab active) ═══ -->

@@ -1,4 +1,4 @@
-#######24rth Aug
+// 24th Aug
 
 // ─── DATE / MONTH NORMALIZERS ────────────────────────────────────────────────
 const MONTH_NAMES = [
@@ -60,17 +60,53 @@ function normalizeExpRow(row) {
   };
 }
 
-// Billing month for credit cards: "November 2025" format
+// Billing month for credit cards: "November 2025" format.
+// IMPORTANT: YYYY-MM-DD strings are parsed manually so Apps Script/browser
+// timezone differences cannot move the transaction to the previous day.
+// A missing/0 cutoff means "use the transaction month" (never force next month).
 function calcBillingMonth(dateVal, cutoff) {
-  const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
-  const day = d.getDate();
-  let billing;
-  if (day <= parseInt(cutoff || 0)) {
-    billing = d;
+  let year, monthIndex, day;
+
+  if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
+    year = dateVal.getFullYear();
+    monthIndex = dateVal.getMonth();
+    day = dateVal.getDate();
   } else {
-    billing = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const raw = String(dateVal || "").trim();
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "";
+    year = Number(m[1]);
+    monthIndex = Number(m[2]) - 1;
+    day = Number(m[3]);
+    if (monthIndex < 0 || monthIndex > 11 || day < 1 || day > 31) return "";
   }
-  return FULL_MONTHS[billing.getMonth()] + " " + billing.getFullYear();
+
+  const co = parseInt(cutoff, 10);
+  if (!Number.isFinite(co) || co <= 0) {
+    return FULL_MONTHS[monthIndex] + " " + year;
+  }
+
+  if (day <= co) {
+    return FULL_MONTHS[monthIndex] + " " + year;
+  }
+
+  const nextMonthIndex = (monthIndex + 1) % 12;
+  const nextYear = year + (monthIndex === 11 ? 1 : 0);
+  return FULL_MONTHS[nextMonthIndex] + " " + nextYear;
+}
+
+function getCardCutoff(ss, card) {
+  const cfgSheet = ss.getSheetByName("CardConfig");
+  if (!cfgSheet || !card) return 0;
+  const rows = cfgSheet.getDataRange().getValues();
+  const wanted = String(card).trim().toLowerCase();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0] || "").trim().toLowerCase() === wanted) {
+      const cutoff = parseInt(rows[i][1], 10);
+      return Number.isFinite(cutoff) && cutoff > 0 ? cutoff : 0;
+    }
+  }
+  return 0;
 }
 
 function forceText(sheet, row, col) {
@@ -112,6 +148,23 @@ function doGet(e) {
     const expSheet = ss.getSheetByName("Expenses");
     const salSheet = ss.getSheetByName("Salary");
     const action = e.parameter.action || "";
+
+    // Serialize all mutating routes. This prevents double-taps / concurrent
+    // requests from interleaving delete+recalc, status updates, bill payment,
+    // settlement, and other multi-step writes. Read-only routes remain unlocked.
+    const writeActions = new Set([
+      "setSalary", "delete", "add",
+      "addCard", "updateCard", "updateCardStatusBulk", "payBill", "settle",
+      "deleteCard", "updateCardStatus",
+      "upsertCardConfig", "deleteCardConfig",
+      "addSweetie", "deleteSweetie",
+      "updateExpense", "updateSweetie",
+    ]);
+    var writeLock = null;
+    if (writeActions.has(action)) {
+      writeLock = LockService.getScriptLock();
+      writeLock.waitLock(20000);
+    }
 
     // ── EXPENSES ─────────────────────────────────────────────────────────
     if (action === "get") {
@@ -260,9 +313,15 @@ function doGet(e) {
       const remarks = String(e.parameter.remarks || "").trim();
       const amount = parseFloat(e.parameter.amount || "0");
       const status = String(e.parameter.status || "UNPAID").trim();
-      const billingMonth = String(e.parameter.billingMonth || "").trim();
       if (!card || !txnDate || isNaN(amount))
         return textOut("ERROR: missing fields");
+
+      // Server is authoritative for billing month. Ignore any client-supplied
+      // billingMonth so txnDate and billingMonth can never diverge.
+      const cutoff = getCardCutoff(ss, card);
+      const billingMonth = calcBillingMonth(txnDate, cutoff);
+      if (!billingMonth) return textOut("ERROR: invalid transaction date");
+
       cardSheet.appendRow([
         id,
         card,
@@ -275,6 +334,132 @@ function doGet(e) {
         billingMonth,
       ]);
       return textOut("Added");
+    }
+
+    if (action === "updateCard") {
+      const id = String(e.parameter.id || "").trim();
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === id) {
+          cardSheet.getRange(i + 1, 1, 1, 9).setValues([[
+            id,
+            String(e.parameter.card || rows[i][1] || "").trim(),
+            String(e.parameter.usedBy || "").trim(),
+            String(e.parameter.description || "").trim(),
+            String(e.parameter.txnDate || rows[i][4] || "").trim(),
+            String(e.parameter.remarks || "").trim(),
+            parseFloat(e.parameter.amount || rows[i][6] || "0") || 0,
+            String(e.parameter.status || rows[i][7] || "UNPAID").trim(),
+            ""
+          ]]);
+          const savedTxnDate = String(e.parameter.txnDate || rows[i][4] || "").trim();
+          const savedCard = String(e.parameter.card || rows[i][1] || "").trim();
+          const cutoff = getCardCutoff(ss, savedCard);
+          const billingMonth = calcBillingMonth(savedTxnDate, cutoff);
+          if (!billingMonth) return textOut("ERROR: invalid transaction date");
+          cardSheet.getRange(i + 1, 9).setValue(billingMonth);
+          return textOut("Updated");
+        }
+      }
+      return textOut("NotFound");
+    }
+
+    if (action === "updateCardStatusBulk") {
+      const ids = String(e.parameter.ids || "").split(",").map(x => x.trim()).filter(Boolean);
+      const status = String(e.parameter.status || "").trim();
+      if (!ids.length || !status) return textOut("ERROR: missing ids/status");
+      const wanted = new Set(ids);
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (wanted.has(String(rows[i][0]).trim())) cardSheet.getRange(i + 1, 8).setValue(status);
+      }
+      return textOut("Updated");
+    }
+
+    if (action === "payBill") {
+        const ids = String(e.parameter.ids || "").split(",").map(x => x.trim()).filter(Boolean);
+        const card = String(e.parameter.card || "").trim();
+        const paymentDate = String(e.parameter.paymentDate || "").trim();
+        const paymentAmount = parseFloat(e.parameter.paymentAmount || "0");
+        const description = String(e.parameter.description || "").trim();
+        if (!ids.length || !card || !paymentDate || !Number.isFinite(paymentAmount) || paymentAmount <= 0)
+          return textOut("ERROR: missing bill payment fields");
+
+        const cardSheet = getOrCreateCardsSheet(ss);
+        const rows = cardSheet.getDataRange().getValues();
+        const wanted = new Set(ids);
+        const matched = [];
+        for (let i = 1; i < rows.length; i++) {
+          const id = String(rows[i][0] || "").trim();
+          if (!wanted.has(id)) continue;
+          if (String(rows[i][1] || "").trim() !== card)
+            return textOut("ERROR: card mismatch for " + id);
+          const status = String(rows[i][7] || "UNPAID").trim().toUpperCase();
+          if (status !== "UNPAID") return textOut("ERROR: one or more rows are no longer UNPAID");
+          matched.push({ sheetRow: i + 1, id, usedBy: String(rows[i][2] || "").trim(), amount: parseFloat(rows[i][6]) || 0 });
+        }
+        if (matched.length !== ids.length) return textOut("ERROR: one or more transaction IDs were not found");
+
+        const statementTotal = matched.reduce((sum, r) => sum + r.amount, 0);
+        if (Math.abs(paymentAmount - statementTotal) > 0.01)
+          return textOut("ERROR: full bill payment required; payment must equal " + statementTotal.toFixed(2));
+
+        // Gaurav's own rows become PAID. Everyone else's rows become OWED.
+        matched.forEach(r => {
+          const next = isGrvUsedByServer(r.usedBy) ? "PAID" : "OWED";
+          cardSheet.getRange(r.sheetRow, 8).setValue(next);
+        });
+
+        const month = paymentDate.slice(0, 7);
+        const expSheet = getOrCreateExpensesSheet(ss);
+        const expId = "CCPAY-" + Date.now();
+        const myShare = matched.filter(r => isGrvUsedByServer(r.usedBy)).reduce((sum, r) => sum + r.amount, 0);
+        const othersShare = matched.filter(r => !isGrvUsedByServer(r.usedBy)).reduce((sum, r) => sum + r.amount, 0);
+        const finalDescription = description || (card + " bill payment | My share " + myShare.toFixed(2) + " | Others " + othersShare.toFixed(2));
+        expSheet.appendRow([expId, paymentDate, month, "Bill Repayment", finalDescription, paymentAmount]);
+        forceText(expSheet, expSheet.getLastRow(), 3);
+        recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+        return textOut("Paid");
+    }
+
+    if (action === "settle") {
+        const ids = String(e.parameter.ids || "").split(",").map(x => x.trim()).filter(Boolean);
+        const person = String(e.parameter.person || "").trim();
+        const paymentDate = String(e.parameter.paymentDate || "").trim();
+        const receivedAmount = parseFloat(e.parameter.receivedAmount || "0");
+        const description = String(e.parameter.description || "").trim();
+        if (!ids.length || !person || !paymentDate || !Number.isFinite(receivedAmount) || receivedAmount <= 0)
+          return textOut("ERROR: missing settlement fields");
+
+        const cardSheet = getOrCreateCardsSheet(ss);
+        const rows = cardSheet.getDataRange().getValues();
+        const wanted = new Set(ids);
+        const matched = [];
+        for (let i = 1; i < rows.length; i++) {
+          const id = String(rows[i][0] || "").trim();
+          if (!wanted.has(id)) continue;
+          const usedBy = String(rows[i][2] || "").trim();
+          if (usedBy.toLowerCase() !== person.toLowerCase()) return textOut("ERROR: person mismatch for " + id);
+          if (String(rows[i][7] || "").trim().toUpperCase() !== "OWED") return textOut("ERROR: one or more rows are not OWED");
+          matched.push({ sheetRow: i + 1, id, amount: parseFloat(rows[i][6]) || 0 });
+        }
+        if (matched.length !== ids.length) return textOut("ERROR: one or more OWED transaction IDs were not found");
+        const owedTotal = matched.reduce((sum, r) => sum + r.amount, 0);
+        if (Math.abs(receivedAmount - owedTotal) > 0.01)
+          return textOut("ERROR: full settlement required; amount must equal " + owedTotal.toFixed(2));
+
+        matched.forEach(r => cardSheet.getRange(r.sheetRow, 8).setValue("SETTLED"));
+
+        const month = paymentDate.slice(0, 7);
+        const expSheet = getOrCreateExpensesSheet(ss);
+        const expId = "CCSETTLE-" + Date.now();
+        const finalDescription = description || (person + " settled credit-card share " + owedTotal.toFixed(2));
+        expSheet.appendRow([expId, paymentDate, month, "Received", finalDescription, receivedAmount]);
+        forceText(expSheet, expSheet.getLastRow(), 3);
+        recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+        return textOut("Settled");
     }
 
     if (action === "deleteCard") {
@@ -302,6 +487,48 @@ function doGet(e) {
         }
       }
       return textOut("NotFound");
+    }
+
+    if (action === "upsertCardConfig") {
+      let cfgSheet = ss.getSheetByName("CardConfig");
+      if (!cfgSheet) {
+        cfgSheet = ss.insertSheet("CardConfig");
+        cfgSheet.appendRow(["CARD","CUTOFF","LIMIT","DUE DAY","DUE MONTH OFFSET"]);
+      }
+      const oldCard = String(e.parameter.oldCard || "").trim();
+      const card = String(e.parameter.card || "").trim();
+      const cutoff = parseInt(e.parameter.cutoff || "0", 10) || 0;
+      const limit = parseFloat(e.parameter.limit || "0") || 0;
+      const dueDay = parseInt(e.parameter.dueDay || "0", 10) || 0;
+      const dueMonthOffset = parseInt(e.parameter.dueMonthOffset || "0", 10) || 0;
+      if (!card) return textOut("ERROR: missing card");
+      const rows = cfgSheet.getDataRange().getValues();
+      let found = -1;
+      for (let i=1;i<rows.length;i++) if(String(rows[i][0]).trim() === oldCard || (!oldCard && String(rows[i][0]).trim() === card)) { found=i+1; break; }
+      const values=[card,cutoff,limit,dueDay,dueMonthOffset];
+      if(found>0) cfgSheet.getRange(found,1,1,5).setValues([values]); else cfgSheet.appendRow(values);
+      // CC Master is updated only when supplied; preserve existing fields on edit.
+      let cc=ss.getSheetByName("CC");
+      if(!cc && (e.parameter.bank||e.parameter.number||e.parameter.numberCvv||e.parameter.expDate)) { cc=ss.insertSheet("CC"); cc.appendRow(["BANK","CREDIT CARD NAME","NUMBER","NUMBER & CVV","EXP DATE"]); }
+      if(cc){
+        const crows=cc.getDataRange().getValues(); let crow=-1;
+        for(let i=1;i<crows.length;i++) if(String(crows[i][1]).trim()=== (oldCard||card)) {crow=i+1;break;}
+        const bank=String(e.parameter.bank||"").trim(), number=String(e.parameter.number||"").trim(), numberCvv=String(e.parameter.numberCvv||"").trim(), expDate=String(e.parameter.expDate||"").trim();
+        if(crow>0){
+          const current=crows[crow-1]; cc.getRange(crow,1,1,5).setValues([[bank||current[0]||"",card,current[2]||number||"",numberCvv||current[3]||"",expDate||current[4]||""]]);
+        } else if(bank||number||numberCvv||expDate) cc.appendRow([bank,card,number,numberCvv,expDate]);
+      }
+      return textOut(found>0?"Updated":"Added");
+    }
+
+    if (action === "deleteCardConfig") {
+      const card = String(e.parameter.card || "").trim();
+      if (!card) return textOut("ERROR: missing card");
+      const cfgSheet = ss.getSheetByName("CardConfig");
+      if (cfgSheet) { const rows=cfgSheet.getDataRange().getValues(); for(let i=rows.length-1;i>=1;i--) if(String(rows[i][0]).trim()===card) cfgSheet.deleteRow(i+1); }
+      const cc=ss.getSheetByName("CC");
+      if(cc){ const rows=cc.getDataRange().getValues(); for(let i=rows.length-1;i>=1;i--) if(String(rows[i][1]).trim()===card) cc.deleteRow(i+1); }
+      return textOut("Deleted");
     }
 
     // ── SWEETIE TRACKER ──────────────────────────────────────────────────
@@ -355,17 +582,8 @@ function doGet(e) {
     }
 
     // ── CC MASTER LIST ───────────────────────────────────────────────────
-    // Password verified against PropertiesService — never sent back to browser
+    // Direct read — no password prompt in the UI.
     if (action === "getCCMaster") {
-      const pwd = String(e.parameter.pwd || "").trim();
-      const stored =
-        PropertiesService.getScriptProperties().getProperty("CC_PASSWORD");
-      // Always return JSON so the browser can parse the response cleanly
-      if (!stored)
-        return jsonOut({
-          error: "Password not configured. Run setPassword() first.",
-        });
-      if (pwd !== stored) return jsonOut({ error: "Incorrect password." });
       const ccSheet = ss.getSheetByName("CC");
       if (!ccSheet)
         return jsonOut({ error: "CC sheet not found in spreadsheet." });
@@ -376,7 +594,16 @@ function doGet(e) {
     return textOut("ERROR: unknown action");
   } catch (err) {
     return textOut("ERROR: " + err.message);
+  } finally {
+    if (writeLock) {
+      try { writeLock.releaseLock(); } catch (e) {}
+    }
   }
+}
+
+function isGrvUsedByServer(value) {
+  const v = String(value || "").trim().toUpperCase();
+  return v === "GRV" || v === "GAURAV" || v === "ME";
 }
 
 // ─── CARDS SHEET ─────────────────────────────────────────────────────────────

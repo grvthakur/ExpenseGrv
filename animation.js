@@ -23,6 +23,12 @@
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
 
+  // Mark JS as available before any reveal animation is configured.
+  // The CSS keeps .reveal visible under .no-js, so a script failure can
+  // never leave dashboard content permanently hidden.
+  document.documentElement.classList.remove("no-js");
+  document.documentElement.classList.add("js");
+
   /* ── small utilities ─────────────────────────────────────────────── */
 
   // Wrap a global function by name, running `before`/`after` hooks around
@@ -144,7 +150,7 @@
     if (!tbody || REDUCE_MOTION) return;
     Array.from(tbody.rows).forEach((row, i) => {
       row.classList.remove("row-anim-in");
-      row.style.setProperty("--row-delay", `${Math.min(i, 12) * 28}ms`);
+      row.style.setProperty("--row-delay", `${Math.min(i * 20, 300)}ms`);
       void row.offsetWidth; // force reflow so the animation restarts
       row.classList.add("row-anim-in");
     });
@@ -210,7 +216,7 @@
   // buttons while a fetch is in flight) and apply a pulsing "busy" style.
   function setupLoadingButtons() {
     const candidates = document.querySelectorAll(
-      "#cardSyncBtn, #sweetieSyncBtn, #addBtn, #addCardBtn, #addSweetieBtn",
+      "#syncBtn, #cardSyncBtn, #sweetieSyncBtn, #grvCardSyncBtn, #addBtn, #addCardBtn, #addSweetieBtn, #saveGrvBillPaymentBtn",
     );
     candidates.forEach((btn) => {
       const observer = new MutationObserver(() => {
@@ -348,6 +354,58 @@
     ].forEach(setupCountUp);
   }
 
+
+
+  /* v15: modal keyboard/backdrop accessibility + background scroll lock. */
+  function setupModalAccessibility() {
+    const selector = ".modal, .grv-card-modal, .grv-bills-modal";
+    const getVisible = () => [...document.querySelectorAll(selector)].filter(m => {
+      const cs = getComputedStyle(m);
+      return cs.display !== "none" && cs.visibility !== "hidden";
+    });
+    const syncBodyLock = () => { document.body.style.overflow = getVisible().length ? "hidden" : ""; };
+
+    document.querySelectorAll(selector).forEach(modal => {
+      if (!modal.hasAttribute("role")) modal.setAttribute("role", "dialog");
+      if (!modal.hasAttribute("aria-modal")) modal.setAttribute("aria-modal", "true");
+      const observer = new MutationObserver(syncBodyLock);
+      observer.observe(modal, {attributes:true, attributeFilter:["style"]});
+    });
+
+    document.addEventListener("keydown", e => {
+      const visible = getVisible();
+      if (!visible.length) return;
+      const modal = visible[visible.length - 1];
+      if (e.key === "Escape") {
+        e.preventDefault();
+        const close = modal.querySelector(".close-modal, .grv-bills-close, .grv-card-close");
+        if (close) close.click();
+        else if (typeof window.closeGrvBillPayment === "function" && modal.id === "grvBillPaymentModal") window.closeGrvBillPayment();
+        else if (typeof window.closeGrvBills === "function" && modal.id === "grvBillsModal") window.closeGrvBills();
+        else if (typeof window.closeGrvCardConfig === "function" && modal.id === "grvCardConfigModal") window.closeGrvCardConfig();
+        else modal.style.display = "none";
+        syncBodyLock();
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusables = [...modal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(el => el.offsetParent !== null);
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+
+    document.addEventListener("click", e => {
+      const modal = e.target.closest(selector);
+      if (!modal || e.target !== modal) return;
+      const close = modal.querySelector(".close-modal, .grv-bills-close, .grv-card-close");
+      if (close) close.click();
+      else modal.style.display = "none";
+      syncBodyLock();
+    });
+    syncBodyLock();
+  }
   /* ════════════════════════════════════════════════════════════════════
        7. MODALS — smooth open/close layered on top of style.display
        ════════════════════════════════════════════════════════════════════ */
@@ -356,35 +414,45 @@
     if (REDUCE_MOTION) return;
 
     document.querySelectorAll(".modal").forEach((modal) => {
-      let closing = false;
+      // IMPORTANT: never force a modal back to display:flex after the app
+      // closes it. The previous implementation briefly re-opened hidden
+      // modals to animate the exit, which could race with the app's body
+      // scroll-lock and cause a visible flicker/flash on close.
+      //
+      // We keep the smooth opening animation, but let script.js own the
+      // actual close (display:none). This is intentionally presentation-only
+      // and does not touch any business logic or API calls.
+      let wasVisible = modal.style.display !== "none";
 
       const observer = new MutationObserver(() => {
-        const isHidden = modal.style.display === "none";
+        const isVisible = modal.style.display !== "none";
 
-        if (isHidden && !closing) {
-          // Intercept the close: script.js just hid it — briefly show it
-          // again so we can play a graceful exit animation, then hide
-          // it ourselves once the animation finishes.
-          closing = true;
-          modal.style.display = "flex";
-          modal.classList.remove("modal-opening", "modal-opening-active");
-          modal.classList.add("modal-closing");
-          nextFrame(() => modal.classList.add("modal-closing-active"));
+        if (!isVisible) {
+          modal.classList.remove(
+            "modal-opening",
+            "modal-opening-active",
+            "modal-closing",
+            "modal-closing-active",
+          );
+          wasVisible = false;
+          return;
+        }
 
-          setTimeout(() => {
-            modal.style.display = "none";
-            modal.classList.remove("modal-closing", "modal-closing-active");
-            closing = false;
-          }, 260);
-        } else if (!isHidden && !closing) {
+        if (!wasVisible) {
+          wasVisible = true;
           modal.classList.remove("modal-closing", "modal-closing-active");
           modal.classList.add("modal-opening");
           nextFrame(() => modal.classList.add("modal-opening-active"));
-          setTimeout(() => modal.classList.remove("modal-opening"), 300);
+          setTimeout(() => {
+            modal.classList.remove("modal-opening", "modal-opening-active");
+          }, 320);
         }
       });
 
-      observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
+      observer.observe(modal, {
+        attributes: true,
+        attributeFilter: ["style"],
+      });
     });
   }
 
@@ -430,6 +498,7 @@
     setupLoadingButtons();
     setupAllCountUps();
     setupModalAnimations();
+    setupModalAccessibility();
     setupToastAnimation();
     setupChartDefaults();
   }
