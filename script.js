@@ -6,6 +6,62 @@ function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
 }
 
+// ─── Table visual helpers (visual-only) ──────────────────────────────────────
+const EXPENSE_CATEGORY_TONES = {
+  "food and groceries": 0,
+  transportation: 1,
+  personal: 2,
+  shopping: 3,
+  "entertainment and leisure": 4,
+  "dining out": 5,
+  "savings and investments": 6,
+  "bill repayment": 7,
+  miscellaneous: 8,
+  received: 9,
+  loan: 10,
+  sport: 11,
+  "sweetie saving": 12,
+  "sweetie borrow": 13,
+};
+
+function getExpenseCategoryTone(category) {
+  const key = String(category || "").trim().toLowerCase();
+  return EXPENSE_CATEGORY_TONES[key] ?? 8;
+}
+
+function getCardTone(card) {
+  const value = String(card || "—").trim().toLowerCase();
+  const known = {
+    "axis-flipkart": 0,
+    "axis-myzone": 1,
+    "icici-amazon pay": 2,
+    "icici-coral": 3,
+    "hdfc": 4,
+    "sbi": 5,
+    "kotak": 6,
+  };
+  if (Object.prototype.hasOwnProperty.call(known, value)) return known[value];
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  return 7 + (hash % 3);
+}
+
+function getPersonTone(name) {
+  const value = String(name || "—").trim().toLowerCase();
+  const known = {
+    grv: 0,
+    gaurav: 0,
+    me: 0,
+    rohit: 1,
+    anukaran: 2,
+    abhishek: 3,
+  };
+  if (Object.prototype.hasOwnProperty.call(known, value)) return known[value];
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  return 4 + (hash % 6);
+}
+
 const MONTHS = [
   "Jan",
   "Feb",
@@ -622,9 +678,13 @@ function render() {
     if (editingExpId === exp.id) tr.style.background = "rgba(167,139,250,0.08)";
     tr.insertCell(0).textContent = formatDisplayDate(exp.date);
     tr.insertCell(1).innerHTML =
-      `<span style="background:#1c1c28;padding:2px 8px;border-radius:20px;font-size:0.7rem">${exp.category}</span>`;
-    tr.insertCell(2).textContent = exp.description || "—";
-    tr.insertCell(3).textContent = money(exp.amount);
+      `<span class="table-data-pill table-category-pill category-tone-${getExpenseCategoryTone(exp.category)}">${esc(exp.category)}</span>`;
+    tr.insertCell(2).innerHTML =
+      `<span class="table-data-pill table-text-pill">${esc(exp.description || "—")}</span>`;
+    const expAmtCell = tr.insertCell(3);
+    const expIncoming = String(exp.category || "").trim().toLowerCase() === "received" || String(exp.category || "").trim().toLowerCase() === "sweetie saving";
+    expAmtCell.innerHTML = `<span class="table-data-pill table-amount-pill ${expIncoming ? "table-positive-pill" : "table-negative-pill"}">${money(exp.amount)}</span>`;
+    expAmtCell.className = expIncoming ? "txn-amount txn-amount-in" : "txn-amount txn-amount-out";
     const actCell = tr.insertCell(4);
     actCell.style.whiteSpace = "nowrap";
     const editBtn = document.createElement("button");
@@ -1168,11 +1228,15 @@ function renderCards() {
 
     tr.insertCell(0).textContent = formatDisplayDate(t.txnDate);
     tr.insertCell(1).innerHTML =
-      `<span style="background:#1c1c28;padding:2px 6px;border-radius:20px;font-size:0.68rem">${t.card}</span>`;
-    tr.insertCell(2).textContent = t.usedBy || "—";
-    tr.insertCell(3).textContent = t.description || "—";
-    tr.insertCell(4).textContent = t.remarks || "—";
-    tr.insertCell(5).textContent = money(t.amount);
+      `<span class="table-data-pill table-card-pill">${esc(t.card)}</span>`;
+    tr.insertCell(2).innerHTML =
+      `<span class="table-data-pill table-person-pill person-tone-${getPersonTone(t.usedBy)}">${esc(t.usedBy || "—")}</span>`;
+    tr.insertCell(3).innerHTML =
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
+    tr.insertCell(4).innerHTML =
+      `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
+    tr.insertCell(5).innerHTML =
+      `<span class="table-data-pill table-amount-pill table-negative-pill">${money(t.amount)}</span>`;
 
     const statusCell = tr.insertCell(6);
     const statusBtn = document.createElement("button");
@@ -1511,40 +1575,18 @@ async function syncCardsFromSheet(isManual = false) {
 // The actual password and card data never stored in browser localStorage.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-let ccMasterFetchPromise = null;
-
-function fetchCCMasterData() {
-  if (ccMasterFetchPromise) return ccMasterFetchPromise;
-  ccMasterFetchPromise = fetch(apiUrl("action=getCCMaster"))
-    .then((res) => res.json())
-    .then((data) => {
-      if (!Array.isArray(data))
-        throw new Error(data.error || "Unable to load CC Master");
-      return data;
-    })
-    .finally(() => {
-      ccMasterFetchPromise = null;
-    });
-  return ccMasterFetchPromise;
-}
-
-function prefetchCCMaster() {
-  // Start the request as soon as the user points/touches the CC Master button.
-  // This keeps the first visible open fast without storing card data after close.
-  fetchCCMasterData().catch(() => {});
-}
-
 async function openCCMaster() {
   const modal = document.getElementById("ccMasterModal");
   const container = document.getElementById("ccMasterBody");
   if (!modal || !container) return;
 
   modal.style.display = "flex";
-  container.innerHTML =
-    '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
+  container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
-    const data = await fetchCCMasterData();
+    const res = await fetch(apiUrl("action=getCCMaster"));
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error(data.error || "Unable to load CC Master");
     renderCCMaster(data);
   } catch (err) {
     container.innerHTML = `<div style="text-align:center;color:var(--danger);padding:30px;">⚠️ ${esc(err.message || "Could not load CC Master")}</div>`;
@@ -1569,102 +1611,47 @@ function formatExpDate(val) {
   return s;
 }
 
-const CC_BANK_COLORS = {
-  HDFC: "30,64,175",
-  SBI: "14,165,233",
-  KOTAK: "239,68,68",
-  ICICI: "249,115,22",
-  AXIS: "168,85,247",
-};
-
 function renderCCMaster(rows) {
   const container = document.getElementById("ccMasterBody");
-  if (!rows || !rows.length) {
+  if (!rows || rows.length === 0) {
     container.innerHTML = `<p style="text-align:center;color:var(--muted);padding:30px;">No entries in CC sheet</p>`;
     return;
   }
-  container.innerHTML = `
-    <div class="cc-master-toolbar">
-      <div class="cc-master-search-wrap">
-        <span class="cc-master-search-icon">⌕</span>
-        <input id="ccMasterSearch" class="cc-master-search" type="search"
-          placeholder="Search bank, card name, number, expiry…" autocomplete="off"
-          oninput="filterCCMaster(this.value)" />
-        <button type="button" class="cc-master-search-clear" onclick="clearCCMasterSearch()" title="Clear search" aria-label="Clear search">×</button>
-      </div>
-      <div id="ccMasterSearchCount" class="cc-master-search-count">${rows.length} card${rows.length === 1 ? "" : "s"}</div>
-    </div>
-    <div class="cc-card-grid">${rows
-      .map((row) => {
-        const bank = String(row[0] || "").trim(),
-          name = row[1] || "—";
-        const numRaw = String(row[2] || "").replace(/\s+/g, "");
-        const numFmt = (numRaw.match(/.{1,4}/g) || []).join(" ");
-        const numCvv = String(row[3] || "");
-        const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
-        const exp = formatExpDate(row[4]);
-        const bc = CC_BANK_COLORS[bank.toUpperCase()] || "34,211,238";
-        const copy = `${bank} ${name}\nCard: ${numFmt}\nExp: ${exp}\nCVV: ${cvv || "—"}`;
-        const searchText =
-          `${bank} ${name} ${numRaw} ${numFmt} ${exp} ${cvv}`.toLowerCase();
-        return `<div class="cc-card-item" data-cc-search="${esc(searchText)}" style="--bc:${bc}">
+  const cards = rows
+    .map((row) => {
+      const bank = row[0] || "";
+      const name = row[1] || "—";
+      const numRaw = (row[2] || "").toString().replace(/\s+/g, "");
+      const numCvv = row[3] || "";
+      const expDate = formatExpDate(row[4]);
+      const numFmt = numRaw.match(/.{1,4}/g)
+        ? numRaw.match(/.{1,4}/g).join("  ")
+        : numRaw;
+      const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
+      return `
+      <div class="cc-card-item">
         <div class="cc-card-top">
-          <div>${bank ? `<span class="cc-bank-badge">${esc(bank)}</span>` : ""}
-            <div class="cc-card-name" style="margin-top:8px">${esc(name)}</div></div>
-          <button type="button" class="cc-copy-btn" data-copy="${encodeURIComponent(copy)}" onclick="copyCC(this)" title="Copy all details">⧉ Copy</button>
+          <div>
+            ${bank ? `<span class="cc-bank-badge">${bank}</span>` : ""}
+            <div class="cc-card-name" style="margin-top:6px">${name}</div>
+          </div>
+          <div class="cc-exp">${expDate}</div>
         </div>
-        <div class="cc-chip"></div>
-        <div class="cc-num">${esc(numFmt)}</div>
+        <div class="cc-num">${numFmt}</div>
         <div class="cc-card-bottom">
-          <div><div class="cc-cvv-label">CVV</div><div class="cc-cvv">${esc(cvv || "—")}</div></div>
-          <div style="text-align:right"><div class="cc-cvv-label">Valid Thru</div><div class="cc-exp">${esc(exp)}</div></div>
-        </div></div>`;
-      })
-      .join("")}</div>`;
-}
-
-function filterCCMaster(query) {
-  const q = String(query || "")
-    .trim()
-    .toLowerCase();
-  const cards = document.querySelectorAll("#ccMasterBody .cc-card-item");
-  let visible = 0;
-  cards.forEach((card) => {
-    const match = !q || String(card.dataset.ccSearch || "").includes(q);
-    card.style.display = match ? "" : "none";
-    if (match) visible++;
-  });
-  const count = document.getElementById("ccMasterSearchCount");
-  if (count)
-    count.textContent = `${visible} card${visible === 1 ? "" : "s"}${q ? " found" : ""}`;
-}
-
-function clearCCMasterSearch() {
-  const input = document.getElementById("ccMasterSearch");
-  if (!input) return;
-  input.value = "";
-  filterCCMaster("");
-  input.focus();
-}
-
-async function copyCC(btn) {
-  const text = decodeURIComponent(btn.dataset.copy);
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch (_) {
-    const t = document.createElement("textarea");
-    t.value = text;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand("copy");
-    t.remove();
-  }
-  btn.textContent = "✓ Copied";
-  btn.classList.add("done");
-  setTimeout(() => {
-    btn.textContent = "⧉ Copy";
-    btn.classList.remove("done");
-  }, 1500);
+          <div>
+            <div class="cc-cvv-label">CVV</div>
+            <div class="cc-cvv">${cvv || "—"}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="cc-cvv-label">Full Number</div>
+            <div class="cc-full-num">${numRaw}</div>
+          </div>
+        </div>
+      </div>`;
+    })
+    .join("");
+  container.innerHTML = `<div class="cc-card-grid">${cards}</div>`;
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -1890,15 +1877,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   // CC Master wiring
   on("themeToggleBtn", "click", toggleTheme);
   on("ccMasterBtn", "click", openCCMaster);
-  const ccMasterBtn = document.getElementById("ccMasterBtn");
-  if (ccMasterBtn) {
-    ccMasterBtn.addEventListener("pointerenter", prefetchCCMaster, {
-      once: true,
-    });
-    ccMasterBtn.addEventListener("pointerdown", prefetchCCMaster, {
-      once: true,
-    });
-  }
   on("closeCCMasterBtn", "click", () => {
     document.getElementById("ccMasterModal").style.display = "none";
     // Clear table for security — data only shown while modal is open
@@ -2754,10 +2732,13 @@ function renderGrvCC() {
     cc.appendChild(cb);
     tr.insertCell(1).textContent = formatDisplayDate(t.txnDate);
     const cardCell = tr.insertCell(2);
-    cardCell.innerHTML = `<span style="background:#1c1c28;padding:2px 6px;border-radius:20px;font-size:.68rem">${esc(t.card)}</span>`;
-    tr.insertCell(3).textContent = t.description || "—";
-    tr.insertCell(4).textContent = t.remarks || "—";
-    tr.insertCell(5).textContent = money(t.amount);
+    cardCell.innerHTML = `<span class="table-data-pill table-card-pill grv-card-tone-${getCardTone(t.card)}">${esc(t.card)}</span>`;
+    tr.insertCell(3).innerHTML =
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
+    tr.insertCell(4).innerHTML =
+      `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
+    tr.insertCell(5).innerHTML =
+      `<span class="table-data-pill table-amount-pill table-negative-pill">${money(t.amount)}</span>`;
     const sc = tr.insertCell(6),
       status = String(t.status || "UNPAID").toUpperCase();
     if (status === "OWED" || status === "SETTLED") {
@@ -3100,9 +3081,7 @@ function setGrvStatementMatch(card, value) {
   const cfg = cardConfig.find((c) => c.card === card);
   const ref = grvBillsRef || new Date();
   const cycle = cfg ? getCardCycle(cfg, ref).last : null;
-  const key = cycle
-    ? `${card}|${cycle.billingYear}-${cycle.billingMonth + 1}`
-    : card;
+  const key = cycle ? `${card}|${cycle.billingYear}-${cycle.billingMonth + 1}` : card;
   if (!Number.isFinite(n)) {
     delete grvStatementMatches[key];
   } else {
@@ -3214,46 +3193,22 @@ async function saveGrvBillPayment() {
   const cfg = cardConfig.find((c) => c.card === card),
     cycle = cfg ? getCardCycle(cfg, grvBillsRef || new Date()).last : null,
     ids = (() => {
-      try {
-        return JSON.parse(modal.dataset.ids || "[]");
-      } catch (_) {
-        return [];
-      }
+      try { return JSON.parse(modal.dataset.ids || "[]"); } catch (_) { return []; }
     })();
   if (cycle && cycle.end >= new Date(new Date().setHours(0, 0, 0, 0)))
-    return toast(
-      `This statement has not closed yet. Payment is available after ${cycle.end.getDate()} ${MONTHS[cycle.end.getMonth()]} ${cycle.end.getFullYear()}.`,
-      true,
-      6000,
-    );
+    return toast(`This statement has not closed yet. Payment is available after ${cycle.end.getDate()} ${MONTHS[cycle.end.getMonth()]} ${cycle.end.getFullYear()}.`, true, 6000);
   const selectedRows = ids
-      .map((id) => cardTxns.find((t) => String(t.id) === String(id)))
-      .filter(Boolean),
-    unpaidRows = selectedRows.filter(
-      (t) => String(t.status || "").toUpperCase() === "UNPAID",
-    ),
+    .map((id) => cardTxns.find((t) => String(t.id) === String(id)))
+    .filter(Boolean),
+    unpaidRows = selectedRows.filter((t) => String(t.status || "").toUpperCase() === "UNPAID"),
     unpaidTotal = unpaidRows.reduce((sum, t) => sum + (+t.amount || 0), 0),
-    statementMatch =
-      grvStatementMatches[
-        `${card}|${cycle ? `${cycle.billingYear}-${cycle.billingMonth + 1}` : ""}`
-      ];
+    statementMatch = grvStatementMatches[`${card}|${cycle ? `${cycle.billingYear}-${cycle.billingMonth + 1}` : ""}`];
   if (!ids.length || !unpaidRows.length)
     return toast("No UNPAID transactions found for this statement", true);
   if (Math.abs(unpaidTotal - total) >= 0.01)
-    return toast(
-      "Statement data changed. Refresh Bills and try again.",
-      true,
-      6000,
-    );
-  if (
-    statementMatch == null ||
-    Math.abs((+statementMatch || 0) - total) >= 0.01
-  )
-    return toast(
-      "Enter the actual bank bill and make sure it matches the statement total before paying.",
-      true,
-      6000,
-    );
+    return toast("Statement data changed. Refresh Bills and try again.", true, 6000);
+  if (statementMatch == null || Math.abs((+statementMatch || 0) - total) >= 0.01)
+    return toast("Enter the actual bank bill and make sure it matches the statement total before paying.", true, 6000);
   window.__grvActionBusy = true;
   const saveBtn = document.getElementById("saveGrvBillPaymentBtn");
   if (saveBtn) {
@@ -3348,16 +3303,10 @@ function initGrvBillsPicker() {
   const years = cardTxns
     .map((t) => +String(t.txnDate || "").slice(0, 4))
     .filter(Boolean);
-  const minY = Math.min(
-    now.getFullYear(),
-    ...(years.length ? years : [now.getFullYear()]),
-  );
-  mSel.innerHTML = FULL_MONTHS.map(
-    (m, i) => `<option value="${i}">${m}</option>`,
-  ).join("");
+  const minY = Math.min(now.getFullYear(), ...(years.length ? years : [now.getFullYear()]));
+  mSel.innerHTML = FULL_MONTHS.map((m, i) => `<option value="${i}">${m}</option>`).join("");
   ySel.innerHTML = "";
-  for (let y = now.getFullYear() + 1; y >= minY; y--)
-    ySel.add(new Option(y, y));
+  for (let y = now.getFullYear() + 1; y >= minY; y--) ySel.add(new Option(y, y));
   syncGrvBillsPicker();
 }
 
@@ -3383,16 +3332,12 @@ async function loadGrvBillsMonthData() {
       d <= c.end;
       d = new Date(d.getFullYear(), d.getMonth() + 1, 1)
     ) {
-      prefixes.add(
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-      );
+      prefixes.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
     }
   });
   if (!prefixes.size) return;
   const res = await fetch(
-    apiUrl(
-      `action=getCardsByTxnMonth&txnMonth=${enc([...prefixes].join(","))}`,
-    ),
+    apiUrl(`action=getCardsByTxnMonth&txnMonth=${enc([...prefixes].join(","))}`),
   ).then((r) => r.json());
   if (!Array.isArray(res)) return;
   const fresh = res
@@ -3415,9 +3360,7 @@ async function loadGrvBillsMonthData() {
 
 async function setGrvBillsMonth() {
   const m = +(document.getElementById("grvBillsMonth")?.value ?? 0);
-  const y = +(
-    document.getElementById("grvBillsYear")?.value ?? new Date().getFullYear()
-  );
+  const y = +(document.getElementById("grvBillsYear")?.value ?? new Date().getFullYear());
   // getCardCycle(ref).last is the month immediately before ref, so use first day of next month.
   grvBillsRef = new Date(y, m + 1, 1);
   renderGrvBills();
@@ -3462,10 +3405,7 @@ function renderGrvBills() {
         due,
         lastTotal: lastRows.reduce((a, t) => a + (+t.amount || 0), 0),
         openTotal: openRows.reduce((a, t) => a + (+t.amount || 0), 0),
-        statementMatch:
-          grvStatementMatches[
-            `${cfg.card}|${cycles.last.billingYear}-${cycles.last.billingMonth + 1}`
-          ],
+        statementMatch: grvStatementMatches[`${cfg.card}|${cycles.last.billingYear}-${cycles.last.billingMonth + 1}`],
       };
     })
     .sort((a, b) => {
@@ -3495,9 +3435,7 @@ function renderGrvBills() {
   document.getElementById("grvBillsTotalPay").textContent = money(totalPay);
   document.getElementById("grvBillsNearestDue").textContent = nearest
     ? `${nearest.cfg.card} · ${nearest.due.date.getDate()} ${MONTHS[nearest.due.date.getMonth()]} ${nearest.due.date.getFullYear()}`
-    : totalPay
-      ? "No due date configured"
-      : "Nothing due";
+    : totalPay ? "No due date configured" : "Nothing due";
   grid.innerHTML =
     cards
       .map((c) => {
@@ -3945,16 +3883,16 @@ function renderSweetie() {
     typeCell.innerHTML = `<span class="status-badge ${typeBadgeClass}">${t.type === "CREDIT" ? "↑ " : t.type === "DEBIT" ? "↓ " : "• "}${t.type}</span>`;
 
     const amtCell = tr.insertCell(2);
-    amtCell.textContent = `${sign}${money(Math.abs(t.amount))}`;
-    amtCell.style.color = isDebit ? "var(--danger)" : "var(--green)";
-    amtCell.style.fontWeight = "600";
+    amtCell.innerHTML = `<span class="table-data-pill table-amount-pill ${isDebit ? "table-negative-pill" : "table-positive-pill"}">${sign}${money(Math.abs(t.amount))}</span>`;
+    amtCell.className = isDebit ? "txn-amount txn-amount-out" : "txn-amount txn-amount-in";
 
     const remCell = tr.insertCell(3);
     remCell.textContent = money(remaining);
     remCell.style.color = "var(--accent)";
     remCell.style.fontWeight = "500";
 
-    tr.insertCell(4).textContent = t.description || "—";
+    tr.insertCell(4).innerHTML =
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
 
     const actCell = tr.insertCell(5);
     actCell.style.whiteSpace = "nowrap";
