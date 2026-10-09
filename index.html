@@ -27,6 +27,7 @@
 
     <!-- Premium animation layer — purely additive, adds no new functionality -->
     <link rel="stylesheet" href="animation.css">
+    <link rel="stylesheet" href="dropdown.css">
     <style>
         *,
         *::before,
@@ -2601,6 +2602,74 @@
         }
 
 </style>
+
+<style id="mobile-topbar-fix">
+/* Mobile topbar fix: keep brand first and controls in a clean grid.
+   Does not change tabs, tables, data, or application logic. */
+@media (max-width: 600px) {
+  .topbar {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .topbar .brand {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: flex-start !important;
+  }
+
+  .topbar .controls {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    align-items: center !important;
+  }
+
+  .topbar .month-picker,
+  .topbar .controls > .btn-summary,
+  .topbar #versionBtn {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .topbar .month-picker {
+    justify-content: center !important;
+    padding: 2px 4px !important;
+  }
+
+  .topbar .month-picker select {
+    min-width: 0 !important;
+    width: 50% !important;
+    padding: 7px 5px !important;
+    text-align: center !important;
+  }
+
+  .topbar .btn-summary {
+    padding: 7px 5px !important;
+    font-size: .72rem !important;
+    white-space: nowrap !important;
+  }
+
+  .topbar #themeToggleBtn {
+    grid-column: 1 !important;
+  }
+
+  .topbar #versionBtn {
+    grid-column: 2 !important;
+    justify-self: start !important;
+    width: 34px !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
@@ -3325,6 +3394,7 @@
     <!-- Premium animation layer — wraps existing functions for transitions,
          changes no business logic. Must load AFTER script.js. -->
     <script src="animation.js"></script>
+    <script src="dropdown.js"></script>
 
 <style id="mobile-card-summary-compact">
 @media (max-width: 600px) {
