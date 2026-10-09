@@ -24,7 +24,7 @@ git status
 git diff --check
 git add .
 git diff --cached --check
-git commit -m "Add GRV CC bills dashboard"
+git commit -m "MOBILE UI FIXED"
 git pull --rebase origin main
 git push origin main
 ```
