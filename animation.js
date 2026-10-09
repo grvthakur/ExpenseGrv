@@ -414,32 +414,25 @@
     if (REDUCE_MOTION) return;
 
     document.querySelectorAll(".modal").forEach((modal) => {
-      let closing = false;
-
+      // Animate only opening. Closing is left to the existing app logic so
+      // the modal/backdrop never gets forced visible for a frame, which can
+      // cause a black/dark flash when the close button is clicked.
       const observer = new MutationObserver(() => {
         const isHidden = modal.style.display === "none";
-
-        if (isHidden && !closing) {
-          // Intercept the close: script.js just hid it — briefly show it
-          // again so we can play a graceful exit animation, then hide
-          // it ourselves once the animation finishes.
-          closing = true;
-          modal.style.display = "flex";
-          modal.classList.remove("modal-opening", "modal-opening-active");
-          modal.classList.add("modal-closing");
-          nextFrame(() => modal.classList.add("modal-closing-active"));
-
-          setTimeout(() => {
-            modal.style.display = "none";
-            modal.classList.remove("modal-closing", "modal-closing-active");
-            closing = false;
-          }, 260);
-        } else if (!isHidden && !closing) {
-          modal.classList.remove("modal-closing", "modal-closing-active");
-          modal.classList.add("modal-opening");
-          nextFrame(() => modal.classList.add("modal-opening-active"));
-          setTimeout(() => modal.classList.remove("modal-opening"), 300);
+        if (isHidden) {
+          modal.classList.remove(
+            "modal-opening",
+            "modal-opening-active",
+            "modal-closing",
+            "modal-closing-active",
+          );
+          return;
         }
+
+        modal.classList.remove("modal-closing", "modal-closing-active");
+        modal.classList.add("modal-opening");
+        nextFrame(() => modal.classList.add("modal-opening-active"));
+        setTimeout(() => modal.classList.remove("modal-opening"), 300);
       });
 
       observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
