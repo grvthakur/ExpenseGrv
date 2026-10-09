@@ -24,7 +24,7 @@ git status
 git diff --check
 git add .
 git diff --cached --check
-git commit -m "MOBILE UI FIXED"
+git commit -m "COLOR FIX"
 git pull --rebase origin main
 git push origin main
 ```
