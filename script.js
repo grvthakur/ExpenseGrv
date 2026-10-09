@@ -1,6 +1,6 @@
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE =
-  "https://script.google.com/macros/s/AKfycbz_wFrDPZ9zA-bHoxRIrszHZV9zU-lpI7ME2EE_5x6jzbxn7dZ3FmLLaxcfpo2C-552/exec";
+  "https://script.google.com/macros/s/AKfycbzTKzVnMAMNFsZqHtatSTQfW2fTEPUqD-77X3F9JYVk-ex8Jz5NAzzypEPrildP9QTU/exec";
 
 function apiUrl(params) {
   return `${API_BASE}?${params}&_=${Date.now()}`;
@@ -1517,12 +1517,14 @@ async function openCCMaster() {
   if (!modal || !container) return;
 
   modal.style.display = "flex";
-  container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
+  container.innerHTML =
+    '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
     const res = await fetch(apiUrl("action=getCCMaster"));
     const data = await res.json();
-    if (!Array.isArray(data)) throw new Error(data.error || "Unable to load CC Master");
+    if (!Array.isArray(data))
+      throw new Error(data.error || "Unable to load CC Master");
     renderCCMaster(data);
   } catch (err) {
     container.innerHTML = `<div style="text-align:center;color:var(--danger);padding:30px;">⚠️ ${esc(err.message || "Could not load CC Master")}</div>`;
@@ -3014,7 +3016,9 @@ function setGrvStatementMatch(card, value) {
   const cfg = cardConfig.find((c) => c.card === card);
   const ref = grvBillsRef || new Date();
   const cycle = cfg ? getCardCycle(cfg, ref).last : null;
-  const key = cycle ? `${card}|${cycle.billingYear}-${cycle.billingMonth + 1}` : card;
+  const key = cycle
+    ? `${card}|${cycle.billingYear}-${cycle.billingMonth + 1}`
+    : card;
   if (!Number.isFinite(n)) {
     delete grvStatementMatches[key];
   } else {
@@ -3126,22 +3130,46 @@ async function saveGrvBillPayment() {
   const cfg = cardConfig.find((c) => c.card === card),
     cycle = cfg ? getCardCycle(cfg, grvBillsRef || new Date()).last : null,
     ids = (() => {
-      try { return JSON.parse(modal.dataset.ids || "[]"); } catch (_) { return []; }
+      try {
+        return JSON.parse(modal.dataset.ids || "[]");
+      } catch (_) {
+        return [];
+      }
     })();
   if (cycle && cycle.end >= new Date(new Date().setHours(0, 0, 0, 0)))
-    return toast(`This statement has not closed yet. Payment is available after ${cycle.end.getDate()} ${MONTHS[cycle.end.getMonth()]} ${cycle.end.getFullYear()}.`, true, 6000);
+    return toast(
+      `This statement has not closed yet. Payment is available after ${cycle.end.getDate()} ${MONTHS[cycle.end.getMonth()]} ${cycle.end.getFullYear()}.`,
+      true,
+      6000,
+    );
   const selectedRows = ids
-    .map((id) => cardTxns.find((t) => String(t.id) === String(id)))
-    .filter(Boolean),
-    unpaidRows = selectedRows.filter((t) => String(t.status || "").toUpperCase() === "UNPAID"),
+      .map((id) => cardTxns.find((t) => String(t.id) === String(id)))
+      .filter(Boolean),
+    unpaidRows = selectedRows.filter(
+      (t) => String(t.status || "").toUpperCase() === "UNPAID",
+    ),
     unpaidTotal = unpaidRows.reduce((sum, t) => sum + (+t.amount || 0), 0),
-    statementMatch = grvStatementMatches[`${card}|${cycle ? `${cycle.billingYear}-${cycle.billingMonth + 1}` : ""}`];
+    statementMatch =
+      grvStatementMatches[
+        `${card}|${cycle ? `${cycle.billingYear}-${cycle.billingMonth + 1}` : ""}`
+      ];
   if (!ids.length || !unpaidRows.length)
     return toast("No UNPAID transactions found for this statement", true);
   if (Math.abs(unpaidTotal - total) >= 0.01)
-    return toast("Statement data changed. Refresh Bills and try again.", true, 6000);
-  if (statementMatch == null || Math.abs((+statementMatch || 0) - total) >= 0.01)
-    return toast("Enter the actual bank bill and make sure it matches the statement total before paying.", true, 6000);
+    return toast(
+      "Statement data changed. Refresh Bills and try again.",
+      true,
+      6000,
+    );
+  if (
+    statementMatch == null ||
+    Math.abs((+statementMatch || 0) - total) >= 0.01
+  )
+    return toast(
+      "Enter the actual bank bill and make sure it matches the statement total before paying.",
+      true,
+      6000,
+    );
   window.__grvActionBusy = true;
   const saveBtn = document.getElementById("saveGrvBillPaymentBtn");
   if (saveBtn) {
@@ -3236,10 +3264,16 @@ function initGrvBillsPicker() {
   const years = cardTxns
     .map((t) => +String(t.txnDate || "").slice(0, 4))
     .filter(Boolean);
-  const minY = Math.min(now.getFullYear(), ...(years.length ? years : [now.getFullYear()]));
-  mSel.innerHTML = FULL_MONTHS.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+  const minY = Math.min(
+    now.getFullYear(),
+    ...(years.length ? years : [now.getFullYear()]),
+  );
+  mSel.innerHTML = FULL_MONTHS.map(
+    (m, i) => `<option value="${i}">${m}</option>`,
+  ).join("");
   ySel.innerHTML = "";
-  for (let y = now.getFullYear() + 1; y >= minY; y--) ySel.add(new Option(y, y));
+  for (let y = now.getFullYear() + 1; y >= minY; y--)
+    ySel.add(new Option(y, y));
   syncGrvBillsPicker();
 }
 
@@ -3265,12 +3299,16 @@ async function loadGrvBillsMonthData() {
       d <= c.end;
       d = new Date(d.getFullYear(), d.getMonth() + 1, 1)
     ) {
-      prefixes.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      prefixes.add(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      );
     }
   });
   if (!prefixes.size) return;
   const res = await fetch(
-    apiUrl(`action=getCardsByTxnMonth&txnMonth=${enc([...prefixes].join(","))}`),
+    apiUrl(
+      `action=getCardsByTxnMonth&txnMonth=${enc([...prefixes].join(","))}`,
+    ),
   ).then((r) => r.json());
   if (!Array.isArray(res)) return;
   const fresh = res
@@ -3293,7 +3331,9 @@ async function loadGrvBillsMonthData() {
 
 async function setGrvBillsMonth() {
   const m = +(document.getElementById("grvBillsMonth")?.value ?? 0);
-  const y = +(document.getElementById("grvBillsYear")?.value ?? new Date().getFullYear());
+  const y = +(
+    document.getElementById("grvBillsYear")?.value ?? new Date().getFullYear()
+  );
   // getCardCycle(ref).last is the month immediately before ref, so use first day of next month.
   grvBillsRef = new Date(y, m + 1, 1);
   renderGrvBills();
@@ -3314,7 +3354,9 @@ function resetGrvBillsMonth() {
   grvBillsRef = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   syncGrvBillsPicker();
   renderGrvBills();
-  loadGrvBillsMonthData().then(() => renderGrvBills()).catch(() => {});
+  loadGrvBillsMonthData()
+    .then(() => renderGrvBills())
+    .catch(() => {});
 }
 
 function renderGrvBills() {
@@ -3344,7 +3386,10 @@ function renderGrvBills() {
         due,
         lastTotal: lastRows.reduce((a, t) => a + (+t.amount || 0), 0),
         openTotal: openRows.reduce((a, t) => a + (+t.amount || 0), 0),
-        statementMatch: grvStatementMatches[`${cfg.card}|${cycles.last.billingYear}-${cycles.last.billingMonth + 1}`],
+        statementMatch:
+          grvStatementMatches[
+            `${cfg.card}|${cycles.last.billingYear}-${cycles.last.billingMonth + 1}`
+          ],
       };
     })
     .sort((a, b) => {
@@ -3374,7 +3419,9 @@ function renderGrvBills() {
   document.getElementById("grvBillsTotalPay").textContent = money(totalPay);
   document.getElementById("grvBillsNearestDue").textContent = nearest
     ? `${nearest.cfg.card} · ${nearest.due.date.getDate()} ${MONTHS[nearest.due.date.getMonth()]} ${nearest.due.date.getFullYear()}`
-    : totalPay ? "No due date configured" : "Nothing due";
+    : totalPay
+      ? "No due date configured"
+      : "Nothing due";
   grid.innerHTML =
     cards
       .map((c) => {
