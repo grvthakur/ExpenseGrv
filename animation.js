@@ -414,45 +414,35 @@
     if (REDUCE_MOTION) return;
 
     document.querySelectorAll(".modal").forEach((modal) => {
-      // IMPORTANT: never force a modal back to display:flex after the app
-      // closes it. The previous implementation briefly re-opened hidden
-      // modals to animate the exit, which could race with the app's body
-      // scroll-lock and cause a visible flicker/flash on close.
-      //
-      // We keep the smooth opening animation, but let script.js own the
-      // actual close (display:none). This is intentionally presentation-only
-      // and does not touch any business logic or API calls.
-      let wasVisible = modal.style.display !== "none";
+      let closing = false;
 
       const observer = new MutationObserver(() => {
-        const isVisible = modal.style.display !== "none";
+        const isHidden = modal.style.display === "none";
 
-        if (!isVisible) {
-          modal.classList.remove(
-            "modal-opening",
-            "modal-opening-active",
-            "modal-closing",
-            "modal-closing-active",
-          );
-          wasVisible = false;
-          return;
-        }
+        if (isHidden && !closing) {
+          // Intercept the close: script.js just hid it — briefly show it
+          // again so we can play a graceful exit animation, then hide
+          // it ourselves once the animation finishes.
+          closing = true;
+          modal.style.display = "flex";
+          modal.classList.remove("modal-opening", "modal-opening-active");
+          modal.classList.add("modal-closing");
+          nextFrame(() => modal.classList.add("modal-closing-active"));
 
-        if (!wasVisible) {
-          wasVisible = true;
+          setTimeout(() => {
+            modal.style.display = "none";
+            modal.classList.remove("modal-closing", "modal-closing-active");
+            closing = false;
+          }, 260);
+        } else if (!isHidden && !closing) {
           modal.classList.remove("modal-closing", "modal-closing-active");
           modal.classList.add("modal-opening");
           nextFrame(() => modal.classList.add("modal-opening-active"));
-          setTimeout(() => {
-            modal.classList.remove("modal-opening", "modal-opening-active");
-          }, 320);
+          setTimeout(() => modal.classList.remove("modal-opening"), 300);
         }
       });
 
-      observer.observe(modal, {
-        attributes: true,
-        attributeFilter: ["style"],
-      });
+      observer.observe(modal, { attributes: true, attributeFilter: ["style"] });
     });
   }
 
