@@ -1549,47 +1549,102 @@ function formatExpDate(val) {
   return s;
 }
 
+const CC_BANK_COLORS = {
+  HDFC: "30,64,175",
+  SBI: "14,165,233",
+  KOTAK: "239,68,68",
+  ICICI: "249,115,22",
+  AXIS: "168,85,247",
+};
+
 function renderCCMaster(rows) {
   const container = document.getElementById("ccMasterBody");
-  if (!rows || rows.length === 0) {
+  if (!rows || !rows.length) {
     container.innerHTML = `<p style="text-align:center;color:var(--muted);padding:30px;">No entries in CC sheet</p>`;
     return;
   }
-  const cards = rows
-    .map((row) => {
-      const bank = row[0] || "";
-      const name = row[1] || "—";
-      const numRaw = (row[2] || "").toString().replace(/\s+/g, "");
-      const numCvv = row[3] || "";
-      const expDate = formatExpDate(row[4]);
-      const numFmt = numRaw.match(/.{1,4}/g)
-        ? numRaw.match(/.{1,4}/g).join("  ")
-        : numRaw;
-      const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
-      return `
-      <div class="cc-card-item">
+  container.innerHTML = `
+    <div class="cc-master-toolbar">
+      <div class="cc-master-search-wrap">
+        <span class="cc-master-search-icon">⌕</span>
+        <input id="ccMasterSearch" class="cc-master-search" type="search"
+          placeholder="Search bank, card name, number, expiry…" autocomplete="off"
+          oninput="filterCCMaster(this.value)" />
+        <button type="button" class="cc-master-search-clear" onclick="clearCCMasterSearch()" title="Clear search" aria-label="Clear search">×</button>
+      </div>
+      <div id="ccMasterSearchCount" class="cc-master-search-count">${rows.length} card${rows.length === 1 ? "" : "s"}</div>
+    </div>
+    <div class="cc-card-grid">${rows
+      .map((row) => {
+        const bank = String(row[0] || "").trim(),
+          name = row[1] || "—";
+        const numRaw = String(row[2] || "").replace(/\s+/g, "");
+        const numFmt = (numRaw.match(/.{1,4}/g) || []).join(" ");
+        const numCvv = String(row[3] || "");
+        const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
+        const exp = formatExpDate(row[4]);
+        const bc = CC_BANK_COLORS[bank.toUpperCase()] || "34,211,238";
+        const copy = `${bank} ${name}\nCard: ${numFmt}\nExp: ${exp}\nCVV: ${cvv || "—"}`;
+        const searchText =
+          `${bank} ${name} ${numRaw} ${numFmt} ${exp} ${cvv}`.toLowerCase();
+        return `<div class="cc-card-item" data-cc-search="${esc(searchText)}" style="--bc:${bc}">
         <div class="cc-card-top">
-          <div>
-            ${bank ? `<span class="cc-bank-badge">${bank}</span>` : ""}
-            <div class="cc-card-name" style="margin-top:6px">${name}</div>
-          </div>
-          <div class="cc-exp">${expDate}</div>
+          <div>${bank ? `<span class="cc-bank-badge">${esc(bank)}</span>` : ""}
+            <div class="cc-card-name" style="margin-top:8px">${esc(name)}</div></div>
+          <button type="button" class="cc-copy-btn" data-copy="${encodeURIComponent(copy)}" onclick="copyCC(this)" title="Copy all details">⧉ Copy</button>
         </div>
-        <div class="cc-num">${numFmt}</div>
+        <div class="cc-chip"></div>
+        <div class="cc-num">${esc(numFmt)}</div>
         <div class="cc-card-bottom">
-          <div>
-            <div class="cc-cvv-label">CVV</div>
-            <div class="cc-cvv">${cvv || "—"}</div>
-          </div>
-          <div style="text-align:right">
-            <div class="cc-cvv-label">Full Number</div>
-            <div class="cc-full-num">${numRaw}</div>
-          </div>
-        </div>
-      </div>`;
-    })
-    .join("");
-  container.innerHTML = `<div class="cc-card-grid">${cards}</div>`;
+          <div><div class="cc-cvv-label">CVV</div><div class="cc-cvv">${esc(cvv || "—")}</div></div>
+          <div style="text-align:right"><div class="cc-cvv-label">Valid Thru</div><div class="cc-exp">${esc(exp)}</div></div>
+        </div></div>`;
+      })
+      .join("")}</div>`;
+}
+
+function filterCCMaster(query) {
+  const q = String(query || "")
+    .trim()
+    .toLowerCase();
+  const cards = document.querySelectorAll("#ccMasterBody .cc-card-item");
+  let visible = 0;
+  cards.forEach((card) => {
+    const match = !q || String(card.dataset.ccSearch || "").includes(q);
+    card.style.display = match ? "" : "none";
+    if (match) visible++;
+  });
+  const count = document.getElementById("ccMasterSearchCount");
+  if (count)
+    count.textContent = `${visible} card${visible === 1 ? "" : "s"}${q ? " found" : ""}`;
+}
+
+function clearCCMasterSearch() {
+  const input = document.getElementById("ccMasterSearch");
+  if (!input) return;
+  input.value = "";
+  filterCCMaster("");
+  input.focus();
+}
+
+async function copyCC(btn) {
+  const text = decodeURIComponent(btn.dataset.copy);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    const t = document.createElement("textarea");
+    t.value = text;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand("copy");
+    t.remove();
+  }
+  btn.textContent = "✓ Copied";
+  btn.classList.add("done");
+  setTimeout(() => {
+    btn.textContent = "⧉ Copy";
+    btn.classList.remove("done");
+  }, 1500);
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -3346,17 +3401,9 @@ async function setGrvBillsMonth() {
 }
 
 function resetGrvBillsMonth() {
-  // "Current" means the current calendar month in the Bills picker.
-  // getCardCycle(ref).last represents the selected statement month, so
-  // use the first day of next month as the reference date.
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  grvBillsRef = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  grvBillsRef = null;
   syncGrvBillsPicker();
   renderGrvBills();
-  loadGrvBillsMonthData()
-    .then(() => renderGrvBills())
-    .catch(() => {});
 }
 
 function renderGrvBills() {
@@ -3447,13 +3494,6 @@ function renderGrvBills() {
 function openGrvBills() {
   const modal = document.getElementById("grvBillsModal");
   if (!modal) return;
-
-  // Open Bills in live/current mode by default.
-  // The picker will therefore show the current calendar month, while the
-  // existing billing-cycle logic continues to show the last closed statement
-  // plus the current open cycle.
-  grvBillsRef = null;
-
   modal.style.display = "block";
   const grid = document.getElementById("grvBillsGrid");
   if (grid)

@@ -890,6 +890,53 @@
 
         /* ── CC MASTER MODAL ── */
         /* CC Master — card grid layout */
+        /* CC Master search + premium card polish */
+        .cc-master-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 12px;
+        }
+        .cc-master-search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+        }
+        .cc-master-search {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 11px 40px 11px 36px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--s2);
+            color: var(--text);
+            outline: none;
+            font: inherit;
+        }
+        .cc-master-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+        .cc-master-search-icon {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            color: var(--muted); pointer-events: none; font-size: 1.05rem;
+        }
+        .cc-master-search-clear {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 28px; height: 28px; border: 0; border-radius: 50%;
+            background: transparent; color: var(--muted); cursor: pointer; font-size: 1.2rem;
+        }
+        .cc-master-search-clear:hover { background: var(--surface); color: var(--text); }
+        .cc-master-search-count {
+            flex: 0 0 auto; color: var(--muted); font-size: .75rem; white-space: nowrap;
+        }
+        .cc-card-item { --bc: 34,211,238; background: linear-gradient(135deg, rgba(var(--bc), .24), #16213e 72%); }
+        .cc-card-item::before { background: rgb(var(--bc)); }
+        .cc-chip { width: 42px; height: 28px; border-radius: 7px; margin: 2px 0 12px; background: linear-gradient(135deg,#f5d78e,#b88a28); box-shadow: inset 0 1px 2px rgba(255,255,255,.35); }
+        .cc-copy-btn { border: 1px solid rgba(var(--bc), .65); background: rgba(var(--bc), .16); color: #fff; border-radius: 8px; padding: 7px 9px; cursor: pointer; font-size: .72rem; }
+        .cc-copy-btn.done { background: rgba(34,197,94,.2); border-color: rgba(34,197,94,.65); }
+        @media (max-width: 600px) {
+            .cc-master-toolbar { flex-direction: column; align-items: stretch; }
+            .cc-master-search-count { text-align: right; }
+        }
+
         .cc-card-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
