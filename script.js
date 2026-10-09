@@ -1511,6 +1511,29 @@ async function syncCardsFromSheet(isManual = false) {
 // The actual password and card data never stored in browser localStorage.
 // ═══════════════════════════════════════════════════════════════════════════════
 
+let ccMasterFetchPromise = null;
+
+function fetchCCMasterData() {
+  if (ccMasterFetchPromise) return ccMasterFetchPromise;
+  ccMasterFetchPromise = fetch(apiUrl("action=getCCMaster"))
+    .then((res) => res.json())
+    .then((data) => {
+      if (!Array.isArray(data))
+        throw new Error(data.error || "Unable to load CC Master");
+      return data;
+    })
+    .finally(() => {
+      ccMasterFetchPromise = null;
+    });
+  return ccMasterFetchPromise;
+}
+
+function prefetchCCMaster() {
+  // Start the request as soon as the user points/touches the CC Master button.
+  // This keeps the first visible open fast without storing card data after close.
+  fetchCCMasterData().catch(() => {});
+}
+
 async function openCCMaster() {
   const modal = document.getElementById("ccMasterModal");
   const container = document.getElementById("ccMasterBody");
@@ -1521,10 +1544,7 @@ async function openCCMaster() {
     '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
-    const res = await fetch(apiUrl("action=getCCMaster"));
-    const data = await res.json();
-    if (!Array.isArray(data))
-      throw new Error(data.error || "Unable to load CC Master");
+    const data = await fetchCCMasterData();
     renderCCMaster(data);
   } catch (err) {
     container.innerHTML = `<div style="text-align:center;color:var(--danger);padding:30px;">⚠️ ${esc(err.message || "Could not load CC Master")}</div>`;
@@ -1870,6 +1890,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   // CC Master wiring
   on("themeToggleBtn", "click", toggleTheme);
   on("ccMasterBtn", "click", openCCMaster);
+  const ccMasterBtn = document.getElementById("ccMasterBtn");
+  if (ccMasterBtn) {
+    ccMasterBtn.addEventListener("pointerenter", prefetchCCMaster, {
+      once: true,
+    });
+    ccMasterBtn.addEventListener("pointerdown", prefetchCCMaster, {
+      once: true,
+    });
+  }
   on("closeCCMasterBtn", "click", () => {
     document.getElementById("ccMasterModal").style.display = "none";
     // Clear table for security — data only shown while modal is open
