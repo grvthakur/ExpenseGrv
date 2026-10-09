@@ -1514,13 +1514,7 @@
                 vertical-align: top;
             }
 
-            /* Hide lower-value columns on phones; desktop stays unchanged. */
-            #grvCardTable th:nth-child(5),
-            #grvCardTable td:nth-child(5),
-            #grvCardTable th:nth-child(8),
-            #grvCardTable td:nth-child(8) {
-                display: none;
-            }
+            /* GRV CC columns remain available; the table scrolls horizontally on phones. */
 
             /* Checkbox stays compact and top-left. */
             #grvCardTable th:nth-child(1),
@@ -2603,69 +2597,86 @@
 
 </style>
 
-<style id="mobile-topbar-fix">
-/* Mobile topbar fix: keep brand first and controls in a clean grid.
-   Does not change tabs, tables, data, or application logic. */
+
+
+<style id="mobile-topbar-fix-v2">
+/* MOBILE TOPBAR V2 — restore a natural, visible header. Mobile-only. */
 @media (max-width: 600px) {
   .topbar {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    align-items: center !important;
-    gap: 10px !important;
-    padding: 10px 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
     width: 100% !important;
-    box-sizing: border-box !important;
+    min-height: auto !important;
+    padding: 10px 12px !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
   }
 
   .topbar .brand {
+    display: flex !important;
     width: 100% !important;
-    min-width: 0 !important;
+    min-height: 34px !important;
+    align-items: center !important;
     justify-content: flex-start !important;
+    order: 1 !important;
+    flex: 0 0 auto !important;
+  }
+
+  .topbar .brand-icon {
+    display: inline-block !important;
+    font-size: 1.25rem !important;
+  }
+
+  .topbar .brand-name {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 1.12rem !important;
+    line-height: 1.1 !important;
   }
 
   .topbar .controls {
+    display: flex !important;
     width: 100% !important;
     min-width: 0 !important;
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 7px !important;
     align-items: center !important;
-  }
-
-  .topbar .month-picker,
-  .topbar .controls > .btn-summary,
-  .topbar #versionBtn {
-    min-width: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    order: 2 !important;
   }
 
   .topbar .month-picker {
+    flex: 1 1 118px !important;
+    min-width: 118px !important;
+    width: auto !important;
     justify-content: center !important;
-    padding: 2px 4px !important;
   }
 
   .topbar .month-picker select {
     min-width: 0 !important;
-    width: 50% !important;
-    padding: 7px 5px !important;
-    text-align: center !important;
+    padding: 7px 8px !important;
+    font-size: .82rem !important;
   }
 
-  .topbar .btn-summary {
-    padding: 7px 5px !important;
-    font-size: .72rem !important;
+  .topbar .controls > .btn-summary {
+    flex: 0 1 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 7px 9px !important;
+    font-size: .70rem !important;
     white-space: nowrap !important;
   }
 
-  .topbar #themeToggleBtn {
-    grid-column: 1 !important;
-  }
-
   .topbar #versionBtn {
-    grid-column: 2 !important;
-    justify-self: start !important;
-    width: 34px !important;
+    width: 30px !important;
+    height: 30px !important;
+    flex: 0 0 30px !important;
   }
 }
 </style>
@@ -2832,7 +2843,7 @@
                             </div>
                         </div>
                     </div>
-                    <div style="max-height:620px;overflow-y:auto;">
+                    <div class="expense-table-scroll" style="max-height:620px;overflow-y:auto;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;">
                         <table class="expense-table" id="expenseTable">
                             <thead>
                                 <tr>
@@ -3466,38 +3477,55 @@
 /* MOBILE TABLE POLISH v2 — final, presentation-only fixes.
    Do not change data/JS behavior. */
 @media (max-width: 600px) {
-  /* ── GRV CC: Remarks must wrap consistently on every row ── */
-  #grvCardTable th:nth-child(5),
-  #grvCardTable td:nth-child(5) {
-    white-space: normal !important;
-    word-break: normal !important;
-    overflow-wrap: anywhere !important;
-    min-width: 150px !important;
-    width: 180px !important;
-    max-width: 180px !important;
-    line-height: 1.3 !important;
-    vertical-align: top !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
+  /* ── GRV CC: keep columns readable and aligned on phones ── */
+  #grvCCSection .grv-table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100% !important;
   }
-
-  /* Description gets the same predictable multi-line behavior. */
+  #grvCardTable {
+    display: table !important;
+    width: max-content !important;
+    min-width: 850px !important;
+    table-layout: auto !important;
+  }
+  #grvCardTable th,
+  #grvCardTable td {
+    display: table-cell !important;
+    vertical-align: middle !important;
+    white-space: nowrap;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    max-width: none !important;
+  }
+  #grvCardTable th:nth-child(1),
+  #grvCardTable td:nth-child(1) { min-width: 38px !important; width: 38px !important; }
+  #grvCardTable th:nth-child(2),
+  #grvCardTable td:nth-child(2) { min-width: 88px !important; }
+  #grvCardTable th:nth-child(3),
+  #grvCardTable td:nth-child(3) { min-width: 105px !important; }
   #grvCardTable th:nth-child(4),
   #grvCardTable td:nth-child(4) {
-    min-width: 150px !important;
-    width: 180px !important;
-    max-width: 180px !important;
+    min-width: 180px !important;
+    max-width: 220px !important;
     white-space: normal !important;
-    overflow-wrap: anywhere !important;
-    line-height: 1.3 !important;
-    vertical-align: top !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.35 !important;
   }
-
-  /* Never let row height depend on an accidental flex/nowrap rule. */
-  #grvCardTable tbody tr,
-  #grvCardTable tbody td {
-    height: auto !important;
+  #grvCardTable th:nth-child(5),
+  #grvCardTable td:nth-child(5) {
+    min-width: 110px !important;
+    max-width: 170px !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.35 !important;
   }
+  #grvCardTable th:nth-child(6),
+  #grvCardTable td:nth-child(6) { min-width: 95px !important; white-space: nowrap !important; }
+  #grvCardTable th:nth-child(7),
+  #grvCardTable td:nth-child(7) { min-width: 90px !important; white-space: nowrap !important; }
+  #grvCardTable th:nth-child(8),
+  #grvCardTable td:nth-child(8) { min-width: 120px !important; white-space: nowrap !important; }
 
   /* ── Credit Cards: separate Card and Used By visually ── */
   #cardTable th:nth-child(2),
@@ -3581,6 +3609,99 @@
     flex-basis: 21px !important;
   }
 }
+
+
+        /* FINAL EXPENSES MOBILE TABLE FIX — keep real table geometry and wrap descriptions by words. */
+        @media (max-width: 600px) {
+            #expenseSection .table-wrapper,
+            #expenseSection .expense-table-scroll {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            #expenseTable {
+                display: table !important;
+                width: 650px !important;
+                min-width: 650px !important;
+                max-width: none !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+            }
+
+            #expenseTable thead { display: table-header-group !important; }
+            #expenseTable tbody { display: table-row-group !important; }
+            #expenseTable tr { display: table-row !important; }
+            #expenseTable th,
+            #expenseTable td {
+                display: table-cell !important;
+                box-sizing: border-box !important;
+                vertical-align: top !important;
+                padding: 8px 6px !important;
+                font-size: 11px !important;
+                line-height: 1.35 !important;
+                white-space: normal;
+                overflow: visible !important;
+                -webkit-line-clamp: unset !important;
+                -webkit-box-orient: unset !important;
+            }
+
+            /* Date */
+            #expenseTable th:nth-child(1),
+            #expenseTable td:nth-child(1) {
+                width: 82px !important;
+                min-width: 82px !important;
+                white-space: nowrap !important;
+            }
+
+            /* Category: break at spaces, never into individual letters. */
+            #expenseTable th:nth-child(2),
+            #expenseTable td:nth-child(2) {
+                width: 112px !important;
+                min-width: 112px !important;
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
+            }
+
+            /* Description: fixed readable column; natural word wrapping. */
+            #expenseTable th:nth-child(3),
+            #expenseTable td:nth-child(3) {
+                width: 236px !important;
+                min-width: 236px !important;
+                max-width: 236px !important;
+                white-space: normal !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
+                line-break: auto !important;
+            }
+            #expenseTable td:nth-child(3) .table-data-pill,
+            #expenseTable td:nth-child(3) span {
+                display: block !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
+            }
+
+            /* Amount and row actions each keep their own space. */
+            #expenseTable th:nth-child(4),
+            #expenseTable td:nth-child(4) {
+                width: 110px !important;
+                min-width: 110px !important;
+                white-space: nowrap !important;
+            }
+            #expenseTable th:nth-child(5),
+            #expenseTable td:nth-child(5) {
+                width: 110px !important;
+                min-width: 110px !important;
+                white-space: nowrap !important;
+            }
+        }
 </style>
 
 </body>
