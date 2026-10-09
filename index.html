@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Expense Tracker — Personal Finance</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -1363,120 +1363,123 @@
                 flex: 1 1 140px;
             }
 
-            /* ── CREDIT CARD TABLE: compact mobile cards ──
-               Only applies <=768px. Desktop table remains untouched. */
-            #cardTable thead {
-                display: none;
-            }
-
-            #cardTable,
-            #cardTable tbody {
-                display: block;
+            /* ── CREDIT CARD TABLE: simple mobile table like Sweetie ── */
+            #cardTable {
+                min-width: unset !important;
                 width: 100% !important;
+                table-layout: auto;
             }
 
-            #cardTable tr {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) auto;
-                gap: 3px 8px;
-                width: 100%;
-                padding: 10px 12px;
-                border-bottom: 1px solid var(--border);
-            }
-
-            #cardTable td {
-                display: block;
-                width: auto !important;
-                min-width: 0 !important;
-                padding: 0 !important;
-                border: 0 !important;
-                white-space: normal !important;
-                overflow-wrap: anywhere;
-                line-height: 1.35;
-            }
-
-            #cardTable td:nth-child(1),
-            #cardTable td:nth-child(2),
-            #cardTable td:nth-child(3),
-            #cardTable td:nth-child(5),
-            #cardTable td:nth-child(8) {
-                grid-column: 1 / -1;
+            #cardTable td,
+            #cardTable th {
+                padding: 8px 5px;
                 font-size: 0.68rem;
-                color: var(--muted);
+                line-height: 1.35;
+                vertical-align: top;
             }
 
-            #cardTable td:nth-child(4) {
-                grid-column: 1;
-                font-weight: 700;
-                font-size: 0.82rem;
-            }
-
-            #cardTable td:nth-child(6) {
-                grid-column: 2;
-                grid-row: 4;
-                text-align: right;
-                font-weight: 800;
-                font-size: 0.82rem;
-                white-space: nowrap !important;
-            }
-
-            #cardTable td:nth-child(7) {
-                grid-column: 1;
-                margin-top: 2px;
-            }
-
-            #cardTable td:nth-child(9) {
-                grid-column: 2;
-                text-align: right;
-                white-space: nowrap !important;
-            }
-
-            #cardTable td:nth-child(2) span {
-                display: inline-block;
-                max-width: 100%;
-                overflow-wrap: anywhere;
-            }
-
-            /* ── GRV CC TABLE: checkbox + compact mobile cards ── */
-            #grvCardTable thead {
+            /* Keep only useful information on a phone. */
+            #cardTable th:nth-child(5),
+            #cardTable td:nth-child(5),
+            #cardTable th:nth-child(8),
+            #cardTable td:nth-child(8) {
                 display: none;
             }
 
-            #grvCardTable,
-            #grvCardTable tbody {
-                display: block;
-                width: 100% !important;
-                min-width: 0 !important;
+            /* Date / Card / Used By / Amount / Status / actions stay compact. */
+            #cardTable th:nth-child(1),
+            #cardTable td:nth-child(1),
+            #cardTable th:nth-child(2),
+            #cardTable td:nth-child(2),
+            #cardTable th:nth-child(3),
+            #cardTable td:nth-child(3),
+            #cardTable th:nth-child(6),
+            #cardTable td:nth-child(6),
+            #cardTable th:nth-child(7),
+            #cardTable td:nth-child(7),
+            #cardTable th:nth-child(9),
+            #cardTable td:nth-child(9) {
+                white-space: nowrap !important;
             }
 
-            #grvCardTable tr {
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) auto;
-                gap: 3px 8px;
-                width: 100%;
-                padding: 10px 12px;
-                border-bottom: 1px solid var(--border);
-            }
+            #cardTable th:nth-child(1),
+            #cardTable td:nth-child(1) { width: 1%; }
 
-            #grvCardTable td {
-                display: block;
-                width: auto !important;
-                min-width: 0 !important;
-                padding: 0 !important;
-                border: 0 !important;
+            #cardTable th:nth-child(2),
+            #cardTable td:nth-child(2) {
+                width: 1%;
+                max-width: 78px;
                 white-space: normal !important;
-                overflow-wrap: anywhere;
-                line-height: 1.35;
+                overflow-wrap: break-word;
             }
 
-            /* Checkbox stays top-left and remains easy to tap. */
+            #cardTable th:nth-child(3),
+            #cardTable td:nth-child(3) {
+                width: 1%;
+                max-width: 62px;
+                white-space: normal !important;
+                overflow-wrap: break-word;
+            }
+
+            /* Description gets the remaining width and may use 2 lines. */
+            #cardTable th:nth-child(4),
+            #cardTable td:nth-child(4) {
+                width: auto;
+                min-width: 105px;
+                white-space: normal !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
+            }
+
+            #cardTable th:nth-child(6),
+            #cardTable td:nth-child(6) {
+                width: 1%;
+                text-align: right;
+                font-weight: 700;
+            }
+
+            #cardTable th:nth-child(7),
+            #cardTable td:nth-child(7),
+            #cardTable th:nth-child(9),
+            #cardTable td:nth-child(9) {
+                width: 1%;
+            }
+
+            #cardTable td span {
+                font-size: 0.58rem;
+                padding: 1px 4px;
+                white-space: nowrap;
+            }
+
+            /* ── GRV CC TABLE: same simple table treatment as Sweetie ── */
+            #grvCardTable {
+                min-width: unset !important;
+                width: 100% !important;
+                table-layout: auto;
+            }
+
+            #grvCardTable td,
+            #grvCardTable th {
+                padding: 8px 5px;
+                font-size: 0.68rem;
+                line-height: 1.35;
+                vertical-align: top;
+            }
+
+            /* Hide lower-value columns on phones; desktop stays unchanged. */
+            #grvCardTable th:nth-child(5),
+            #grvCardTable td:nth-child(5),
+            #grvCardTable th:nth-child(8),
+            #grvCardTable td:nth-child(8) {
+                display: none;
+            }
+
+            /* Checkbox stays compact and top-left. */
+            #grvCardTable th:nth-child(1),
             #grvCardTable td:nth-child(1) {
-                grid-column: 1;
-                grid-row: 1;
-                width: 28px !important;
-                min-width: 28px !important;
-                text-align: left;
-                padding-top: 1px !important;
+                width: 1%;
+                white-space: nowrap !important;
+                text-align: center;
             }
 
             #grvCardTable td:nth-child(1) input {
@@ -1484,46 +1487,45 @@
                 height: 17px;
             }
 
-            #grvCardTable td:nth-child(2),
-            #grvCardTable td:nth-child(3),
-            #grvCardTable td:nth-child(5),
-            #grvCardTable td:nth-child(8) {
-                grid-column: 1 / -1;
-                font-size: 0.68rem;
-                color: var(--muted);
-            }
-
+            #grvCardTable th:nth-child(2),
             #grvCardTable td:nth-child(2) {
-                padding-left: 28px !important;
-            }
-
-            #grvCardTable td:nth-child(3) {
-                padding-left: 28px !important;
-            }
-
-            #grvCardTable td:nth-child(4) {
-                grid-column: 1;
-                padding-left: 28px !important;
-                font-weight: 700;
-                font-size: 0.82rem;
-            }
-
-            #grvCardTable td:nth-child(6) {
-                grid-column: 2;
-                grid-row: 4;
-                text-align: right;
-                font-weight: 800;
-                font-size: 0.82rem;
+                width: 1%;
                 white-space: nowrap !important;
             }
 
-            #grvCardTable td:nth-child(7) {
-                grid-column: 1;
-                padding-left: 28px !important;
-                margin-top: 2px;
+            #grvCardTable th:nth-child(3),
+            #grvCardTable td:nth-child(3) {
+                width: 1%;
+                max-width: 72px;
+                white-space: normal !important;
+                overflow-wrap: break-word;
             }
 
-            /* Keep GRV table's outer scroller from reintroducing a forced 820px width. */
+            /* Description gets the remaining width and wraps naturally to 2 lines. */
+            #grvCardTable th:nth-child(4),
+            #grvCardTable td:nth-child(4) {
+                width: auto;
+                min-width: 105px;
+                white-space: normal !important;
+                word-break: normal !important;
+                overflow-wrap: break-word !important;
+            }
+
+            #grvCardTable th:nth-child(6),
+            #grvCardTable td:nth-child(6) {
+                width: 1%;
+                white-space: nowrap !important;
+                text-align: right;
+                font-weight: 700;
+            }
+
+            #grvCardTable th:nth-child(7),
+            #grvCardTable td:nth-child(7) {
+                width: 1%;
+                white-space: nowrap !important;
+            }
+
+            /* Keep GRV's outer scroller from forcing a wide table. */
             .grv-table-scroll {
                 overflow-x: hidden;
                 max-width: 100%;
@@ -1532,77 +1534,6 @@
             .grv-table-scroll table {
                 min-width: 0 !important;
                 width: 100% !important;
-            }
-
-            /* ── CREDIT CARDS: Description/Remarks wrap, other columns compact ── */
-            #cardTable {
-                min-width: unset;
-                width: 100%;
-                table-layout: auto;
-            }
-
-            #cardTable td,
-            #cardTable th {
-                padding: 8px 6px;
-                font-size: 0.72rem;
-                line-height: 1.4;
-                vertical-align: top;
-            }
-
-            /* Date, Card, Amount, Status, Billing Month, actions —
-               compact, never wrap */
-            #cardTable th:nth-child(1),
-            #cardTable td:nth-child(1),
-            #cardTable th:nth-child(2),
-            #cardTable td:nth-child(2),
-            #cardTable th:nth-child(6),
-            #cardTable td:nth-child(6),
-            #cardTable th:nth-child(7),
-            #cardTable td:nth-child(7),
-            #cardTable th:nth-child(8),
-            #cardTable td:nth-child(8),
-            #cardTable th:nth-child(9),
-            #cardTable td:nth-child(9) {
-                white-space: nowrap !important;
-                width: 1%;
-            }
-
-            /* Used By (3rd) — wraps onto 2 lines when it's more than one word.
-               Breaks only at spaces (never mid-word); a single very long
-               word may overflow slightly, which is preferable to chopping
-               letters apart. */
-            #cardTable th:nth-child(3),
-            #cardTable td:nth-child(3) {
-                white-space: normal !important;
-                word-break: normal !important;
-                overflow-wrap: normal !important;
-                hyphens: none !important;
-                vertical-align: top;
-                width: 72px !important;
-            }
-
-            /* Description (4th) & Remarks (5th) — take remaining width,
-               wrap onto multiple lines instead of stretching the table.
-               min-width guarantees neither can be crushed down to a sliver
-               by the other nowrap columns (Card, Used By, Amount, etc.) —
-               that crush is what caused text to fragment into 1-2 character
-               chunks. If the row still doesn't fit, the table scrolls
-               horizontally instead of destroying the text. */
-            #cardTable th:nth-child(4),
-            #cardTable td:nth-child(4),
-            #cardTable th:nth-child(5),
-            #cardTable td:nth-child(5) {
-                white-space: normal !important;
-                word-break: normal !important;
-                overflow-wrap: break-word !important;
-                vertical-align: top;
-                width: auto;
-                min-width: 90px;
-            }
-
-            #cardTable td span {
-                font-size: 0.6rem;
-                padding: 1px 4px;
             }
 
             /* ── SWEETIE: Description wraps, other columns stay compact ── */
@@ -2269,6 +2200,268 @@
 .grv-page-actions .gb.gb-sync:hover .gb-ic{transform:rotate(35deg)}
 @media(max-width:768px){.grv-page-actions{justify-content:stretch}.grv-page-actions .gb{flex:1 1 calc(50% - 10px);justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){.grv-page-actions .gb,.grv-page-actions .gb *{transition:none!important;animation:none!important}}
+</style>
+<style>
+/* MOBILE NAV POLISH — keeps all 4 page tabs visible without overlap/scrolling.
+   Mobile-only; no JS, data, backend or desktop layout changes. */
+@media (max-width: 768px) {
+  html, body {
+    overscroll-behavior-x: none;
+  }
+
+  .tab-bar {
+    width: calc(100% - 24px);
+    max-width: none;
+    margin: 10px 12px 0;
+    padding: 4px;
+    gap: 3px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .tab-bar .tab-btn.tb {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    height: 40px;
+    padding: 0 4px;
+    gap: 4px;
+    justify-content: center;
+    font-size: .68rem;
+    letter-spacing: 0;
+    border-radius: 12px;
+  }
+
+  .tab-bar .tb .tb-ic {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    border-radius: 8px;
+    font-size: .78rem;
+  }
+
+  .tab-bar .tb > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 380px) {
+  .tab-bar .tab-btn.tb {
+    height: 38px;
+    padding: 0 2px;
+    gap: 3px;
+    font-size: .63rem;
+  }
+
+  .tab-bar .tb .tb-ic {
+    width: 22px;
+    height: 22px;
+    flex-basis: 22px;
+    border-radius: 7px;
+    font-size: .72rem;
+  }
+}
+</style>
+
+<style>
+/* MOBILE UX V2 — presentation-only, no JS/data/backend changes. */
+@media (max-width: 600px) {
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Compact header: keep it usable but reclaim vertical space. */
+  .topbar {
+    position: static !important;
+    padding: 7px 10px !important;
+    gap: 5px !important;
+  }
+  .brand-name { font-size: 1rem !important; }
+  .brand-icon { font-size: 1.05rem !important; }
+  .controls {
+    width: 100%;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+  }
+  .month-picker {
+    flex: 1 1 125px;
+    min-width: 0;
+  }
+  .controls .btn-summary {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 6px 8px !important;
+    font-size: .68rem !important;
+    white-space: nowrap;
+  }
+
+  /* Bottom navigation — standard phone pattern, all 4 tabs always visible. */
+  .tab-bar {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 60 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border-radius: 16px 16px 0 0 !important;
+    justify-content: space-around !important;
+    gap: 2px !important;
+    overflow: visible !important;
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom)) !important;
+    backdrop-filter: blur(14px);
+  }
+  .tab-bar .tab-btn.tb {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    height: 52px !important;
+    padding: 2px 1px !important;
+    gap: 2px !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    font-size: .60rem !important;
+    line-height: 1.05 !important;
+  }
+  .tab-bar .tb .tb-ic {
+    width: 25px !important;
+    height: 25px !important;
+    flex: 0 0 25px !important;
+    border-radius: 8px !important;
+    font-size: .78rem !important;
+  }
+  .tab-bar .tb > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tab-bar .tb::after { display: none !important; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom)) !important; }
+
+  /* GRV buttons: one compact horizontal strip instead of a tall 2x stack. */
+  .grv-page-actions {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    justify-content: flex-start !important;
+    scrollbar-width: none;
+    padding-bottom: 3px;
+  }
+  .grv-page-actions::-webkit-scrollbar { display: none; }
+  .grv-page-actions .gb {
+    flex: 0 0 auto !important;
+    height: 38px !important;
+    padding: 0 9px !important;
+    font-size: .68rem !important;
+  }
+
+  /* GRV stats fit cleanly on narrow screens. */
+  #grvCCSection .grv-cc-stats {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 7px !important;
+  }
+  #grvCCSection .grv-cc-stats .stat {
+    min-width: 0 !important;
+    padding: 9px !important;
+  }
+  #grvCCSection .grv-cc-stats .stat-value {
+    font-size: 1.12rem !important;
+  }
+
+  /* Show transactions before the add form on phone. */
+  #cardSection .main-grid .right-col,
+  #sweetieSection .main-grid .right-col {
+    order: -1;
+  }
+
+  /* Transaction tables: compact, readable, no artificial card/3-line breakup. */
+  #expenseTable,
+  #cardTable,
+  #grvCardTable {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+  }
+  #expenseTable th, #expenseTable td,
+  #cardTable th, #cardTable td,
+  #grvCardTable th, #grvCardTable td {
+    padding: 6px 4px !important;
+    font-size: .66rem !important;
+    line-height: 1.28 !important;
+  }
+
+  /* Give description the useful space; allow long text to occupy at most ~2 lines. */
+  #expenseTable td:nth-child(3),
+  #cardTable td:nth-child(4),
+  #cardTable td:nth-child(5),
+  #grvCardTable td:nth-child(4) {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere;
+    max-width: 150px;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* Keep key utility columns compact. */
+  #expenseTable th:nth-child(1), #expenseTable td:nth-child(1),
+  #expenseTable th:nth-child(2), #expenseTable td:nth-child(2),
+  #expenseTable th:nth-child(4), #expenseTable td:nth-child(4),
+  #expenseTable th:nth-child(5), #expenseTable td:nth-child(5),
+  #cardTable th:nth-child(1), #cardTable td:nth-child(1),
+  #cardTable th:nth-child(2), #cardTable td:nth-child(2),
+  #cardTable th:nth-child(6), #cardTable td:nth-child(6),
+  #cardTable th:nth-child(7), #cardTable td:nth-child(7),
+  #cardTable th:nth-child(9), #cardTable td:nth-child(9),
+  #grvCardTable th:nth-child(1), #grvCardTable td:nth-child(1),
+  #grvCardTable th:nth-child(2), #grvCardTable td:nth-child(2),
+  #grvCardTable th:nth-child(6), #grvCardTable td:nth-child(6),
+  #grvCardTable th:nth-child(7), #grvCardTable td:nth-child(7),
+  #grvCardTable th:nth-child(8), #grvCardTable td:nth-child(8) {
+    white-space: nowrap !important;
+  }
+
+  /* Remove lower-value columns on very narrow phones rather than crushing text. */
+  #cardTable th:nth-child(5), #cardTable td:nth-child(5),
+  #cardTable th:nth-child(8), #cardTable td:nth-child(8) {
+    display: none !important;
+  }
+
+  /* Filters/buttons can wrap instead of creating page-wide overflow. */
+  .filter-bar, .filters, .table-toolbar, .section-actions {
+    max-width: 100% !important;
+  }
+  .filter-bar, .filters, .table-toolbar {
+    flex-wrap: wrap !important;
+  }
+  .filter-bar input, .filter-bar select,
+  .filters input, .filters select,
+  .table-toolbar input, .table-toolbar select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* iOS: keep inputs at 16px while allowing normal page pinch-zoom. */
+  input, select, textarea { font-size: 16px !important; }
+}
+
+@media (max-width: 380px) {
+  .controls .btn-summary { padding-left: 6px !important; padding-right: 6px !important; }
+  .tab-bar .tab-btn.tb { height: 50px !important; font-size: .57rem !important; }
+  .tab-bar .tb .tb-ic { width: 23px !important; height: 23px !important; flex-basis: 23px !important; }
+  #expenseTable th, #expenseTable td,
+  #cardTable th, #cardTable td,
+  #grvCardTable th, #grvCardTable td { padding-left: 3px !important; padding-right: 3px !important; }
+}
 </style>
 </head>
 
@@ -2994,6 +3187,74 @@
     <!-- Premium animation layer — wraps existing functions for transitions,
          changes no business logic. Must load AFTER script.js. -->
     <script src="animation.js"></script>
+
+<style id="mobile-card-summary-compact">
+@media (max-width: 600px) {
+  /* Credit Cards: compact per-card summaries on phones.
+     Keeps all existing data/functions; only changes presentation. */
+  #cardSummaryGrid.card-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    margin-bottom: 10px !important;
+  }
+
+  #cardSummaryGrid .card-summary-item {
+    min-width: 0 !important;
+    width: auto !important;
+    padding: 8px 9px !important;
+    border-radius: 9px !important;
+  }
+
+  #cardSummaryGrid .cs-name {
+    font-size: 0.70rem !important;
+    line-height: 1.15 !important;
+    margin-bottom: 5px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  #cardSummaryGrid .cs-row {
+    font-size: 0.66rem !important;
+    line-height: 1.2 !important;
+    margin-bottom: 2px !important;
+    gap: 5px !important;
+  }
+
+  #cardSummaryGrid .cs-row span:first-child {
+    flex: 0 0 auto;
+  }
+
+  #cardSummaryGrid .cs-row span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #cardSummaryGrid .cs-bar-wrap {
+    height: 3px !important;
+    margin: 4px 0 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  #cardSummaryGrid.card-summary-grid {
+    gap: 6px !important;
+  }
+  #cardSummaryGrid .card-summary-item {
+    padding: 7px 8px !important;
+  }
+  #cardSummaryGrid .cs-name {
+    font-size: 0.66rem !important;
+  }
+  #cardSummaryGrid .cs-row {
+    font-size: 0.60rem !important;
+  }
+}
+</style>
+
 </body>
 
 </html>
