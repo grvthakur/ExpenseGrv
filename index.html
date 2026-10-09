@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <title>Expense Tracker — Personal Finance</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -1276,6 +1276,264 @@
                 white-space: nowrap;
             }
 
+            /* ── SAFE MOBILE WIDTH GUARD ──
+               Mobile-only: prevents accidental page-wide overflow/zoom-out.
+               Does not change desktop layout or application logic. */
+            html,
+            body {
+                max-width: 100vw;
+                overflow-x: hidden;
+            }
+
+            .stats,
+            .cc-stats,
+            .main-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .cc-stats {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .cc-stats .stat {
+                padding: 10px;
+                min-width: 0;
+            }
+
+            .cc-stats .stat-value {
+                font-size: 1.05rem;
+            }
+
+            .cc-stats .stat-label {
+                font-size: 0.55rem;
+                letter-spacing: 0.5px;
+            }
+
+            .left-col,
+            .right-col,
+            .table-wrapper {
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .tab-bar {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .tab-btn {
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* ── MOBILE FILTER TOOLBARS ── */
+            #cardSection .table-header > div,
+            #grvCCSection .table-header > div {
+                min-width: 0;
+                max-width: 100%;
+                flex: 1 1 100%;
+            }
+
+            #cardSection .table-header,
+            #grvCCSection .table-header {
+                align-items: flex-start;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            #cardSection .table-header > div,
+            #grvCCSection .table-header > div {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 6px !important;
+                width: 100%;
+            }
+
+            #cardSection .table-header input,
+            #cardSection .table-header select,
+            #grvCCSection .table-header input,
+            #grvCCSection .table-header select {
+                max-width: 100%;
+            }
+
+            #cardSection .table-header input[type="text"],
+            #grvCCSection .table-header input[type="text"] {
+                flex: 1 1 140px;
+            }
+
+            /* ── CREDIT CARD TABLE: compact mobile cards ──
+               Only applies <=768px. Desktop table remains untouched. */
+            #cardTable thead {
+                display: none;
+            }
+
+            #cardTable,
+            #cardTable tbody {
+                display: block;
+                width: 100% !important;
+            }
+
+            #cardTable tr {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 3px 8px;
+                width: 100%;
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            #cardTable td {
+                display: block;
+                width: auto !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere;
+                line-height: 1.35;
+            }
+
+            #cardTable td:nth-child(1),
+            #cardTable td:nth-child(2),
+            #cardTable td:nth-child(3),
+            #cardTable td:nth-child(5),
+            #cardTable td:nth-child(8) {
+                grid-column: 1 / -1;
+                font-size: 0.68rem;
+                color: var(--muted);
+            }
+
+            #cardTable td:nth-child(4) {
+                grid-column: 1;
+                font-weight: 700;
+                font-size: 0.82rem;
+            }
+
+            #cardTable td:nth-child(6) {
+                grid-column: 2;
+                grid-row: 4;
+                text-align: right;
+                font-weight: 800;
+                font-size: 0.82rem;
+                white-space: nowrap !important;
+            }
+
+            #cardTable td:nth-child(7) {
+                grid-column: 1;
+                margin-top: 2px;
+            }
+
+            #cardTable td:nth-child(9) {
+                grid-column: 2;
+                text-align: right;
+                white-space: nowrap !important;
+            }
+
+            #cardTable td:nth-child(2) span {
+                display: inline-block;
+                max-width: 100%;
+                overflow-wrap: anywhere;
+            }
+
+            /* ── GRV CC TABLE: checkbox + compact mobile cards ── */
+            #grvCardTable thead {
+                display: none;
+            }
+
+            #grvCardTable,
+            #grvCardTable tbody {
+                display: block;
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+
+            #grvCardTable tr {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 3px 8px;
+                width: 100%;
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            #grvCardTable td {
+                display: block;
+                width: auto !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere;
+                line-height: 1.35;
+            }
+
+            /* Checkbox stays top-left and remains easy to tap. */
+            #grvCardTable td:nth-child(1) {
+                grid-column: 1;
+                grid-row: 1;
+                width: 28px !important;
+                min-width: 28px !important;
+                text-align: left;
+                padding-top: 1px !important;
+            }
+
+            #grvCardTable td:nth-child(1) input {
+                width: 17px;
+                height: 17px;
+            }
+
+            #grvCardTable td:nth-child(2),
+            #grvCardTable td:nth-child(3),
+            #grvCardTable td:nth-child(5),
+            #grvCardTable td:nth-child(8) {
+                grid-column: 1 / -1;
+                font-size: 0.68rem;
+                color: var(--muted);
+            }
+
+            #grvCardTable td:nth-child(2) {
+                padding-left: 28px !important;
+            }
+
+            #grvCardTable td:nth-child(3) {
+                padding-left: 28px !important;
+            }
+
+            #grvCardTable td:nth-child(4) {
+                grid-column: 1;
+                padding-left: 28px !important;
+                font-weight: 700;
+                font-size: 0.82rem;
+            }
+
+            #grvCardTable td:nth-child(6) {
+                grid-column: 2;
+                grid-row: 4;
+                text-align: right;
+                font-weight: 800;
+                font-size: 0.82rem;
+                white-space: nowrap !important;
+            }
+
+            #grvCardTable td:nth-child(7) {
+                grid-column: 1;
+                padding-left: 28px !important;
+                margin-top: 2px;
+            }
+
+            /* Keep GRV table's outer scroller from reintroducing a forced 820px width. */
+            .grv-table-scroll {
+                overflow-x: hidden;
+                max-width: 100%;
+            }
+
+            .grv-table-scroll table {
+                min-width: 0 !important;
+                width: 100% !important;
+            }
+
             /* ── CREDIT CARDS: Description/Remarks wrap, other columns compact ── */
             #cardTable {
                 min-width: unset;
@@ -2011,29 +2269,6 @@
 .grv-page-actions .gb.gb-sync:hover .gb-ic{transform:rotate(35deg)}
 @media(max-width:768px){.grv-page-actions{justify-content:stretch}.grv-page-actions .gb{flex:1 1 calc(50% - 10px);justify-content:flex-start}}
 @media(prefers-reduced-motion:reduce){.grv-page-actions .gb,.grv-page-actions .gb *{transition:none!important;animation:none!important}}
-</style>
-
-<style>
-/* CC Master premium search + bank-tinted cards */
-.cc-master-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px}
-.cc-master-search-wrap{position:relative;display:flex;align-items:center;flex:1;min-width:0}
-.cc-master-search-icon{position:absolute;left:14px;z-index:2;color:var(--muted);font-size:1.15rem;line-height:1;pointer-events:none}
-.cc-master-search{width:100%;box-sizing:border-box;padding:11px 42px 11px 40px;border:1px solid rgba(148,163,184,.28);border-radius:14px;background:rgba(15,23,42,.72);color:var(--text);outline:none;font:inherit;transition:border-color .2s,box-shadow .2s,background .2s}
-.cc-master-search::placeholder{color:var(--muted)}
-.cc-master-search:focus{border-color:rgba(34,211,238,.65);background:rgba(15,23,42,.9);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
-.cc-master-search-clear{position:absolute;right:8px;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--muted);font-size:1.25rem;cursor:pointer;line-height:1}
-.cc-master-search-clear:hover{background:rgba(148,163,184,.14);color:var(--text)}
-.cc-master-search-count{flex:0 0 auto;color:var(--muted);font-size:.78rem;white-space:nowrap}
-.cc-card-item{--bc:34,211,238;padding:16px 18px;border:1px solid rgba(var(--bc),.45);background:radial-gradient(circle at 100% 0,rgba(var(--bc),.28),transparent 55%),linear-gradient(135deg,#1c1c2e,#12182e);box-shadow:0 10px 26px -14px rgba(var(--bc),.8);transition:transform .2s,box-shadow .2s}
-.cc-card-item:hover{transform:translateY(-3px);box-shadow:0 16px 34px -12px rgba(var(--bc),.9)}
-.cc-card-item::before{background:rgb(var(--bc));opacity:.12}
-.cc-card-item .cc-bank-badge{background:rgb(var(--bc));color:#fff}
-.cc-chip{width:34px;height:25px;border-radius:6px;margin:2px 0 10px;background:linear-gradient(135deg,#fde68a,#f59e0b 55%,#fcd34d);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
-.cc-num{font-size:1rem;letter-spacing:3px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
-.cc-copy-btn{position:relative;z-index:1;border:1px solid rgba(var(--bc),.6);background:rgba(var(--bc),.14);color:#fff;border-radius:999px;padding:5px 12px;font:700 .7rem inherit;cursor:pointer;transition:.2s}
-.cc-copy-btn:hover{background:rgb(var(--bc));transform:scale(1.05)}
-.cc-copy-btn.done{background:#34d399;border-color:#34d399;color:#0b0b10}
-@media(max-width:600px){.cc-master-toolbar{align-items:stretch;flex-direction:column}.cc-master-search-count{padding-left:4px}.cc-master-search{font-size:.9rem}}
 </style>
 </head>
 
