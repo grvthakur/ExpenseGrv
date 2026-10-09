@@ -2462,6 +2462,97 @@
   #cardTable th, #cardTable td,
   #grvCardTable th, #grvCardTable td { padding-left: 3px !important; padding-right: 3px !important; }
 }
+
+
+        /* MOBILE TABLE RECOVERY — safe presentation-only override.
+           Restores normal table-cell layout; the previous line-clamp/display
+           rules were forcing TDs into flex-like boxes and breaking row geometry. */
+        @media (max-width: 600px) {
+            /* Keep Sweetie/Add Transaction and Expenses/Add Transaction first. */
+            #cardSection .main-grid .right-col,
+            #sweetieSection .main-grid .right-col {
+                order: initial !important;
+            }
+
+            /* Keep the tables as real tables.  The wrapper may scroll sideways
+               on very narrow phones; browser pinch-zoom remains available. */
+            #expenseSection .table-wrapper,
+            #cardSection .table-wrapper,
+            #sweetieSection .table-wrapper,
+            #grvCCSection .grv-table-scroll {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #expenseTable {
+                display: table !important;
+                width: max-content !important;
+                min-width: 560px !important;
+                table-layout: auto !important;
+            }
+            #cardTable {
+                display: table !important;
+                width: max-content !important;
+                min-width: 760px !important;
+                table-layout: auto !important;
+            }
+            #grvCardTable {
+                display: table !important;
+                width: max-content !important;
+                min-width: 760px !important;
+                table-layout: auto !important;
+            }
+            #sweetieTable {
+                display: table !important;
+                width: max-content !important;
+                min-width: 620px !important;
+                table-layout: auto !important;
+            }
+
+            #expenseTable th, #expenseTable td,
+            #cardTable th, #cardTable td,
+            #grvCardTable th, #grvCardTable td,
+            #sweetieTable th, #sweetieTable td {
+                display: table-cell !important;
+                vertical-align: middle !important;
+                -webkit-line-clamp: unset !important;
+                -webkit-box-orient: unset !important;
+                overflow: visible !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
+            }
+
+            /* Descriptions can wrap naturally, without destroying the row. */
+            #expenseTable td:nth-child(3),
+            #cardTable td:nth-child(4),
+            #cardTable td:nth-child(5),
+            #grvCardTable td:nth-child(4),
+            #sweetieTable td:nth-child(5) {
+                white-space: normal !important;
+                max-width: 190px !important;
+                min-width: 120px !important;
+                overflow-wrap: break-word !important;
+            }
+
+            /* Sweetie balance remains a compact, intact stat card. */
+            #sweetieSection .cc-stats {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 7px !important;
+            }
+            #sweetieSection .cc-stats .stat {
+                min-width: 0 !important;
+                padding: 9px 7px !important;
+            }
+            #sweetieSection #sweetieBalanceCard .stat-value {
+                font-size: 1.12rem !important;
+                white-space: nowrap !important;
+            }
+            #sweetieSection .cc-stats .stat-label {
+                font-size: .52rem !important;
+                letter-spacing: .35px !important;
+            }
+        }
+
 </style>
 </head>
 
