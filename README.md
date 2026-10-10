@@ -17,7 +17,7 @@ Open:
 http://localhost:8765
 ```
 git add .
-git commit -m "..."
+git commit -m "MOBILE UI"
 git pull --rebase origin main
 git push origin main
 Then stop the server with `Ctrl+C` and run:
