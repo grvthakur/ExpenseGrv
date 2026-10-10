@@ -839,6 +839,53 @@
             --c: 129, 140, 248
         }
 
+        #grvBillsModal .grv-bills-grid {
+            gap: 18px;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr))
+        }
+
+        #grvBillsModal .grv-bill-card {
+            padding: 20px 20px 18px;
+            line-height: 1.5
+        }
+
+        #grvBillsModal .grv-bill-card>*+* {
+            margin-top: 12px
+        }
+
+        #grvBillsModal .grv-bill-card-name {
+            font-size: 1.08rem;
+            letter-spacing: .2px
+        }
+
+        #grvBillsModal .grv-bill-meta,
+        #grvBillsModal .grv-bill-util-label,
+        #grvBillsModal .grv-bill-section-title {
+            font-size: .8rem;
+            opacity: .85;
+            letter-spacing: .3px
+        }
+
+        #grvBillsModal .grv-bill-total {
+            font-size: 1.6rem;
+            font-weight: 700
+        }
+
+        #grvBillsModal .grv-bill-split {
+            gap: 12px
+        }
+
+        #grvBillsModal .grv-bill-split>* {
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: .9rem
+        }
+
+        #grvBillsModal .grv-bill-util-track {
+            height: 8px;
+            border-radius: 6px
+        }
+
         .spin {
             display: inline-block;
             width: 12px;

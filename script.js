@@ -3475,7 +3475,7 @@ function syncGrvBillsPicker() {
   const ref = grvBillsRef || new Date();
   const d = grvBillsRef
     ? new Date(ref.getFullYear(), ref.getMonth() - 1, 1)
-    : new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
+    : new Date(ref.getFullYear(), ref.getMonth(), 1);
   mSel.value = String(d.getMonth());
   ySel.value = String(d.getFullYear());
 }
