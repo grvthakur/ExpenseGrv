@@ -435,9 +435,6 @@ th:active .sort-arrow {
   transform: scale(1.3);
 }
 
-
-
-
 /* Subtle transaction amount glow — table entries only. */
 .expense-table td.txn-amount {
   text-shadow: 0 0 7px rgba(248, 113, 113, 0.22);
@@ -524,7 +521,11 @@ button.btn-loading {
   border-radius: 50%;
   animation: v15spin 0.7s linear infinite;
 }
-@keyframes v15spin { to { transform: rotate(360deg); } }
+@keyframes v15spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* Skeletons for cold-start / first-sync state. */
 .stats.is-loading .stat-value,
@@ -538,12 +539,19 @@ button.btn-loading {
   animation: v15skeleton 1.2s ease-in-out infinite;
 }
 @keyframes v15skeleton {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Explicit amount cells / mobile action hit targets. */
-.amount-cell { text-align: right; font-variant-numeric: tabular-nums; }
+.amount-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 @media (max-width: 600px) {
   .edit-btn,
   .delete-btn,
@@ -573,26 +581,23 @@ button.btn-loading {
     min-width: 680px;
   }
 
-  .expense-table th:first-child,
-  .expense-table td:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background: var(--surface);
-    box-shadow: 2px 0 6px rgba(0,0,0,.12);
-  }
-
-  .expense-table th:first-child {
-    background: var(--s2);
-  }
+  /* First column is no longer sticky on mobile — whole row scrolls together. */
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stats.is-loading .stat-value,
-  .stats.is-loading .salary-amount { animation: none !important; }
+  .stats.is-loading .salary-amount {
+    animation: none !important;
+  }
 }
 
-.last-synced { display:inline-block; margin-left:8px; color:var(--muted); font-size:.62rem; white-space:nowrap; }
+.last-synced {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
 
 /* Classy native select options — visual polish only; native select behavior unchanged. */
 .field select option,
@@ -628,15 +633,14 @@ body.light-mode select option:checked {
   font-weight: 700;
 }
 
-
 /* ── Soft table data pills — visual-only polish ──────────────────────── */
 .table-data-pill {
   display: inline-block;
   max-width: 100%;
   padding: 3px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.055);
-  background: rgba(255,255,255,.028);
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.028);
   color: inherit;
   line-height: 1.35;
   vertical-align: middle;
@@ -645,36 +649,42 @@ body.light-mode select option:checked {
 
 .table-category-pill,
 .table-card-pill {
-  background: rgba(167,139,250,.065);
-  border-color: rgba(167,139,250,.12);
+  background: rgba(167, 139, 250, 0.065);
+  border-color: rgba(167, 139, 250, 0.12);
 }
 
 .table-text-pill {
-  background: rgba(255,255,255,.022);
-  border-color: rgba(255,255,255,.045);
+  background: rgba(255, 255, 255, 0.022);
+  border-color: rgba(255, 255, 255, 0.045);
 }
 
 .table-amount-pill {
   font-weight: 700;
   color: #f8fafc !important;
-  background: rgba(255,255,255,.018);
-  border-color: rgba(255,255,255,.045);
+  background: rgba(255, 255, 255, 0.018);
+  border-color: rgba(255, 255, 255, 0.045);
   padding-left: 7px;
   padding-right: 7px;
-  text-shadow: 0 0 7px rgba(255,255,255,.22);
-  transition: text-shadow .18s ease, background .18s ease;
+  text-shadow: 0 0 7px rgba(255, 255, 255, 0.22);
+  transition:
+    text-shadow 0.18s ease,
+    background 0.18s ease;
 }
 
 .table-positive-pill {
-  background: rgba(34,197,94,.028);
-  border-color: rgba(34,197,94,.07);
-  text-shadow: 0 0 7px rgba(34,197,94,.58), 0 0 14px rgba(34,197,94,.20);
+  background: rgba(34, 197, 94, 0.028);
+  border-color: rgba(34, 197, 94, 0.07);
+  text-shadow:
+    0 0 7px rgba(34, 197, 94, 0.58),
+    0 0 14px rgba(34, 197, 94, 0.2);
 }
 
 .table-negative-pill {
-  background: rgba(248,113,113,.022);
-  border-color: rgba(248,113,113,.06);
-  text-shadow: 0 0 7px rgba(248,113,113,.58), 0 0 14px rgba(248,113,113,.20);
+  background: rgba(248, 113, 113, 0.022);
+  border-color: rgba(248, 113, 113, 0.06);
+  text-shadow:
+    0 0 7px rgba(248, 113, 113, 0.58),
+    0 0 14px rgba(248, 113, 113, 0.2);
 }
 
 @media (max-width: 768px) {
@@ -691,32 +701,104 @@ body.light-mode select option:checked {
 }
 
 /* Expense categories: distinct but intentionally light tinted backgrounds. */
-.category-tone-0 { background: rgba(245, 158, 11, .075); border-color: rgba(245,158,11,.14); }
-.category-tone-1 { background: rgba(14, 165, 233, .075); border-color: rgba(14,165,233,.14); }
-.category-tone-2 { background: rgba(168, 85, 247, .075); border-color: rgba(168,85,247,.14); }
-.category-tone-3 { background: rgba(236, 72, 153, .075); border-color: rgba(236,72,153,.14); }
-.category-tone-4 { background: rgba(99, 102, 241, .075); border-color: rgba(99,102,241,.14); }
-.category-tone-5 { background: rgba(249, 115, 22, .075); border-color: rgba(249,115,22,.14); }
-.category-tone-6 { background: rgba(34, 197, 94, .075); border-color: rgba(34,197,94,.14); }
-.category-tone-7 { background: rgba(245, 158, 11, .075); border-color: rgba(245,158,11,.14); }
-.category-tone-8 { background: rgba(148, 163, 184, .065); border-color: rgba(148,163,184,.12); }
-.category-tone-9 { background: rgba(16, 185, 129, .075); border-color: rgba(16,185,129,.14); }
-.category-tone-10 { background: rgba(59, 130, 246, .075); border-color: rgba(59,130,246,.14); }
-.category-tone-11 { background: rgba(20, 184, 166, .075); border-color: rgba(20,184,166,.14); }
-.category-tone-12 { background: rgba(236, 72, 153, .075); border-color: rgba(236,72,153,.14); }
-.category-tone-13 { background: rgba(244, 63, 94, .065); border-color: rgba(244,63,94,.12); }
+.category-tone-0 {
+  background: rgba(245, 158, 11, 0.075);
+  border-color: rgba(245, 158, 11, 0.14);
+}
+.category-tone-1 {
+  background: rgba(14, 165, 233, 0.075);
+  border-color: rgba(14, 165, 233, 0.14);
+}
+.category-tone-2 {
+  background: rgba(168, 85, 247, 0.075);
+  border-color: rgba(168, 85, 247, 0.14);
+}
+.category-tone-3 {
+  background: rgba(236, 72, 153, 0.075);
+  border-color: rgba(236, 72, 153, 0.14);
+}
+.category-tone-4 {
+  background: rgba(99, 102, 241, 0.075);
+  border-color: rgba(99, 102, 241, 0.14);
+}
+.category-tone-5 {
+  background: rgba(249, 115, 22, 0.075);
+  border-color: rgba(249, 115, 22, 0.14);
+}
+.category-tone-6 {
+  background: rgba(34, 197, 94, 0.075);
+  border-color: rgba(34, 197, 94, 0.14);
+}
+.category-tone-7 {
+  background: rgba(245, 158, 11, 0.075);
+  border-color: rgba(245, 158, 11, 0.14);
+}
+.category-tone-8 {
+  background: rgba(148, 163, 184, 0.065);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+.category-tone-9 {
+  background: rgba(16, 185, 129, 0.075);
+  border-color: rgba(16, 185, 129, 0.14);
+}
+.category-tone-10 {
+  background: rgba(59, 130, 246, 0.075);
+  border-color: rgba(59, 130, 246, 0.14);
+}
+.category-tone-11 {
+  background: rgba(20, 184, 166, 0.075);
+  border-color: rgba(20, 184, 166, 0.14);
+}
+.category-tone-12 {
+  background: rgba(236, 72, 153, 0.075);
+  border-color: rgba(236, 72, 153, 0.14);
+}
+.category-tone-13 {
+  background: rgba(244, 63, 94, 0.065);
+  border-color: rgba(244, 63, 94, 0.12);
+}
 
 /* Credit-card Used By: same person always gets the same soft tint. */
-.person-tone-0 { background: rgba(34, 211, 238, .075); border-color: rgba(34,211,238,.14); }
-.person-tone-1 { background: rgba(168, 85, 247, .075); border-color: rgba(168,85,247,.14); }
-.person-tone-2 { background: rgba(245, 158, 11, .075); border-color: rgba(245,158,11,.14); }
-.person-tone-3 { background: rgba(236, 72, 153, .075); border-color: rgba(236,72,153,.14); }
-.person-tone-4 { background: rgba(59, 130, 246, .075); border-color: rgba(59,130,246,.14); }
-.person-tone-5 { background: rgba(34, 197, 94, .075); border-color: rgba(34,197,94,.14); }
-.person-tone-6 { background: rgba(249, 115, 22, .075); border-color: rgba(249,115,22,.14); }
-.person-tone-7 { background: rgba(20, 184, 166, .075); border-color: rgba(20,184,166,.14); }
-.person-tone-8 { background: rgba(244, 63, 94, .065); border-color: rgba(244,63,94,.12); }
-.person-tone-9 { background: rgba(148, 163, 184, .065); border-color: rgba(148,163,184,.12); }
+.person-tone-0 {
+  background: rgba(34, 211, 238, 0.075);
+  border-color: rgba(34, 211, 238, 0.14);
+}
+.person-tone-1 {
+  background: rgba(168, 85, 247, 0.075);
+  border-color: rgba(168, 85, 247, 0.14);
+}
+.person-tone-2 {
+  background: rgba(245, 158, 11, 0.075);
+  border-color: rgba(245, 158, 11, 0.14);
+}
+.person-tone-3 {
+  background: rgba(236, 72, 153, 0.075);
+  border-color: rgba(236, 72, 153, 0.14);
+}
+.person-tone-4 {
+  background: rgba(59, 130, 246, 0.075);
+  border-color: rgba(59, 130, 246, 0.14);
+}
+.person-tone-5 {
+  background: rgba(34, 197, 94, 0.075);
+  border-color: rgba(34, 197, 94, 0.14);
+}
+.person-tone-6 {
+  background: rgba(249, 115, 22, 0.075);
+  border-color: rgba(249, 115, 22, 0.14);
+}
+.person-tone-7 {
+  background: rgba(20, 184, 166, 0.075);
+  border-color: rgba(20, 184, 166, 0.14);
+}
+.person-tone-8 {
+  background: rgba(244, 63, 94, 0.065);
+  border-color: rgba(244, 63, 94, 0.12);
+}
+.person-tone-9 {
+  background: rgba(148, 163, 184, 0.065);
+  border-color: rgba(148, 163, 184, 0.12);
+}
 
 /* Final table typography: descriptions/remarks stay neutral; amounts are deep-bold white. */
 .table-text-pill {
@@ -725,35 +807,65 @@ body.light-mode select option:checked {
 
 .table-amount-pill {
   font-weight: 900 !important;
-  letter-spacing: .01em;
+  letter-spacing: 0.01em;
   color: #f8fafc !important;
-  text-shadow: 0 0 5px rgba(255,255,255,.18);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.18);
 }
 
 .table-positive-pill,
 .table-negative-pill {
   color: #f8fafc !important;
-  text-shadow: 0 0 5px rgba(255,255,255,.18);
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.18);
 }
 
 /* GRV CC: each credit card gets one consistent soft tint. */
-.grv-card-tone-0 { background: rgba(34, 211, 238, .075); border-color: rgba(34,211,238,.14); }
-.grv-card-tone-1 { background: rgba(168, 85, 247, .075); border-color: rgba(168,85,247,.14); }
-.grv-card-tone-2 { background: rgba(245, 158, 11, .075); border-color: rgba(245,158,11,.14); }
-.grv-card-tone-3 { background: rgba(236, 72, 153, .075); border-color: rgba(236,72,153,.14); }
-.grv-card-tone-4 { background: rgba(59, 130, 246, .075); border-color: rgba(59,130,246,.14); }
-.grv-card-tone-5 { background: rgba(34, 197, 94, .075); border-color: rgba(34,197,94,.14); }
-.grv-card-tone-6 { background: rgba(249, 115, 22, .075); border-color: rgba(249,115,22,.14); }
-.grv-card-tone-7 { background: rgba(20, 184, 166, .075); border-color: rgba(20,184,166,.14); }
-.grv-card-tone-8 { background: rgba(244, 63, 94, .065); border-color: rgba(244,63,94,.12); }
-.grv-card-tone-9 { background: rgba(148, 163, 184, .065); border-color: rgba(148,163,184,.12); }
+.grv-card-tone-0 {
+  background: rgba(34, 211, 238, 0.075);
+  border-color: rgba(34, 211, 238, 0.14);
+}
+.grv-card-tone-1 {
+  background: rgba(168, 85, 247, 0.075);
+  border-color: rgba(168, 85, 247, 0.14);
+}
+.grv-card-tone-2 {
+  background: rgba(245, 158, 11, 0.075);
+  border-color: rgba(245, 158, 11, 0.14);
+}
+.grv-card-tone-3 {
+  background: rgba(236, 72, 153, 0.075);
+  border-color: rgba(236, 72, 153, 0.14);
+}
+.grv-card-tone-4 {
+  background: rgba(59, 130, 246, 0.075);
+  border-color: rgba(59, 130, 246, 0.14);
+}
+.grv-card-tone-5 {
+  background: rgba(34, 197, 94, 0.075);
+  border-color: rgba(34, 197, 94, 0.14);
+}
+.grv-card-tone-6 {
+  background: rgba(249, 115, 22, 0.075);
+  border-color: rgba(249, 115, 22, 0.14);
+}
+.grv-card-tone-7 {
+  background: rgba(20, 184, 166, 0.075);
+  border-color: rgba(20, 184, 166, 0.14);
+}
+.grv-card-tone-8 {
+  background: rgba(244, 63, 94, 0.065);
+  border-color: rgba(244, 63, 94, 0.12);
+}
+.grv-card-tone-9 {
+  background: rgba(148, 163, 184, 0.065);
+  border-color: rgba(148, 163, 184, 0.12);
+}
 
 /* Expenses + Sweetie keep their red/green amount logic; CC/GRV stay white. */
 .expense-table td.txn-amount-in .table-amount-pill {
   color: var(--green) !important;
-  text-shadow: 0 0 5px rgba(52,211,153,.24);
+  text-shadow: 0 0 5px rgba(52, 211, 153, 0.24);
 }
 .expense-table td.txn-amount-out .table-amount-pill {
   color: var(--danger) !important;
-  text-shadow: 0 0 5px rgba(248,113,113,.24);
+  text-shadow: 0 0 5px rgba(248, 113, 113, 0.24);
 }
