@@ -682,8 +682,26 @@
             border-radius: 40px;
             font-weight: 600;
             transition: 0.3s;
-            z-index: 1100;
+            z-index: 20000;
             pointer-events: none;
+        }
+
+        .spin {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spn .7s linear infinite;
+            vertical-align: -2px;
+            margin-right: 6px
+        }
+
+        @keyframes spn {
+            to {
+                transform: rotate(360deg)
+            }
         }
 
         .toast.show {
@@ -6215,7 +6233,7 @@
     </div>
 
     <!-- GRV CC Add New Card -->
-    <div id="grvCardConfigModal" class="grv-card-modal" style="display:none;">
+    <div id="grvCardConfigModal" class="grv-card-modal" style="display:none;z-index:10001;">
         <div class="grv-card-backdrop" onclick="closeGrvCardConfig()"></div>
         <div class="grv-card-dialog" role="dialog" aria-modal="true" aria-labelledby="grvCardConfigTitle">
             <div class="grv-card-dialog-head">
@@ -6236,8 +6254,40 @@
                     <div class="grv-card-help">Enter once. CC Master will display Number and Number & CVV separately.
                     </div>
                 </div>
-                <div><label for="newCardExpDate">Expiry Date</label><input id="newCardExpDate" type="text"
-                        placeholder="Jun-32" autocomplete="off" /></div>
+                <div><label for="newCardExpMonth">Expiry Date</label>
+                    <div style="display:flex;gap:6px"><select id="newCardExpMonth">
+                            <option value="">Month</option>
+                            <option value="Jan">Jan</option>
+                            <option value="Feb">Feb</option>
+                            <option value="Mar">Mar</option>
+                            <option value="Apr">Apr</option>
+                            <option value="May">May</option>
+                            <option value="Jun">Jun</option>
+                            <option value="Jul">Jul</option>
+                            <option value="Aug">Aug</option>
+                            <option value="Sep">Sep</option>
+                            <option value="Oct">Oct</option>
+                            <option value="Nov">Nov</option>
+                            <option value="Dec">Dec</option>
+                        </select><select id="newCardExpYear">
+                            <option value="">Year</option>
+                            <option value="2026">2026</option>
+                            <option value="2027">2027</option>
+                            <option value="2028">2028</option>
+                            <option value="2029">2029</option>
+                            <option value="2030">2030</option>
+                            <option value="2031">2031</option>
+                            <option value="2032">2032</option>
+                            <option value="2033">2033</option>
+                            <option value="2034">2034</option>
+                            <option value="2035">2035</option>
+                            <option value="2036">2036</option>
+                            <option value="2037">2037</option>
+                            <option value="2038">2038</option>
+                            <option value="2039">2039</option>
+                            <option value="2040">2040</option>
+                        </select></div>
+                </div>
                 <div><label for="newCardCutoff">Cutoff</label><input id="newCardCutoff" type="number" min="0" max="31"
                         placeholder="18" />
                     <div class="grv-card-help">0 = calendar month (1st → month end)</div>

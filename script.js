@@ -25,29 +25,36 @@ const EXPENSE_CATEGORY_TONES = {
 };
 
 function getExpenseCategoryTone(category) {
-  const key = String(category || "").trim().toLowerCase();
+  const key = String(category || "")
+    .trim()
+    .toLowerCase();
   return EXPENSE_CATEGORY_TONES[key] ?? 8;
 }
 
 function getCardTone(card) {
-  const value = String(card || "—").trim().toLowerCase();
+  const value = String(card || "—")
+    .trim()
+    .toLowerCase();
   const known = {
     "axis-flipkart": 0,
     "axis-myzone": 1,
     "icici-amazon pay": 2,
     "icici-coral": 3,
-    "hdfc": 4,
-    "sbi": 5,
-    "kotak": 6,
+    hdfc: 4,
+    sbi: 5,
+    kotak: 6,
   };
   if (Object.prototype.hasOwnProperty.call(known, value)) return known[value];
   let hash = 0;
-  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < value.length; i++)
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
   return 7 + (hash % 3);
 }
 
 function getPersonTone(name) {
-  const value = String(name || "—").trim().toLowerCase();
+  const value = String(name || "—")
+    .trim()
+    .toLowerCase();
   const known = {
     grv: 0,
     gaurav: 0,
@@ -58,7 +65,8 @@ function getPersonTone(name) {
   };
   if (Object.prototype.hasOwnProperty.call(known, value)) return known[value];
   let hash = 0;
-  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < value.length; i++)
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
   return 4 + (hash % 6);
 }
 
@@ -682,9 +690,17 @@ function render() {
     tr.insertCell(2).innerHTML =
       `<span class="table-data-pill table-text-pill">${esc(exp.description || "—")}</span>`;
     const expAmtCell = tr.insertCell(3);
-    const expIncoming = String(exp.category || "").trim().toLowerCase() === "received" || String(exp.category || "").trim().toLowerCase() === "sweetie saving";
+    const expIncoming =
+      String(exp.category || "")
+        .trim()
+        .toLowerCase() === "received" ||
+      String(exp.category || "")
+        .trim()
+        .toLowerCase() === "sweetie saving";
     expAmtCell.innerHTML = `<span class="table-data-pill table-amount-pill ${expIncoming ? "table-positive-pill" : "table-negative-pill"}">${money(exp.amount)}</span>`;
-    expAmtCell.className = expIncoming ? "txn-amount txn-amount-in" : "txn-amount txn-amount-out";
+    expAmtCell.className = expIncoming
+      ? "txn-amount txn-amount-in"
+      : "txn-amount txn-amount-out";
     const actCell = tr.insertCell(4);
     actCell.style.whiteSpace = "nowrap";
     const editBtn = document.createElement("button");
@@ -1582,7 +1598,8 @@ function fetchCCMasterData() {
   ccMasterFetchPromise = fetch(apiUrl("action=getCCMaster"))
     .then((res) => res.json())
     .then((data) => {
-      if (!Array.isArray(data)) throw new Error(data.error || "Unable to load CC Master");
+      if (!Array.isArray(data))
+        throw new Error(data.error || "Unable to load CC Master");
       return data;
     })
     .finally(() => {
@@ -1603,7 +1620,8 @@ async function openCCMaster() {
   if (!modal || !container) return;
 
   modal.style.display = "flex";
-  container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
+  container.innerHTML =
+    '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
     const data = await fetchCCMasterData();
@@ -1954,8 +1972,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   on("ccMasterBtn", "click", openCCMaster);
   const ccMasterBtn = document.getElementById("ccMasterBtn");
   if (ccMasterBtn) {
-    ccMasterBtn.addEventListener("pointerenter", prefetchCCMaster, { once: true });
-    ccMasterBtn.addEventListener("pointerdown", prefetchCCMaster, { once: true });
+    ccMasterBtn.addEventListener("pointerenter", prefetchCCMaster, {
+      once: true,
+    });
+    ccMasterBtn.addEventListener("pointerdown", prefetchCCMaster, {
+      once: true,
+    });
   }
   on("closeCCMasterBtn", "click", () => {
     document.getElementById("ccMasterModal").style.display = "none";
@@ -3161,7 +3183,9 @@ function setGrvStatementMatch(card, value) {
   const cfg = cardConfig.find((c) => c.card === card);
   const ref = grvBillsRef || new Date();
   const cycle = cfg ? getCardCycle(cfg, ref).last : null;
-  const key = cycle ? `${card}|${cycle.billingYear}-${cycle.billingMonth + 1}` : card;
+  const key = cycle
+    ? `${card}|${cycle.billingYear}-${cycle.billingMonth + 1}`
+    : card;
   if (!Number.isFinite(n)) {
     delete grvStatementMatches[key];
   } else {
@@ -3273,22 +3297,46 @@ async function saveGrvBillPayment() {
   const cfg = cardConfig.find((c) => c.card === card),
     cycle = cfg ? getCardCycle(cfg, grvBillsRef || new Date()).last : null,
     ids = (() => {
-      try { return JSON.parse(modal.dataset.ids || "[]"); } catch (_) { return []; }
+      try {
+        return JSON.parse(modal.dataset.ids || "[]");
+      } catch (_) {
+        return [];
+      }
     })();
   if (cycle && cycle.end >= new Date(new Date().setHours(0, 0, 0, 0)))
-    return toast(`This statement has not closed yet. Payment is available after ${cycle.end.getDate()} ${MONTHS[cycle.end.getMonth()]} ${cycle.end.getFullYear()}.`, true, 6000);
+    return toast(
+      `This statement has not closed yet. Payment is available after ${cycle.end.getDate()} ${MONTHS[cycle.end.getMonth()]} ${cycle.end.getFullYear()}.`,
+      true,
+      6000,
+    );
   const selectedRows = ids
-    .map((id) => cardTxns.find((t) => String(t.id) === String(id)))
-    .filter(Boolean),
-    unpaidRows = selectedRows.filter((t) => String(t.status || "").toUpperCase() === "UNPAID"),
+      .map((id) => cardTxns.find((t) => String(t.id) === String(id)))
+      .filter(Boolean),
+    unpaidRows = selectedRows.filter(
+      (t) => String(t.status || "").toUpperCase() === "UNPAID",
+    ),
     unpaidTotal = unpaidRows.reduce((sum, t) => sum + (+t.amount || 0), 0),
-    statementMatch = grvStatementMatches[`${card}|${cycle ? `${cycle.billingYear}-${cycle.billingMonth + 1}` : ""}`];
+    statementMatch =
+      grvStatementMatches[
+        `${card}|${cycle ? `${cycle.billingYear}-${cycle.billingMonth + 1}` : ""}`
+      ];
   if (!ids.length || !unpaidRows.length)
     return toast("No UNPAID transactions found for this statement", true);
   if (Math.abs(unpaidTotal - total) >= 0.01)
-    return toast("Statement data changed. Refresh Bills and try again.", true, 6000);
-  if (statementMatch == null || Math.abs((+statementMatch || 0) - total) >= 0.01)
-    return toast("Enter the actual bank bill and make sure it matches the statement total before paying.", true, 6000);
+    return toast(
+      "Statement data changed. Refresh Bills and try again.",
+      true,
+      6000,
+    );
+  if (
+    statementMatch == null ||
+    Math.abs((+statementMatch || 0) - total) >= 0.01
+  )
+    return toast(
+      "Enter the actual bank bill and make sure it matches the statement total before paying.",
+      true,
+      6000,
+    );
   window.__grvActionBusy = true;
   const saveBtn = document.getElementById("saveGrvBillPaymentBtn");
   if (saveBtn) {
@@ -3383,10 +3431,16 @@ function initGrvBillsPicker() {
   const years = cardTxns
     .map((t) => +String(t.txnDate || "").slice(0, 4))
     .filter(Boolean);
-  const minY = Math.min(now.getFullYear(), ...(years.length ? years : [now.getFullYear()]));
-  mSel.innerHTML = FULL_MONTHS.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+  const minY = Math.min(
+    now.getFullYear(),
+    ...(years.length ? years : [now.getFullYear()]),
+  );
+  mSel.innerHTML = FULL_MONTHS.map(
+    (m, i) => `<option value="${i}">${m}</option>`,
+  ).join("");
   ySel.innerHTML = "";
-  for (let y = now.getFullYear() + 1; y >= minY; y--) ySel.add(new Option(y, y));
+  for (let y = now.getFullYear() + 1; y >= minY; y--)
+    ySel.add(new Option(y, y));
   syncGrvBillsPicker();
 }
 
@@ -3412,12 +3466,16 @@ async function loadGrvBillsMonthData() {
       d <= c.end;
       d = new Date(d.getFullYear(), d.getMonth() + 1, 1)
     ) {
-      prefixes.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      prefixes.add(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      );
     }
   });
   if (!prefixes.size) return;
   const res = await fetch(
-    apiUrl(`action=getCardsByTxnMonth&txnMonth=${enc([...prefixes].join(","))}`),
+    apiUrl(
+      `action=getCardsByTxnMonth&txnMonth=${enc([...prefixes].join(","))}`,
+    ),
   ).then((r) => r.json());
   if (!Array.isArray(res)) return;
   const fresh = res
@@ -3440,7 +3498,9 @@ async function loadGrvBillsMonthData() {
 
 async function setGrvBillsMonth() {
   const m = +(document.getElementById("grvBillsMonth")?.value ?? 0);
-  const y = +(document.getElementById("grvBillsYear")?.value ?? new Date().getFullYear());
+  const y = +(
+    document.getElementById("grvBillsYear")?.value ?? new Date().getFullYear()
+  );
   // getCardCycle(ref).last is the month immediately before ref, so use first day of next month.
   grvBillsRef = new Date(y, m + 1, 1);
   renderGrvBills();
@@ -3485,7 +3545,10 @@ function renderGrvBills() {
         due,
         lastTotal: lastRows.reduce((a, t) => a + (+t.amount || 0), 0),
         openTotal: openRows.reduce((a, t) => a + (+t.amount || 0), 0),
-        statementMatch: grvStatementMatches[`${cfg.card}|${cycles.last.billingYear}-${cycles.last.billingMonth + 1}`],
+        statementMatch:
+          grvStatementMatches[
+            `${cfg.card}|${cycles.last.billingYear}-${cycles.last.billingMonth + 1}`
+          ],
       };
     })
     .sort((a, b) => {
@@ -3515,7 +3578,9 @@ function renderGrvBills() {
   document.getElementById("grvBillsTotalPay").textContent = money(totalPay);
   document.getElementById("grvBillsNearestDue").textContent = nearest
     ? `${nearest.cfg.card} · ${nearest.due.date.getDate()} ${MONTHS[nearest.due.date.getMonth()]} ${nearest.due.date.getFullYear()}`
-    : totalPay ? "No due date configured" : "Nothing due";
+    : totalPay
+      ? "No due date configured"
+      : "Nothing due";
   grid.innerHTML =
     cards
       .map((c) => {
@@ -3568,11 +3633,16 @@ function openGrvCardConfig(cardKey = null) {
   const modal = document.getElementById("grvCardConfigModal");
   if (!modal) return;
   editingGrvCardKey = cardKey || null;
+  if (cardKey) {
+    window._reopenManage = true;
+    closeGrvManageCards();
+  }
   [
     "newCardBank",
     "newCardName",
     "newCardNumberCvv",
-    "newCardExpDate",
+    "newCardExpMonth",
+    "newCardExpYear",
     "newCardCutoff",
     "newCardLimit",
     "newCardDueDay",
@@ -3594,11 +3664,30 @@ function openGrvCardConfig(cardKey = null) {
       const el = document.getElementById(id);
       if (el) el.value = v ?? "";
     };
-    set("newCardName", cfg.card);
+    const _i = cfg.card.indexOf("-");
+    set("newCardBank", _i > 0 ? cfg.card.slice(0, _i) : "");
+    set("newCardName", _i > 0 ? cfg.card.slice(_i + 1) : cfg.card);
     set("newCardCutoff", +cfg.cutoff || 0);
     set("newCardLimit", +cfg.limit || 0);
-    set("newCardDueDay", +cfg.dueDay || 0);
-    set("newCardDueOffset", +cfg.dueMonthOffset || 0);
+    set("newCardDueDay", +cfg.dueDay || "");
+    set("newCardDueOffset", +cfg.dueDay ? +cfg.dueMonthOffset || 0 : "");
+    fetchCCMasterData()
+      .then((rows) => {
+        if (editingGrvCardKey !== cardKey) return;
+        const r = rows.find(
+          (x) =>
+            String(x[1]).trim() === cardKey ||
+            String(x[0]).trim() + "-" + String(x[1]).trim() === cardKey,
+        );
+        if (!r) return;
+        set("newCardNumberCvv", String(r[3] || r[2] || "").trim());
+        const m = /^([A-Za-z]{3})-(\d{2})$/.exec(formatExpDate(r[4]));
+        if (m) {
+          set("newCardExpMonth", m[1]);
+          set("newCardExpYear", "20" + m[2]);
+        }
+      })
+      .catch(() => {});
     if (title) title.textContent = "✏️ Edit Card";
     if (save) save.textContent = "Update Card";
     if (sub)
@@ -3618,6 +3707,10 @@ function closeGrvCardConfig() {
   const modal = document.getElementById("grvCardConfigModal");
   if (modal) modal.style.display = "none";
   editingGrvCardKey = null;
+  if (window._reopenManage) {
+    window._reopenManage = false;
+    openGrvManageCards();
+  }
 }
 async function saveGrvCardConfig() {
   const bank = String(
@@ -3630,9 +3723,11 @@ async function saveGrvCardConfig() {
   const numberCvv = String(
     document.getElementById("newCardNumberCvv")?.value || "",
   ).trim();
-  const expDate = String(
-    document.getElementById("newCardExpDate")?.value || "",
-  ).trim();
+  const expM = document.getElementById("newCardExpMonth")?.value || "",
+    expY = document.getElementById("newCardExpYear")?.value || "";
+  if (!!expM !== !!expY)
+    return toast("Select both expiry month and year", true);
+  const expDate = expM ? expM + "-" + expY.slice(-2) : "";
   const cutoffRaw = document.getElementById("newCardCutoff")?.value;
   const limitRaw = document.getElementById("newCardLimit")?.value;
   const dueDayRaw = document.getElementById("newCardDueDay")?.value;
@@ -3664,24 +3759,31 @@ async function saveGrvCardConfig() {
     return toast("Enter card number once, optionally followed by / CVV", true);
   if (numberCvv && !/^\d{12,19}$/.test(number))
     return toast("Invalid card number", true);
+  const cardName = bank ? bank + "-" + name : name;
   const existing = oldCardKey
     ? cardConfig.find((c) => c.card === oldCardKey)
-    : cardConfig.find((c) => c.card.toLowerCase() === name.toLowerCase());
+    : cardConfig.find((c) => c.card.toLowerCase() === cardName.toLowerCase());
   if (!existing && oldCardKey) return toast("Card no longer exists", true);
   if (!oldCardKey && existing)
     return toast("A card with this name already exists", true);
   const cfg = {
-    card: existing ? existing.card : name,
+    card: cardName,
     cutoff,
     limit,
     dueDay,
     dueMonthOffset,
   };
   saveLocal();
+  const _sb = document.getElementById("saveGrvCardConfigBtn"),
+    _old = _sb?.textContent;
+  if (_sb) {
+    _sb.disabled = true;
+    _sb.innerHTML = '<span class="spin"></span>Saving…';
+  }
   try {
     const res = await fetch(
       apiUrl(
-        `action=upsertCardConfig&oldCard=${enc(oldCardKey || "")}&card=${enc(cfg.card)}&cutoff=${cfg.cutoff}&limit=${cfg.limit}&dueDay=${cfg.dueDay}&dueMonthOffset=${cfg.dueMonthOffset}&bank=${enc(bank)}&number=${enc(number)}&numberCvv=${enc(numberCvv)}&expDate=${enc(expDate)}`,
+        `action=upsertCardConfig&oldCard=${enc(oldCardKey || "")}&card=${enc(cfg.card)}&cutoff=${enc(String(cutoffRaw ?? "").trim())}&limit=${enc(String(limitRaw ?? "").trim())}&dueDay=${enc(String(dueDayRaw ?? "").trim())}&dueMonthOffset=${enc(String(dueOffsetRaw ?? "").trim())}&ccName=${enc(name)}&bank=${enc(bank)}&number=${enc(number)}&numberCvv=${enc(numberCvv)}&expDate=${enc(expDate)}`,
       ),
     );
     const text = await res.text();
@@ -3705,6 +3807,11 @@ async function saveGrvCardConfig() {
     saveLocal();
     toast("⚠️ Card was not saved to Sheet", true, 5000);
     console.warn("CardConfig save error", err);
+  } finally {
+    if (_sb) {
+      _sb.disabled = false;
+      _sb.textContent = _old;
+    }
   }
 }
 
@@ -3742,6 +3849,7 @@ async function deleteGrvCardConfig(card) {
     )
   )
     return;
+  toast("⏳ Deleting…", false, 20000);
   try {
     const res = await fetch(
       apiUrl(`action=deleteCardConfig&card=${enc(card)}`),
@@ -3964,7 +4072,9 @@ function renderSweetie() {
 
     const amtCell = tr.insertCell(2);
     amtCell.innerHTML = `<span class="table-data-pill table-amount-pill ${isDebit ? "table-negative-pill" : "table-positive-pill"}">${sign}${money(Math.abs(t.amount))}</span>`;
-    amtCell.className = isDebit ? "txn-amount txn-amount-out" : "txn-amount txn-amount-in";
+    amtCell.className = isDebit
+      ? "txn-amount txn-amount-out"
+      : "txn-amount txn-amount-in";
 
     const remCell = tr.insertCell(3);
     remCell.textContent = money(remaining);
