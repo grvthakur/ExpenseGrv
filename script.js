@@ -1593,6 +1593,8 @@ async function syncCardsFromSheet(isManual = false) {
 
 let ccMasterFetchPromise = null;
 
+let ccMasterCache = null;
+setTimeout(() => fetchCCMasterData().catch(() => {}), 1500);
 function fetchCCMasterData() {
   if (ccMasterFetchPromise) return ccMasterFetchPromise;
   ccMasterFetchPromise = fetch(apiUrl("action=getCCMaster"))
@@ -1600,6 +1602,7 @@ function fetchCCMasterData() {
     .then((data) => {
       if (!Array.isArray(data))
         throw new Error(data.error || "Unable to load CC Master");
+      ccMasterCache = data;
       return data;
     })
     .finally(() => {
@@ -1624,6 +1627,17 @@ async function openCCMaster() {
     '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
+    if (ccMasterCache) {
+      const old = JSON.stringify(ccMasterCache);
+      renderCCMaster(ccMasterCache);
+      fetchCCMasterData()
+        .then((d) => {
+          if (JSON.stringify(d) !== old && modal.style.display !== "none")
+            renderCCMaster(d);
+        })
+        .catch(() => {});
+      return;
+    }
     const data = await fetchCCMasterData();
     renderCCMaster(data);
   } catch (err) {
@@ -1729,16 +1743,25 @@ function clearCCMasterSearch() {
 
 async function copyCC(btn) {
   const text = decodeURIComponent(btn.dataset.copy);
+  let ok = false;
   try {
     await navigator.clipboard.writeText(text);
+    ok = true;
   } catch (_) {
     const t = document.createElement("textarea");
     t.value = text;
-    document.body.appendChild(t);
+    t.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    (document.getElementById("ccMasterModal") || document.body).appendChild(t);
+    t.focus();
     t.select();
-    document.execCommand("copy");
+    t.setSelectionRange(0, text.length);
+    try {
+      ok = document.execCommand("copy");
+    } catch (e) {}
     t.remove();
   }
+  toast(ok ? "✓ Copied" : "Copy failed", !ok, 1500);
+  if (!ok) return;
   btn.textContent = "✓ Copied";
   btn.classList.add("done");
   setTimeout(() => {
