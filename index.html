@@ -686,6 +686,30 @@
             pointer-events: none;
         }
 
+        #expenseSection,
+        #cardSection,
+        #sweetieSection,
+        #grvCCSection {
+            animation: tabIn .18s ease-out
+        }
+
+        @keyframes tabIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+        }
+
+        @media (prefers-reduced-motion:reduce) {
+
+            #expenseSection,
+            #cardSection,
+            #sweetieSection,
+            #grvCCSection {
+                animation: none
+            }
+        }
+
         .spin {
             display: inline-block;
             width: 12px;

@@ -1963,6 +1963,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   lockDatePicker();
   loadLocal();
   render();
+  if (localStorage.getItem("exp_v3")) finishInitialSkeleton();
 
   // Set card date default to today
   const cardTxnDateEl = document.getElementById("cardTxnDate");
