@@ -3656,6 +3656,7 @@ let editingGrvCardKey = null;
 function openGrvCardConfig(cardKey = null) {
   const modal = document.getElementById("grvCardConfigModal");
   if (!modal) return;
+  if (typeof cardKey !== "string") cardKey = null;
   editingGrvCardKey = cardKey || null;
   if (cardKey) {
     window._reopenManage = true;
