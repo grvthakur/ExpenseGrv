@@ -176,8 +176,7 @@ function toast(msg, err = false, duration = 3000, action = null) {
     };
     el.appendChild(btn);
   }
-  el.style.background = err ? "#f87171" : "#34d399";
-  el.style.color = err ? "#fff" : "#0b0b10";
+  el.classList.toggle("err", !!err);
   el.classList.add("show");
   clearTimeout(el._timer);
   el._timer = setTimeout(() => el.classList.remove("show"), duration);

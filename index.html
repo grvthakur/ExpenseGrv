@@ -886,6 +886,100 @@
             border-radius: 6px
         }
 
+        .grv-card-modal {
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y
+        }
+
+        .grv-card-modal .grv-card-dialog {
+            margin: 3vh auto calc(40px + env(safe-area-inset-bottom))
+        }
+
+        .grv-card-modal .grv-card-backdrop {
+            position: fixed
+        }
+
+        .toast:not(.show) {
+            opacity: 0;
+            visibility: hidden
+        }
+
+        .toast.show {
+            opacity: 1;
+            visibility: visible
+        }
+
+        #toastMsg.toast {
+            --tc: 52, 211, 153;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: min(92vw, 460px);
+            padding: 13px 20px;
+            border-radius: 16px;
+            font-size: .92rem;
+            font-weight: 600;
+            letter-spacing: .2px;
+            color: #f4f4ff !important;
+            background: linear-gradient(135deg, rgba(28, 28, 44, .92), rgba(18, 18, 30, .92)) !important;
+            border: 1px solid rgba(var(--tc), .45);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .04) inset, 0 0 24px rgba(var(--tc), .22);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transform: translateX(-50%) translateY(24px) scale(.96);
+            transition: transform .35s cubic-bezier(.2, .9, .3, 1.2), opacity .25s
+        }
+
+        #toastMsg.toast.show {
+            transform: translateX(-50%) translateY(0) scale(1)
+        }
+
+        #toastMsg.toast.err {
+            --tc: 248, 113, 113
+        }
+
+        #toastMsg.toast::before {
+            content: "";
+            flex: none;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: rgb(var(--tc));
+            box-shadow: 0 0 10px rgb(var(--tc))
+        }
+
+        #grvMonthlyBreakdownSummary {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px
+        }
+
+        #grvMonthlyBreakdownSummary .grv-month-summary-card {
+            min-width: 0;
+            width: auto;
+            flex: none;
+            padding: 12px 14px
+        }
+
+        #grvMonthlyBreakdownSummary .grv-month-summary-card span {
+            font-size: .8rem;
+            line-height: 1.3
+        }
+
+        #grvMonthlyBreakdownSummary .grv-month-summary-card strong {
+            display: block;
+            font-size: clamp(1rem, 4.6vw, 1.35rem);
+            white-space: nowrap
+        }
+
+        @media (max-width:600px) {
+            #grvMonthlyBreakdownSummary {
+                grid-template-columns: 1fr 1fr
+            }
+        }
+
         .spin {
             display: inline-block;
             width: 12px;
