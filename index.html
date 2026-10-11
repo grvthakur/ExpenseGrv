@@ -686,17 +686,21 @@
             pointer-events: none;
         }
 
+        body {
+            overflow-x: clip
+        }
+
         #expenseSection,
         #cardSection,
         #sweetieSection,
         #grvCCSection {
-            animation: tabIn .18s ease-out
+            animation: tabIn .22s cubic-bezier(.2, .8, .2, 1)
         }
 
         @keyframes tabIn {
             from {
                 opacity: 0;
-                transform: translateY(8px)
+                transform: translateX(var(--tabdir, 0px))
             }
         }
 

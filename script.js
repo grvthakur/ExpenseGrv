@@ -339,6 +339,52 @@ function sheetWrite(url) {
 
 // ─── TAB SWITCHING ───────────────────────────────────────────────────────────
 function switchTab(tab) {
+  const ids = {
+    expenses: "expenseSection",
+    cards: "cardSection",
+    grvcc: "grvCCSection",
+    sweetie: "sweetieSection",
+  };
+  const old =
+    tab !== activeTab && !matchMedia("(prefers-reduced-motion:reduce)").matches
+      ? document.getElementById(ids[activeTab])
+      : null;
+  const m =
+    old && old.offsetParent
+      ? {
+          t: old.offsetTop,
+          l: old.offsetLeft,
+          w: old.offsetWidth,
+          d: old.style.display,
+        }
+      : null;
+  const dir =
+    ["expenses", "cards", "grvcc", "sweetie"].indexOf(tab) >=
+    ["expenses", "cards", "grvcc", "sweetie"].indexOf(activeTab)
+      ? 1
+      : -1;
+  _switchTabCore(tab);
+  if (!m || old.offsetParent) return;
+  old.style.cssText += `;display:${m.d || "block"};position:absolute;top:${m.t}px;left:${m.l}px;width:${m.w}px;pointer-events:none;animation:none`;
+  old.animate(
+    [
+      { transform: "translateX(0)", opacity: 1 },
+      { transform: `translateX(${-dir * 120}px)`, opacity: 0 },
+    ],
+    { duration: 240, easing: "cubic-bezier(.4,0,.2,1)" },
+  ).onfinish = () => {
+    old.style.display = "none";
+    ["position", "top", "left", "width", "pointer-events", "animation"].forEach(
+      (p) => old.style.removeProperty(p),
+    );
+  };
+}
+function _switchTabCore(tab) {
+  const _o = ["expenses", "cards", "grvcc", "sweetie"];
+  document.documentElement.style.setProperty(
+    "--tabdir",
+    _o.indexOf(tab) >= _o.indexOf(activeTab) ? "120px" : "-120px",
+  );
   activeTab = tab;
   const elExpenses = document.getElementById("tabExpenses");
   const elCards = document.getElementById("tabCards");
