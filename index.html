@@ -532,7 +532,7 @@
         .expense-table td {
             padding: 12px 16px;
             border-bottom: 1px solid var(--border);
-            color: #eeeeff;
+            color: var(--text);
         }
 
         /* Alternating row colors for readability */
@@ -977,6 +977,60 @@
         @media (max-width:600px) {
             #grvMonthlyBreakdownSummary {
                 grid-template-columns: 1fr 1fr
+            }
+        }
+
+        #cardSummaryGrid .cs-row span.c-red {
+            color: #ef4444
+        }
+
+        #cardSummaryGrid .cs-row span.c-green {
+            color: #10b981
+        }
+
+        #cardSummaryGrid .cs-row span.c-pink {
+            color: #ec4899
+        }
+
+        #emptyMessage,
+        #cardEmptyMessage {
+            text-align: center;
+            padding: 36px 16px;
+            margin: 12px;
+            border: 1px dashed var(--border);
+            border-radius: 14px;
+            color: var(--muted);
+            font-size: .95rem
+        }
+
+        #expenseSection table tbody tr,
+        #cardSection table tbody tr {
+            transition: background .15s
+        }
+
+        #expenseSection table tbody tr:hover td,
+        #cardSection table tbody tr:hover td {
+            background: rgba(124, 92, 246, .08)
+        }
+
+        .tab-bar .tb.tab-active {
+            background: rgba(34, 211, 238, .2) !important;
+            box-shadow: inset 0 0 0 1px rgba(34, 211, 238, .5)
+        }
+
+        .field-invalid {
+            border-color: #f87171 !important;
+            box-shadow: 0 0 0 3px rgba(248, 113, 113, .22) !important;
+            animation: shk .3s
+        }
+
+        @keyframes shk {
+            25% {
+                transform: translateX(-4px)
+            }
+
+            75% {
+                transform: translateX(4px)
             }
         }
 
@@ -1477,7 +1531,7 @@
         }
 
         .cs-row span:last-child {
-            color: #eeeeff;
+            color: var(--text);
             font-weight: 600;
         }
 
@@ -1969,7 +2023,7 @@
         }
 
         .grv-month-breakdown-dialog .grv-bills-title {
-            color: #f5f7ff;
+            color: var(--text);
         }
 
         .grv-month-breakdown-dialog .grv-bills-subtitle {

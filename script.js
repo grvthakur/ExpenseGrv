@@ -157,7 +157,32 @@ function billingMonthKey() {
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
+function markInvalid() {
+  const m = [
+    ...document.querySelectorAll(".grv-card-modal,.grv-bills-modal"),
+  ].find((x) => x.style.display !== "none" && x.offsetParent !== null);
+  const sc =
+    m ||
+    ["expenseSection", "cardSection", "sweetieSection", "grvCCSection"]
+      .map((i) => document.getElementById(i))
+      .find((x) => x && x.offsetParent !== null);
+  if (!sc) return;
+  sc.querySelectorAll(
+    "input:not([type=hidden]):not([type=search]),select",
+  ).forEach((el) => {
+    if (el.value !== "" || el.offsetParent === null) return;
+    const lb = (el.closest("div")?.textContent || "").toLowerCase();
+    if (lb.includes("optional") || /search|filter/i.test(el.id + el.className))
+      return;
+    el.classList.add("field-invalid");
+    el.addEventListener("input", () => el.classList.remove("field-invalid"), {
+      once: true,
+    });
+    setTimeout(() => el.classList.remove("field-invalid"), 4000);
+  });
+}
 function toast(msg, err = false, duration = 3000, action = null) {
+  if (err && /required|enter|select|valid/i.test(msg)) markInvalid();
   const el = document.getElementById("toastMsg");
   if (!el) return;
   el.innerHTML = "";
