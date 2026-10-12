@@ -166,6 +166,23 @@ function doGet(e) {
       writeLock.waitLock(20000);
     }
 
+    if (action === "aiParse") {
+      const key = PropertiesService.getScriptProperties().getProperty("GEMINI_KEY");
+      if (!key) return ContentService.createTextOutput(JSON.stringify({ error: "Set GEMINI_KEY in Script Properties" })).setMimeType(ContentService.MimeType.JSON);
+      const today = Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
+      const prompt = "Today is " + today + ". Extract ONE transaction from the text. Reply ONLY JSON: {\"kind\":\"card|expense|sweetie\",\"card\":\"\",\"usedBy\":\"\",\"desc\":\"\",\"amount\":0,\"date\":\"YYYY-MM-DD\",\"category\":\"\",\"type\":\"SAVING|CREDIT|DEBIT\"}. " +
+        "kind=card if a credit card is involved (pick card EXACTLY from: " + (e.parameter.cards || "") + "); kind=sweetie if text mentions Sweetie savings/credit/debit; else expense (category EXACTLY from: " + (e.parameter.cats || "") + "). Use date in text if present else today. desc = merchant, uppercase. Leave unknown fields empty.\n\nTEXT:\n" + String(e.parameter.text || "").slice(0, 1500);
+      const r = UrlFetchApp.fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent", {
+        method: "post", contentType: "application/json", muteHttpExceptions: true,
+        headers: { "x-goog-api-key": key },
+        payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0, responseMimeType: "application/json" } }),
+      });
+      const j = JSON.parse(r.getContentText());
+      const t = (((((j.candidates || [])[0] || {}).content || {}).parts || [])[0] || {}).text || "";
+      const m = t.match(/\{[\s\S]*\}/);
+      return ContentService.createTextOutput(m ? m[0] : JSON.stringify({ error: (j.error && j.error.message) || "Parse failed" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // ── EXPENSES ─────────────────────────────────────────────────────────
     if (action === "get") {
       const rows = expSheet.getDataRange().getValues();
@@ -497,10 +514,9 @@ function doGet(e) {
       }
       const oldCard = String(e.parameter.oldCard || "").trim();
       const card = String(e.parameter.card || "").trim();
-      const cutoff = parseInt(e.parameter.cutoff || "0", 10) || 0;
-      const limit = parseFloat(e.parameter.limit || "0") || 0;
-      const dueDay = parseInt(e.parameter.dueDay || "0", 10) || 0;
-      const dueMonthOffset = parseInt(e.parameter.dueMonthOffset || "0", 10) || 0;
+      const bl = (v) => { v = String(v == null ? "" : v).trim(); return v === "" || isNaN(Number(v)) ? "" : Number(v); };
+      const cutoff = bl(e.parameter.cutoff), limit = bl(e.parameter.limit),
+        dueDay = bl(e.parameter.dueDay), dueMonthOffset = bl(e.parameter.dueMonthOffset);
       if (!card) return textOut("ERROR: missing card");
       const rows = cfgSheet.getDataRange().getValues();
       let found = -1;
@@ -512,11 +528,16 @@ function doGet(e) {
       if(!cc && (e.parameter.bank||e.parameter.number||e.parameter.numberCvv||e.parameter.expDate)) { cc=ss.insertSheet("CC"); cc.appendRow(["BANK","CREDIT CARD NAME","NUMBER","NUMBER & CVV","EXP DATE"]); }
       if(cc){
         const crows=cc.getDataRange().getValues(); let crow=-1;
-        for(let i=1;i<crows.length;i++) if(String(crows[i][1]).trim()=== (oldCard||card)) {crow=i+1;break;}
+        const ck=oldCard||card, ccName=String(e.parameter.ccName||"").trim();
+        for(let i=1;i<crows.length;i++) if(String(crows[i][1]).trim()===ck || (String(crows[i][0]).trim()+"-"+String(crows[i][1]).trim())===ck) {crow=i+1;break;}
         const bank=String(e.parameter.bank||"").trim(), number=String(e.parameter.number||"").trim(), numberCvv=String(e.parameter.numberCvv||"").trim(), expDate=String(e.parameter.expDate||"").trim();
         if(crow>0){
-          const current=crows[crow-1]; cc.getRange(crow,1,1,5).setValues([[bank||current[0]||"",card,current[2]||number||"",numberCvv||current[3]||"",expDate||current[4]||""]]);
-        } else if(bank||number||numberCvv||expDate) cc.appendRow([bank,card,number,numberCvv,expDate]);
+          const current=crows[crow-1]; cc.getRange(crow,3,1,3).setNumberFormat("@");
+          cc.getRange(crow,1,1,5).setValues([[bank||current[0]||"",ccName||current[1]||card,number||current[2]||"",numberCvv||current[3]||"",expDate||current[4]||""]]);
+        } else if(bank||number||numberCvv||expDate) {
+          const nr=cc.getLastRow()+1; cc.getRange(nr,3,1,3).setNumberFormat("@");
+          cc.getRange(nr,1,1,5).setValues([[bank,ccName||card,number,numberCvv,expDate]]);
+        }
       }
       return textOut(found>0?"Updated":"Added");
     }
@@ -527,7 +548,7 @@ function doGet(e) {
       const cfgSheet = ss.getSheetByName("CardConfig");
       if (cfgSheet) { const rows=cfgSheet.getDataRange().getValues(); for(let i=rows.length-1;i>=1;i--) if(String(rows[i][0]).trim()===card) cfgSheet.deleteRow(i+1); }
       const cc=ss.getSheetByName("CC");
-      if(cc){ const rows=cc.getDataRange().getValues(); for(let i=rows.length-1;i>=1;i--) if(String(rows[i][1]).trim()===card) cc.deleteRow(i+1); }
+      if(cc){ const rows=cc.getDataRange().getValues(); for(let i=rows.length-1;i>=1;i--) if(String(rows[i][1]).trim()===card || (String(rows[i][0]).trim()+"-"+String(rows[i][1]).trim())===card) cc.deleteRow(i+1); }
       return textOut("Deleted");
     }
 

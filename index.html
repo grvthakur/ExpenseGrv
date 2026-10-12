@@ -1038,6 +1038,47 @@
             }
         }
 
+        #toastMsg.toast {
+            top: calc(16px + env(safe-area-inset-top, 0px)) !important;
+            bottom: auto !important;
+            transform: translateX(-50%) translateY(-30px) scale(.96) !important;
+            z-index: 30000 !important
+        }
+
+        #toastMsg.toast.show {
+            transform: translateX(-50%) translateY(0) scale(1) !important
+        }
+
+        @media (max-width:700px) {
+            .controls {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                width: 100%
+            }
+
+            .controls .month-picker {
+                grid-column: 1/-1;
+                justify-content: center
+            }
+
+            .controls .btn-summary {
+                width: 100%;
+                min-height: 44px;
+                font-size: .92rem !important;
+                padding: 0 10px !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap
+            }
+
+            .controls #versionBtn {
+                grid-column: 1/-1;
+                justify-self: end
+            }
+        }
+
         .spin {
             display: inline-block;
             width: 12px;
@@ -6021,6 +6062,8 @@
                 <span>–</span>
                 <select id="yearSelect"></select>
             </div>
+            <button class="btn-summary" id="aiEntryBtn"
+                style="color:#c4b5fd;border-color:#8b5cf6;font-weight:700;white-space:nowrap">✨ AI Entry</button>
             <button class="btn-summary" id="summaryBtn">📊 Summary</button>
             <button class="btn-summary" id="ccMasterBtn" style="color:#f472b6;border-color:#f472b6;">🔒 CC
                 Master</button>
@@ -6840,7 +6883,8 @@
 
     <div id="toastMsg" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=ai2"></script>
+    <script src="ai-entry.js?v=1"></script>
     <!-- Export layer — reads rendered tables only, touches no app logic -->
     <script src="export.js"></script>
     <!-- Premium animation layer — wraps existing functions for transitions,
