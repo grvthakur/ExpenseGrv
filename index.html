@@ -7316,6 +7316,61 @@
             }
         }
     </style>
+    <style id="mobile-topbar-final">
+        @media (max-width:600px) {
+            html body .topbar .controls {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 8px !important;
+                width: 100% !important;
+                align-items: center !important
+            }
+
+            html body .topbar .month-picker {
+                grid-column: span 3 !important;
+                order: 1 !important;
+                width: 100% !important;
+                justify-content: center !important
+            }
+
+            html body .topbar #versionBtn {
+                grid-column: span 1 !important;
+                order: 2 !important;
+                justify-self: end !important;
+                width: 36px !important;
+                height: 36px !important
+            }
+
+            html body .topbar .controls>.btn-summary {
+                grid-column: span 2 !important;
+                width: 100% !important;
+                min-height: 42px !important;
+                padding: 0 8px !important;
+                font-size: .82rem !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: nowrap !important
+            }
+
+            html body .topbar #aiEntryBtn {
+                order: 3 !important;
+                position: static !important
+            }
+
+            html body .topbar #summaryBtn {
+                order: 4 !important
+            }
+
+            html body .topbar #ccMasterBtn {
+                order: 5 !important
+            }
+
+            html body .topbar #themeToggleBtn {
+                order: 6 !important
+            }
+        }
+    </style>
 </body>
 
 </html>
