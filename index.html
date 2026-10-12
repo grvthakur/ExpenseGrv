@@ -7317,17 +7317,119 @@
         }
     </style>
     <style id="mobile-topbar-final">
+        html body #aiEntryBtn {
+            position: fixed !important;
+            right: 22px !important;
+            bottom: 24px !important;
+            z-index: 9990 !important;
+            width: 58px !important;
+            height: 58px !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            border: 0 !important;
+            font-size: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #06210f !important;
+            background: linear-gradient(135deg, #b6ff3b, #00f5a0) !important;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, .18) inset, 0 8px 24px rgba(182, 255, 59, .55), 0 0 28px rgba(0, 245, 160, .4) !important;
+            animation: aiGlow 2.6s ease-in-out infinite;
+            cursor: pointer;
+            transition: transform .15s
+        }
+
+        html body #aiEntryBtn::before {
+            content: "✨";
+            font-size: 1.6rem;
+            line-height: 1
+        }
+
+        html body #aiEntryBtn:active {
+            transform: scale(.9)
+        }
+
+        @keyframes aiGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 1px rgba(255, 255, 255, .18) inset, 0 8px 24px rgba(182, 255, 59, .55), 0 0 22px rgba(0, 245, 160, .35)
+            }
+
+            50% {
+                box-shadow: 0 0 0 1px rgba(255, 255, 255, .25) inset, 0 10px 30px rgba(182, 255, 59, .8), 0 0 40px rgba(0, 245, 160, .65)
+            }
+        }
+
+        html body .topbar #summaryBtn,
+        html body .topbar #ccMasterBtn,
+        html body .topbar #themeToggleBtn {
+            border-radius: 14px !important;
+            font-weight: 700 !important;
+            letter-spacing: .2px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02)) !important;
+            backdrop-filter: blur(8px);
+            transition: transform .15s, box-shadow .25s
+        }
+
+        html body .topbar #summaryBtn {
+            color: #7dd3fc !important;
+            border: 1px solid rgba(56, 189, 248, .6) !important;
+            box-shadow: 0 0 14px rgba(56, 189, 248, .35), inset 0 0 10px rgba(56, 189, 248, .12) !important
+        }
+
+        html body .topbar #ccMasterBtn {
+            color: #f9a8d4 !important;
+            border: 1px solid rgba(244, 114, 182, .65) !important;
+            box-shadow: 0 0 14px rgba(244, 114, 182, .38), inset 0 0 10px rgba(244, 114, 182, .12) !important
+        }
+
+        html body .topbar #themeToggleBtn {
+            color: #fcd34d !important;
+            border: 1px solid rgba(251, 191, 36, .6) !important;
+            box-shadow: 0 0 14px rgba(251, 191, 36, .35), inset 0 0 10px rgba(251, 191, 36, .12) !important
+        }
+
+        html body .topbar #summaryBtn:hover,
+        html body .topbar #ccMasterBtn:hover,
+        html body .topbar #themeToggleBtn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.15)
+        }
+
+        html body .topbar #summaryBtn:active,
+        html body .topbar #ccMasterBtn:active,
+        html body .topbar #themeToggleBtn:active {
+            transform: scale(.95)
+        }
+
+        @media (min-width:601px) {
+            html body #aiEntryBtn {
+                position: static !important;
+                order: -1 !important;
+                width: 44px !important;
+                height: 44px !important;
+                margin-right: 4px !important;
+                flex-shrink: 0 !important
+            }
+
+            html body #aiEntryBtn::before {
+                font-size: 1.3rem
+            }
+        }
+
         @media (max-width:600px) {
             html body .topbar .controls {
                 display: grid !important;
-                grid-template-columns: repeat(4, 1fr) !important;
+                grid-template-columns: repeat(3, 1fr) !important;
                 gap: 8px !important;
                 width: 100% !important;
                 align-items: center !important
             }
 
             html body .topbar .month-picker {
-                grid-column: span 3 !important;
+                grid-column: span 2 !important;
                 order: 1 !important;
                 width: 100% !important;
                 justify-content: center !important
@@ -7341,36 +7443,39 @@
                 height: 36px !important
             }
 
-            html body .topbar .controls>.btn-summary {
-                grid-column: span 2 !important;
+            html body .topbar .controls>.btn-summary:not(#aiEntryBtn) {
+                grid-column: span 1 !important;
                 width: 100% !important;
                 min-height: 42px !important;
-                padding: 0 8px !important;
-                font-size: .82rem !important;
+                padding: 0 4px !important;
+                font-size: .78rem !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 white-space: nowrap !important
             }
 
-            html body .topbar #aiEntryBtn {
-                order: 3 !important;
-                position: static !important
-            }
-
             html body .topbar #summaryBtn {
-                order: 4 !important
+                order: 3 !important
             }
 
             html body .topbar #ccMasterBtn {
-                order: 5 !important
+                order: 4 !important
             }
 
             html body .topbar #themeToggleBtn {
-                order: 6 !important
+                order: 5 !important
+            }
+
+            html body #aiEntryBtn {
+                right: 16px !important;
+                bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+                width: 54px !important;
+                height: 54px !important
             }
         }
     </style>
+    <script>(function () { var m = function () { var b = document.getElementById("aiEntryBtn"); if (b && innerWidth <= 600 && b.parentNode !== document.body) document.body.appendChild(b) }; m(); document.addEventListener("DOMContentLoaded", m); window.addEventListener("load", function () { m(); setTimeout(m, 500) }) })()</script>
 </body>
 
 </html>
