@@ -47,6 +47,7 @@
         ["card", "Card", "cardSelect"],
         ["usedBy", "Used by", "cardUsedBy"],
         ["desc", "Description", "cardDesc"],
+        ["remarks", "Remarks", "cardRemarks"],
         ["amount", "Amount", "cardAmount"],
         ["date", "Date", "cardTxnDate"],
       ],
@@ -80,6 +81,8 @@
   function preview(r) {
     const m = M[r.kind] || M.expense,
       kind = M[r.kind] ? r.kind : "expense";
+    if (kind !== "card" && r.remarks)
+      r.desc = (r.desc ? r.desc + " - " : "") + r.remarks;
     const rows = m.f
       .map(([k, label, id]) => {
         const sel = $(id) && $(id).tagName === "SELECT";
@@ -132,16 +135,21 @@
     if (i < 0) return null;
     const toks = lines[i].split(/[\s,;]+/).filter(Boolean);
     const ppl = peopleSet();
-    const who = toks.length && ppl.has(toks[0].toLowerCase()) ? toks[0] : "";
-    const desc = toks
-      .slice(who ? 1 : 0)
-      .join(" ")
-      .toUpperCase();
-    return {
-      body: lines.filter((_, k) => k !== i).join("\n"),
-      who: who ? cap(who) : "",
-      desc,
-    };
+    const KW = /^(already|paid|pay|payed|kotak|hdfc|icici|axis|sbi|idfc|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
+    const tc = (w) => w[0].toUpperCase() + w.slice(1).toLowerCase();
+    const body = lines.filter((_, k) => k !== i).join("\n");
+    const k = toks.findIndex((w) => KW.test(w));
+    let who = "", rest = toks;
+    if (k > 0 && k <= 3) {
+      who = toks.slice(0, k).map(tc).join(" ");
+      rest = toks.slice(k);
+    } else if (k !== 0 && toks.length && ppl.has(toks[0].toLowerCase())) {
+      who = tc(toks[0]);
+      rest = toks.slice(1);
+    }
+    const txt = rest.join(" ").toUpperCase();
+    const isRem = k >= 0 || rest.length > 2;
+    return { body, who, desc: isRem ? "" : txt, rem: isRem ? txt : "" };
   }
   // Instant offline parser: handles card + sweetie entries with no AI call.
   const MON = [
@@ -279,6 +287,11 @@
     let date = null,
       m;
     if (
+      (m = t.match(/\b([A-Za-z]{3})[a-z]*\.? (\d{1,2}),? (\d{4})\b/)) &&
+      MON.includes(m[1].toLowerCase())
+    )
+      date = new Date(+m[3], MON.indexOf(m[1].toLowerCase()), +m[2]);
+    else if (
       (m = t.match(
         /\b(\d{1,2})[-\/ ]([A-Za-z]{3})[a-z]*[-\/ ,]*(\d{2,4})\b/,
       )) &&
@@ -373,6 +386,7 @@
     if (loc) {
       if (h0) {
         if (h0.desc) loc.desc = h0.desc;
+        if (h0.rem) loc.remarks = h0.rem;
         if (h0.who && loc.kind === "card") loc.usedBy = h0.who;
       }
       close();
@@ -405,6 +419,7 @@
       if (r.error) throw new Error(r.error);
       if (hint) {
         if (hint.desc) r.desc = hint.desc;
+        if (hint.rem) r.remarks = hint.rem;
         if (hint.who && r.kind === "card") r.usedBy = hint.who;
       }
       if (r.kind === "card") {
