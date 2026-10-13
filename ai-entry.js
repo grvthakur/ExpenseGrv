@@ -24,12 +24,74 @@
   }
   box.dataset.ov = 1;
   document.body.append(box);
-  const close = () => (box.style.display = "none");
+  const aiError = document.createElement("div");
+  aiError.id = "aiEntryError";
+  aiError.setAttribute("role", "alert");
+  aiError.setAttribute("aria-live", "polite");
+  aiError.style.cssText =
+    "display:none;margin:10px 0 0;padding:11px 13px;border:1px solid #fb718566;border-left:3px solid #fb7185;border-radius:12px;background:linear-gradient(135deg,#fb718514,#f43f5e0a);color:#fecdd3;font-size:.88rem;line-height:1.45;overflow-wrap:anywhere;box-shadow:0 6px 20px #0002";
+  const aiText = $("aiTxt");
+  aiText.setAttribute("autocomplete", "on");
+  aiText.setAttribute("autocorrect", "on");
+  aiText.setAttribute("autocapitalize", "sentences");
+  aiText.setAttribute("spellcheck", "true");
+  aiText.setAttribute("enterkeyhint", "go");
+  aiText.setAttribute("inputmode", "text");
+  aiText.setAttribute("placeholder", "Type a question or paste a bank SMS…");
+  aiText.style.cssText +=
+    ";font:inherit;line-height:1.5;resize:vertical;min-height:110px;max-height:38vh;outline:none;transition:border-color .18s,box-shadow .18s";
+  aiText.insertAdjacentElement("afterend", aiError);
+
+  const clearAiError = () => {
+    aiError.style.display = "none";
+    aiError.textContent = "";
+  };
+  const showAiError = (kind, error) => {
+    const raw = String(error && error.message ? error.message : error || "")
+      .replace(/^Server said:\\s*/i, "")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\\s+/g, " ")
+      .trim();
+    let message;
+    if (/Ask about your spending/i.test(raw)) {
+      message = "Try a more specific question, for example: “Tanya ka unpaid card total”.";
+    } else if (!raw || raw.length > 180 || /<!doctype|<html|stack trace| at .*:\\d+/i.test(raw)) {
+      message = "We couldn’t process that request. Check your connection and try again.";
+    } else {
+      message = raw;
+    }
+    aiError.textContent = kind + ": " + message;
+    aiError.style.display = "block";
+    aiError.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+  const resetAiEntry = () => {
+    aiText.value = "";
+    clearAiError();
+    const go = $("aiGo");
+    if (go) {
+      go.disabled = false;
+      go.textContent = "Parse";
+    }
+  };
+  const close = () => {
+    box.style.display = "none";
+    resetAiEntry();
+  };
+  aiText.addEventListener("input", clearAiError);
+  aiText.addEventListener("focus", () => {
+    aiText.style.borderColor = "#22d3eeaa";
+    aiText.style.boxShadow = "0 0 0 3px #22d3ee18";
+  });
+  aiText.addEventListener("blur", () => {
+    aiText.style.borderColor = "var(--border,#2a2a3d)";
+    aiText.style.boxShadow = "none";
+  });
   const warm = () => fetch(apiUrl("action=ver")).catch(() => {});
   setTimeout(warm, 2500);
   fab.onclick = () => {
+    resetAiEntry();
     box.style.display = "flex";
-    $("aiTxt").focus();
+    setTimeout(() => aiText.focus(), 40);
     warm();
   };
   $("aiX").onclick = close;
@@ -46,8 +108,11 @@
     "#qaAnswerOverlay .qaB{width:38px;height:38px;min-width:38px;min-height:38px;flex:0 0 38px;position:relative;z-index:2;border-radius:12px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:0;opacity:1;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}#qaAnswerOverlay .qaB svg{pointer-events:none;display:block}#qaAnswerOverlay .qaB:hover,#qaAnswerOverlay .qaB:focus-visible{background:#22d3ee30!important;border-color:#22d3ee!important;color:#67e8f9!important;box-shadow:0 0 0 1px #22d3ee33,0 0 18px #22d3ee88!important;transform:translateY(-1px)}#qaAnswerOverlay .qaB:active{transform:scale(.94)}#qaAnswerOverlay .qaX:hover,#qaAnswerOverlay .qaX:focus-visible{background:#f43f5e30!important;border-color:#f43f5e!important;color:#fda4af!important;box-shadow:0 0 0 1px #f43f5e33,0 0 18px #f43f5e99!important}.qaR{transition:.15s}.qaR:hover{background:#22d3ee14;padding-left:14px!important}" +
     "@keyframes aiGlow{from{box-shadow:0 0 8px #22d3ee88,0 0 18px #8b5cf655}to{box-shadow:0 0 18px #22d3eeff,0 0 40px #8b5cf6aa}}";
   document.head.append(gs);
-  box.addEventListener("mousedown", (e) => {
+  box.addEventListener("click", (e) => {
     if (e.target === box) close();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && box.style.display !== "none") close();
   });
   const set = (id, v) => {
     const el = $(id);
@@ -943,15 +1008,20 @@
       close();
       showAnswer(text, pl, runPlan(pl, all));
     } catch (e) {
-      toast("AI ask failed: " + e.message, true);
+      showAiError("Couldn’t answer that", e);
+      console.warn("[AI spending question]", e);
     } finally {
       b.disabled = false;
       b.textContent = "Parse";
     }
   }
   $("aiGo").onclick = async () => {
+    clearAiError();
     const text = $("aiTxt").value.trim();
-    if (!text) return;
+    if (!text) {
+      showAiError("Text needed", new Error("Type a question or paste a bank SMS first."));
+      return;
+    }
     if (isQuestion(text)) return askData(text);
     const h0 = splitHint(text),
       body0 = h0 ? h0.body : text;
@@ -1037,7 +1107,8 @@
       close();
       preview(r);
     } catch (e) {
-      toast("AI parse failed: " + e.message, true);
+      showAiError("Couldn’t parse that text", e);
+      console.warn("[AI transaction parse]", e);
     } finally {
       b.disabled = false;
       b.textContent = "Parse";
