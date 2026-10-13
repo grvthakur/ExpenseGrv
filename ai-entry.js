@@ -43,7 +43,7 @@
     ";background:linear-gradient(135deg,#06b6d4,#8b5cf6);color:#fff;border:1px solid #67e8f9;font-weight:800;box-shadow:0 0 12px #22d3eecc,0 0 28px #8b5cf688;text-shadow:0 0 8px #fff8;animation:aiGlow 2s ease-in-out infinite alternate";
   const gs = document.createElement("style");
   gs.textContent =
-    ".qaB{width:36px;height:36px;border-radius:12px;border:1px solid #ffffff22;background:#ffffff0d;color:#cbd5e1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:.18s}.qaB:hover{background:#22d3ee22;border-color:#22d3ee;color:#67e8f9;box-shadow:0 0 14px #22d3ee66;transform:translateY(-1px)}.qaX:hover{background:#f43f5e22;border-color:#f43f5e;color:#fda4af;box-shadow:0 0 14px #f43f5e66}.qaR{transition:.15s}.qaR:hover{background:#22d3ee14;padding-left:14px!important}" +
+    "#qaAnswerOverlay .qaB{width:38px;height:38px;min-width:38px;min-height:38px;flex:0 0 38px;position:relative;z-index:2;border-radius:12px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:0;opacity:1;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}#qaAnswerOverlay .qaB svg{pointer-events:none;display:block}#qaAnswerOverlay .qaB:hover,#qaAnswerOverlay .qaB:focus-visible{background:#22d3ee30!important;border-color:#22d3ee!important;color:#67e8f9!important;box-shadow:0 0 0 1px #22d3ee33,0 0 18px #22d3ee88!important;transform:translateY(-1px)}#qaAnswerOverlay .qaB:active{transform:scale(.94)}#qaAnswerOverlay .qaX:hover,#qaAnswerOverlay .qaX:focus-visible{background:#f43f5e30!important;border-color:#f43f5e!important;color:#fda4af!important;box-shadow:0 0 0 1px #f43f5e33,0 0 18px #f43f5e99!important}.qaR{transition:.15s}.qaR:hover{background:#22d3ee14;padding-left:14px!important}" +
     "@keyframes aiGlow{from{box-shadow:0 0 8px #22d3ee88,0 0 18px #8b5cf655}to{box-shadow:0 0 18px #22d3eeff,0 0 40px #8b5cf6aa}}";
   document.head.append(gs);
   box.addEventListener("mousedown", (e) => {
@@ -481,8 +481,33 @@
   const qa = document.createElement("div");
   qa.style.cssText =
     "display:none;position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px";
+  qa.id = "qaAnswerOverlay";
   qa.dataset.ov = 1;
   document.body.append(qa);
+
+  qa.addEventListener("click", (e) => {
+    const button = e.target.closest("[data-a]");
+    if (button && qa.contains(button)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const action = button.dataset.a;
+      if (action === "close") {
+        qa.style.display = "none";
+      } else if (action === "copy") {
+        if (typeof window.__qaCopy === "function") window.__qaCopy();
+      } else if (action === "again") {
+        if (typeof window.__qaAgain === "function") window.__qaAgain();
+      }
+      return;
+    }
+    if (e.target === qa) qa.style.display = "none";
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && qa.style.display !== "none") {
+      qa.style.display = "none";
+    }
+  });
   const inr = (n) =>
     "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
   const esc = (x) =>
@@ -813,40 +838,52 @@
       const fb = () => {
         const t = document.createElement("textarea");
         t.value = txt;
-        t.style.cssText = "position:fixed;opacity:0";
+        t.setAttribute("readonly", "");
+        t.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none";
         document.body.appendChild(t);
+        t.focus();
         t.select();
+        t.setSelectionRange(0, t.value.length);
         let ok = false;
         try {
           ok = document.execCommand("copy");
-        } catch (_) {}
+        } catch (err) {
+          console.warn("[AI answer copy] Fallback failed:", err);
+        }
         t.remove();
-        toast(ok ? "Copied" : "Copy failed", !ok);
+        window.__qaT(ok ? "Copied to clipboard" : "Copy blocked by browser", !ok);
       };
-      if (navigator.clipboard && navigator.clipboard.writeText)
-        navigator.clipboard.writeText(txt).then(() => toast("Copied"), fb);
-      else fb();
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        navigator.clipboard.writeText(txt)
+          .then(() => window.__qaT("Copied to clipboard"))
+          .catch(fb);
+      } else {
+        fb();
+      }
     };
     window.__qaCopy = doCopy;
     window.__qaAgain = () => {
       qa.style.display = "none";
       box.style.display = "flex";
-      $("aiTxt").focus();
+      requestAnimationFrame(() => {
+        const input = $("aiTxt");
+        if (input) input.focus();
+      });
     };
-    if (window.__qaH) document.removeEventListener("click", window.__qaH, true);
-    window.__qaH = (e) => {
-      if (qa.style.display === "none") return;
-      const a = e.target.closest && e.target.closest("[data-a]");
-      if (e.target === qa || (a && qa.contains(a))) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        const k = a && a.dataset.a;
-        if (!k || k === "close") qa.style.display = "none";
-        else if (k === "copy") doCopy();
-        else if (k === "again") window.__qaAgain();
-      }
+    const qt = (m, bad) => {
+      const t = document.createElement("div");
+      t.textContent = (bad ? "✕ " : "✓ ") + m;
+      t.style.cssText =
+        "position:fixed;bottom:40px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:12px;font-weight:700;z-index:2147483647;color:#0b0b10;background:" +
+        (bad ? "#fb7185" : "#22d3ee") +
+        ";box-shadow:0 0 24px #22d3ee88";
+      document.body.append(t);
+      setTimeout(() => t.remove(), 1600);
     };
-    document.addEventListener("click", window.__qaH, true);
+    window.__qaT = qt;
+    // Button handling is delegated once when the overlay is created.
+    // No per-render listeners, no pointerup+click double firing, and no
+    // shared debounce that accidentally blocks a different button.
   }
   async function askData(text) {
     const b = $("aiGo");
