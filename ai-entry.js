@@ -33,6 +33,19 @@
     warm();
   };
   $("aiX").onclick = close;
+  $("aiTxt").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      $("aiGo").click();
+    }
+  });
+  fab.style.cssText +=
+    ";background:linear-gradient(135deg,#06b6d4,#8b5cf6);color:#fff;border:1px solid #67e8f9;font-weight:800;box-shadow:0 0 12px #22d3eecc,0 0 28px #8b5cf688;text-shadow:0 0 8px #fff8;animation:aiGlow 2s ease-in-out infinite alternate";
+  const gs = document.createElement("style");
+  gs.textContent =
+    ".qaB{width:36px;height:36px;border-radius:12px;border:1px solid #ffffff22;background:#ffffff0d;color:#cbd5e1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:.18s}.qaB:hover{background:#22d3ee22;border-color:#22d3ee;color:#67e8f9;box-shadow:0 0 14px #22d3ee66;transform:translateY(-1px)}.qaX:hover{background:#f43f5e22;border-color:#f43f5e;color:#fda4af;box-shadow:0 0 14px #f43f5e66}.qaR{transition:.15s}.qaR:hover{background:#22d3ee14;padding-left:14px!important}" +
+    "@keyframes aiGlow{from{box-shadow:0 0 8px #22d3ee88,0 0 18px #8b5cf655}to{box-shadow:0 0 18px #22d3eeff,0 0 40px #8b5cf6aa}}";
+  document.head.append(gs);
   box.addEventListener("mousedown", (e) => {
     if (e.target === box) close();
   });
@@ -774,10 +787,10 @@
       .slice(0, 60)
       .map(
         (r) =>
-          `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 4px;border-top:1px solid var(--border,#2a2a3d);font-size:.84rem;border-radius:6px"><span><b>${esc(r.date.slice(5))}</b> ${esc([r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" · "))}${r.remarks ? ` <i style="opacity:.6">(${esc(r.remarks)})</i>` : ""}</span><b style="color:#22d3ee;white-space:nowrap">${inr(r.amount)}</b></div>`,
+          `<div class="qaR" style="display:flex;justify-content:space-between;gap:12px;padding:11px 10px;border-top:1px solid #ffffff12;font-size:.86rem;border-radius:10px"><span><b>${esc(r.date.slice(5))}</b> ${esc([r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" · "))}${r.remarks ? ` <i style="opacity:.6">(${esc(r.remarks)})</i>` : ""}</span><b style="color:#22d3ee;white-space:nowrap">${inr(r.amount)}</b></div>`,
       )
       .join("");
-    qa.innerHTML = `<div style="width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);position:relative;border-radius:18px;padding:20px;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button onclick="window.__qaAgain()" data-a="again" title="Ask again" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">↩</button><button onclick="window.__qaCopy()" data-a="copy" title="Copy" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit;opacity:.75;cursor:pointer">⧉</button><button onclick="this.closest('[data-ov]').style.display='none'" data-a="close" title="Close" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit;opacity:.75;cursor:pointer">✕</button></div><div style="padding-right:76px;opacity:.7;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">✨ ${esc(pl.title || q)}</div><div style="font-size:2.2rem;font-weight:800;margin:8px 0 2px;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(res.n || agg === "count" ? big : "Kuch nahi mila")}</div><div style="opacity:.6;font-size:.8rem">${sub}</div><div style="margin-top:8px;font-size:.72rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid var(--border,#2a2a3d);border-radius:20px;padding:2px 8px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div style="margin-top:10px">${list}</div></div>`;
+    qa.innerHTML = `<div style="width:min(560px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;position:relative;border-radius:22px;padding:22px;box-shadow:0 24px 70px #000c,0 0 0 1px #ffffff0a inset,0 0 50px #22d3ee22,0 0 90px #8b5cf622;backdrop-filter:blur(12px)"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button type="button" class="qaB" data-a="again" title="Ask again"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button type="button" class="qaB" data-a="copy" title="Copy"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button><button type="button" class="qaB qaX" data-a="close" title="Close"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div style="padding-right:76px;opacity:.7;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">✨ ${esc(pl.title || q)}</div><div style="font-size:2.6rem;font-weight:800;letter-spacing:-.02em;filter:drop-shadow(0 0 14px #22d3ee66);margin:8px 0 2px;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(res.n || agg === "count" ? big : "Kuch nahi mila")}</div><div style="opacity:.6;font-size:.8rem">${sub}</div><div style="margin-top:8px;font-size:.72rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid var(--border,#2a2a3d);border-radius:20px;padding:2px 8px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div style="margin-top:10px">${list}</div></div>`;
     qa.style.display = "flex";
     const doCopy = () => {
       const inrR = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -797,10 +810,22 @@
         : res.rows.map(line).join("\n");
       const txt =
         (pl.title || q) + "\n" + big + (sub ? " · " + sub : "") + "\n\n" + body;
-      navigator.clipboard.writeText(txt).then(
-        () => toast("Copied"),
-        () => toast("Copy failed", true),
-      );
+      const fb = () => {
+        const t = document.createElement("textarea");
+        t.value = txt;
+        t.style.cssText = "position:fixed;opacity:0";
+        document.body.appendChild(t);
+        t.select();
+        let ok = false;
+        try {
+          ok = document.execCommand("copy");
+        } catch (_) {}
+        t.remove();
+        toast(ok ? "Copied" : "Copy failed", !ok);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(txt).then(() => toast("Copied"), fb);
+      else fb();
     };
     window.__qaCopy = doCopy;
     window.__qaAgain = () => {
@@ -808,16 +833,20 @@
       box.style.display = "flex";
       $("aiTxt").focus();
     };
-    qa.onclick = (e) => {
-      const a = e.target.closest("[data-a]")?.dataset.a;
-      if (e.target === qa || a === "close") qa.style.display = "none";
-      else if (a === "copy") doCopy();
-      else if (a === "again") {
-        qa.style.display = "none";
-        box.style.display = "flex";
-        $("aiTxt").focus();
+    if (window.__qaH) document.removeEventListener("click", window.__qaH, true);
+    window.__qaH = (e) => {
+      if (qa.style.display === "none") return;
+      const a = e.target.closest && e.target.closest("[data-a]");
+      if (e.target === qa || (a && qa.contains(a))) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const k = a && a.dataset.a;
+        if (!k || k === "close") qa.style.display = "none";
+        else if (k === "copy") doCopy();
+        else if (k === "again") window.__qaAgain();
       }
     };
+    document.addEventListener("click", window.__qaH, true);
   }
   async function askData(text) {
     const b = $("aiGo");
