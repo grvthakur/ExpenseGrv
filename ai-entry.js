@@ -93,15 +93,24 @@
         return `<label style="display:block;font-size:.78rem;opacity:.8;margin-top:10px">${label}${inp}</label>`;
       })
       .join("");
-    pv.innerHTML = `<div style="width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);border-radius:18px;padding:18px"><b style="font-size:1.1rem">✨ Review ${kind} entry</b>${rows}<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button id="pvX" style="padding:9px 16px;border-radius:12px;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit">Cancel</button><button id="pvOk" style="padding:9px 20px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10">OK — Save</button></div></div>`;
+    pv.innerHTML = `<div style="width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);border-radius:18px;padding:18px"><b style="font-size:1.1rem">✨ Review ${kind} entry</b>${rows}<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button id="pvC" style="padding:9px 16px;border-radius:12px;border:1px solid #f87171;background:transparent;color:#f87171">✕ Close</button><button id="pvX" style="padding:9px 16px;border-radius:12px;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit">↩ Cancel</button><button id="pvOk" style="padding:9px 20px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10">OK — Save</button></div></div>`;
     pv.style.display = "flex";
-    $("pvX").onclick = () => (pv.style.display = "none");
+    $("pvC").onclick = () => {
+      pv.style.display = "none";
+      box.style.display = "none";
+    };
+    $("pvX").onclick = () => {
+      pv.style.display = "none";
+      box.style.display = "flex";
+      $("aiTxt").focus();
+    };
     $("pvOk").onclick = () => {
       const vals = {};
       pv.querySelectorAll("[data-k]").forEach(
         (e) => (vals[e.dataset.k] = e.value),
       );
       pv.style.display = "none";
+      $("aiTxt").value = "";
       switchTab(m.tab);
       m.f.forEach(([k, , id]) => set(id, vals[k]));
       setTimeout(() => $(m.btn) && $(m.btn).click(), 150);
@@ -126,30 +135,68 @@
       .map((l) => l.trim())
       .filter(Boolean);
     if (lines.length < 2) return null;
-    const ok = (l) => l.length <= 40 && !/\d{3,}/.test(l);
-    const i = ok(lines[lines.length - 1])
-      ? lines.length - 1
-      : ok(lines[0])
-        ? 0
-        : -1;
+    const junk =
+      /^(dear|hi\b|hello|thank|your\b|info\b|regards|warm|team|note\b|if you|please|kindly|sincerely|to dispute|call\b|available|avl)/i;
+    const ok = (l) =>
+      l.length <= 140 &&
+      !junk.test(l) &&
+      !/\d{4,}/.test(l) &&
+      !/\b(inr|rs\.?|bank|transaction|debited|credited|card)\b/i.test(l);
+    let i = -1;
+    for (let k = lines.length - 1; k >= 0; k--)
+      if (ok(lines[k])) {
+        i = k;
+        break;
+      }
     if (i < 0) return null;
-    const toks = lines[i].split(/[\s,;]+/).filter(Boolean);
     const ppl = peopleSet();
-    const KW = /^(already|paid|pay|payed|kotak|hdfc|icici|axis|sbi|idfc|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
-    const tc = (w) => w[0].toUpperCase() + w.slice(1).toLowerCase();
+    const KW =
+      /^(already|paid|pay|payed|kotak|hdfc|icici|axis|sbi|idfc|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
+    const tc = (w) =>
+      ppl.has(w.toLowerCase())
+        ? cap(w)
+        : w[0].toUpperCase() + w.slice(1).toLowerCase();
+    const tidy = (x) =>
+      x
+        .replace(/\s*,\s*/g, ", ")
+        .trim()
+        .toUpperCase();
     const body = lines.filter((_, k) => k !== i).join("\n");
-    const k = toks.findIndex((w) => KW.test(w));
-    let who = "", rest = toks;
-    if (k > 0 && k <= 3) {
-      who = toks.slice(0, k).map(tc).join(" ");
-      rest = toks.slice(k);
-    } else if (k !== 0 && toks.length && ppl.has(toks[0].toLowerCase())) {
-      who = tc(toks[0]);
-      rest = toks.slice(1);
+    let left = lines[i],
+      rem = "";
+    const ci = left.indexOf(":");
+    if (ci > 0) {
+      rem = left.slice(ci + 1);
+      left = left.slice(0, ci);
     }
-    const txt = rest.join(" ").toUpperCase();
-    const isRem = k >= 0 || rest.length > 2;
-    return { body, who, desc: isRem ? "" : txt, rem: isRem ? txt : "" };
+    let who = "",
+      desc = "";
+    const parts = left
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const nameLike = (p) =>
+      p.split(/\s+/).length <= 3 && !p.split(/\s+/).some((w) => KW.test(w));
+    if (parts.length >= 2 && nameLike(parts[0])) {
+      who = parts[0].split(/\s+/).map(tc).join(" ");
+      desc = parts.slice(1).join(" ");
+    } else {
+      const toks = left.split(/[\s,;]+/).filter(Boolean);
+      const k = toks.findIndex((w) => KW.test(w));
+      let rest = toks;
+      if (k > 0 && k <= 3) {
+        who = toks.slice(0, k).map(tc).join(" ");
+        rest = toks.slice(k);
+      } else if (k !== 0 && toks.length && ppl.has(toks[0].toLowerCase())) {
+        who = tc(toks[0]);
+        rest = toks.slice(1);
+      }
+      const txt = rest.join(" ");
+      if (k >= 0 || (!rem && rest.length > 2))
+        rem = rem ? txt + " " + rem : txt;
+      else desc = txt;
+    }
+    return { body, who, desc: tidy(desc), rem: tidy(rem) };
   }
   // Instant offline parser: handles card + sweetie entries with no AI call.
   const MON = [
@@ -172,6 +219,35 @@
     String(d.getMonth() + 1).padStart(2, "0") +
     "-" +
     String(d.getDate()).padStart(2, "0");
+  const cleanM = (m) =>
+    String(m || "")
+      .replace(/^[A-Za-z]{2,6}\*/, "")
+      .replace(
+        /\b(private|pvt|ltd|limited|internet|india|technologies|services)\b\.?/gi,
+        "",
+      )
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  const standalone = (t) =>
+    t
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .find(
+        (l) =>
+          /^[A-Za-z][A-Za-z0-9*&.\-' ]{2,35}$/.test(l) &&
+          !/\b(spent|bank|card|limit|avl|available|not you|dear|sms|ist|info|debited|credited|block|customer|regards)\b/i.test(
+            l,
+          ),
+      ) || "";
+  const skel = (w) => w.replace(/[aeiou]/g, "");
+  const wm = (w, t) =>
+    w === t ||
+    (w.length > 3 &&
+      (skel(w) === skel(t) ||
+        (skel(w).length > 3 && skel(w) === skel(t).slice(0, skel(w).length))));
+  const KWX =
+    /^(already|paid|pay|payed|kotak|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
   function localParse(text) {
     if (text.length > 80) return null;
     let t =
@@ -214,7 +290,7 @@
         .toLowerCase()
         .split(/[^a-z0-9]+/)
         .filter((x) => x.length > 2);
-      const sc = tk.filter((x) => words.includes(x)).length;
+      const sc = tk.filter((x) => words.some((w) => wm(w, x))).length;
       if (sc > bs) {
         best = c;
         bs = sc;
@@ -224,19 +300,20 @@
     const out = { amount, date: iso(date) };
     if (best && !tie && bs >= 1) {
       const used = best.toLowerCase().split(/[^a-z0-9]+/);
-      const rest = words.filter((w) => !used.includes(w));
-      const people = new Set(["sweetie", "grv", "gaurav", "me"]);
-      document
-        .querySelectorAll("#cardSection table tbody tr td:nth-child(3)")
-        .forEach((td) => people.add(td.textContent.trim().toLowerCase()));
-      const who = rest.filter((w) => people.has(w));
-      const desc = rest.filter((w) => !people.has(w));
+      const rest = words.filter((w) => !used.some((u) => wm(w, u)));
+      const people = peopleSet();
+      const k0 = rest.findIndex((w) => KWX.test(w));
+      const main = k0 >= 0 ? rest.slice(0, k0) : rest;
+      const rem = k0 >= 0 ? rest.slice(k0).join(" ").toUpperCase() : "";
+      const who = main.filter((w) => people.has(w));
+      const desc = main.filter((w) => !people.has(w));
       return {
         ...out,
         kind: "card",
         card: best,
-        usedBy: who.length ? who[0][0].toUpperCase() + who[0].slice(1) : "",
+        usedBy: who.length ? cap(who[0]) : "",
         desc: desc.join(" ").toUpperCase(),
+        remarks: rem,
       };
     }
     if (words.includes("sweetie")) {
@@ -371,7 +448,12 @@
       kind: "card",
       card,
       usedBy: "",
-      desc: mm ? mm[1].trim().toUpperCase() : "",
+      desc: cleanM(
+        mm
+          ? mm[1]
+          : (t.match(/\binfo:\s*([^\n]+?)\.?(?:\n|$)/i) || [])[1] ||
+              standalone(t),
+      ),
       amount,
       date: iso(date),
     };
@@ -390,7 +472,6 @@
         if (h0.who && loc.kind === "card") loc.usedBy = h0.who;
       }
       close();
-      $("aiTxt").value = "";
       preview(loc);
       return;
     }
@@ -463,7 +544,6 @@
       }
       close();
       preview(r);
-      $("aiTxt").value = "";
     } catch (e) {
       toast("AI parse failed: " + e.message, true);
     } finally {

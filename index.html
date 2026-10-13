@@ -7539,6 +7539,39 @@
                 transform: scale(1.15) rotate(12deg)
             }
         }
+
+        html body #aiEntryBtn {
+            border: 3px solid transparent !important;
+            box-sizing: border-box !important;
+            background: radial-gradient(circle at 35% 30%, #1e293b, #05070d 75%) padding-box, conic-gradient(from var(--ang), #22d3ee, #a3e635, #f0abfc, #22d3ee) border-box !important;
+            animation: aiSpin 3.5s linear infinite, aiPulse 2.4s ease-in-out infinite !important;
+            box-shadow: 0 0 18px rgba(34, 211, 238, .6), 0 0 38px rgba(240, 171, 252, .35) !important
+        }
+
+        html body #aiEntryBtn::after {
+            content: "" !important;
+            display: block !important;
+            position: absolute !important;
+            inset: -13px !important;
+            border-radius: 50% !important;
+            background: radial-gradient(circle at 50% 7%, #fff 0 1px, rgba(103, 232, 249, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 93% 50%, #fff 0 1px, rgba(240, 171, 252, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 50% 93%, #fff 0 1px, rgba(163, 230, 53, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 7% 50%, #fff 0 1px, rgba(103, 232, 249, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 85% 15%, #fff 0 1px, rgba(240, 171, 252, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 15% 85%, #fff 0 1px, rgba(163, 230, 53, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 15% 15%, #fff 0 1px, rgba(103, 232, 249, .9) 1.6px, transparent 3.6px), radial-gradient(circle at 85% 85%, #fff 0 1px, rgba(240, 171, 252, .9) 1.6px, transparent 3.6px) !important;
+            box-shadow: none !important;
+            border: 1px dashed rgba(103, 232, 249, .22) !important;
+            pointer-events: none;
+            animation: aiOrbit 5s linear infinite !important
+        }
+
+        @keyframes aiOrbit {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        @media (min-width:601px) {
+            html body #aiEntryBtn {
+                margin: 0 12px 0 8px !important
+            }
+        }
     </style>
     <script>(function () { var m = function () { var b = document.getElementById("aiEntryBtn"); if (b && innerWidth <= 600 && b.parentNode !== document.body) document.body.appendChild(b) }; m(); document.addEventListener("DOMContentLoaded", m); window.addEventListener("load", function () { m(); setTimeout(m, 500) }) })()</script>
 </body>
