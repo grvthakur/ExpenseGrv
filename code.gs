@@ -278,6 +278,27 @@ function doGet(e) {
       return jsonOut({ error: errs.join(" | ") });
     }
 
+    if (action === "aiAsk") {
+      const today = Utilities.formatDate(
+        new Date(),
+        "Asia/Kolkata",
+        "yyyy-MM-dd",
+      );
+      const prompt =
+        "Today is " +
+        today +
+        '. Convert the user\'s question about their finance data into ONE JSON query plan. Reply ONLY JSON: {"sources":[],"person":"","card":"","category":"","text":"","status":"","type":"","from":"YYYY-MM-DD","to":"YYYY-MM-DD","agg":"sum|count|list|max|min|avg","group":"none|month|person|card|category|status","top":0,"title":""}. ' +
+        "Sources: cards = credit-card txns (card, person=usedBy, desc, remarks, amount, status UNPAID|PAID|OWED|SETTLED); expenses = owner's personal expenses (category, desc, amount); sweetie = savings ledger (type SAVING|CREDIT|DEBIT); salary = monthly salary rows (amount=salary); summary = one row per month (amount=REMAINING money, desc has salary/expenses/received); config = one row per card (amount=REMAINING credit limit, desc has limit, used, used%, due day; 'limit ke paas/near limit'=agg min). 'credit card'/a person's name => [\"cards\"] (person filters cards only). 'kharcha' without card/person => [\"expenses\"]. 'bacha/remaining/savings left' => [\"summary\"]. salary => [\"salary\"]. limit/utilization/due => [\"config\"]. Unsure => cards+expenses+sweetie. Known people: " +
+        (e.parameter.people || "") +
+        ". Cards: " +
+        (e.parameter.cards || "") +
+        " (use closest exact name, or leave empty and put the keyword in text). Expense category EXACTLY from: " +
+        (e.parameter.cats || "") +
+        " or empty. text = merchant/product keyword. Month without year = latest such month not after today; 'this month','last month','this year' relative to today; set from/to inclusive (summary/salary dates are the 1st of the month). Defaults agg=sum, group=none. kitna/how much=sum; kitne/how many=count; list/dikhao/show=list; sabse zyada/highest=max; month wise=group month. title = short heading in the user's language. Leave unknown fields empty.\n\nQUESTION:\n" +
+        String(e.parameter.q || "").slice(0, 500);
+      return llmJson(prompt);
+    }
+
     // ── EXPENSES ─────────────────────────────────────────────────────────
     if (action === "get") {
       const rows = expSheet.getDataRange().getValues();
@@ -754,10 +775,7 @@ function doGet(e) {
         const ck = oldCard || card,
           ccName = String(e.parameter.ccName || "").trim();
         for (let i = 1; i < crows.length; i++)
-          if (
-            String(crows[i][1]).trim() === ck ||
-            String(crows[i][0]).trim() + "-" + String(crows[i][1]).trim() === ck
-          ) {
+          if (ccMatches(crows[i], ck)) {
             crow = i + 1;
             break;
           }
@@ -771,7 +789,7 @@ function doGet(e) {
           cc.getRange(crow, 1, 1, 5).setValues([
             [
               bank || current[0] || "",
-              ccName || current[1] || card,
+              current[1] || ccName || card,
               number || current[2] || "",
               numberCvv || current[3] || "",
               expDate || current[4] || "",
@@ -801,11 +819,7 @@ function doGet(e) {
       if (cc) {
         const rows = cc.getDataRange().getValues();
         for (let i = rows.length - 1; i >= 1; i--)
-          if (
-            String(rows[i][1]).trim() === card ||
-            String(rows[i][0]).trim() + "-" + String(rows[i][1]).trim() === card
-          )
-            cc.deleteRow(i + 1);
+          if (ccMatches(rows[i], card)) cc.deleteRow(i + 1);
       }
       return textOut("Deleted");
     }
@@ -880,6 +894,99 @@ function doGet(e) {
       } catch (e) {}
     }
   }
+}
+
+// Shared LLM provider chain (Groq -> Cerebras -> OpenRouter). Returns JSON output.
+function llmJson(prompt) {
+  const P = PropertiesService.getScriptProperties();
+  const post = (url, headers, body) =>
+    JSON.parse(
+      UrlFetchApp.fetch(url, {
+        method: "post",
+        contentType: "application/json",
+        muteHttpExceptions: true,
+        headers: headers,
+        payload: JSON.stringify(body),
+      }).getContentText(),
+    );
+  const oa = (url, key, model, extra) => () => {
+    const body = {
+      model: model,
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    };
+    if (extra) for (const k in extra) body[k] = extra[k];
+    const j = post(url, { Authorization: "Bearer " + key }, body);
+    if (!j.choices) throw new Error((j.error && j.error.message) || "no reply");
+    return j.choices[0].message.content;
+  };
+  const providers = [];
+  const G = P.getProperty("GROQ_KEY"),
+    C = P.getProperty("CEREBRAS_KEY"),
+    O = P.getProperty("OPENROUTER_KEY");
+  if (G) {
+    providers.push([
+      "Groq-20b",
+      oa(
+        "https://api.groq.com/openai/v1/chat/completions",
+        G,
+        "openai/gpt-oss-20b",
+        { reasoning_effort: "low" },
+      ),
+    ]);
+    providers.push([
+      "Groq-120b",
+      oa(
+        "https://api.groq.com/openai/v1/chat/completions",
+        G,
+        "openai/gpt-oss-120b",
+        { reasoning_effort: "low" },
+      ),
+    ]);
+  }
+  if (C)
+    providers.push([
+      "Cerebras",
+      oa("https://api.cerebras.ai/v1/chat/completions", C, "gpt-oss-120b"),
+    ]);
+  if (O)
+    providers.push([
+      "OpenRouter",
+      oa("https://openrouter.ai/api/v1/chat/completions", O, "openrouter/free"),
+    ]);
+  if (!providers.length)
+    return jsonOut({ error: "Set GROQ_KEY in Script Properties" });
+  const errs = [];
+  for (const [name, fn] of providers) {
+    try {
+      const m = fn().match(/\{[\s\S]*\}/);
+      if (m)
+        return ContentService.createTextOutput(m[0]).setMimeType(
+          ContentService.MimeType.JSON,
+        );
+      errs.push(name + ": no JSON");
+    } catch (er) {
+      errs.push(name + ": " + er.message);
+    }
+  }
+  return jsonOut({ error: errs.join(" | ") });
+}
+
+function getOrCreateExpensesSheet(ss) {
+  return ss.getSheetByName("Expenses") || ss.insertSheet("Expenses");
+}
+function ccMatches(row, card) {
+  const n = (x) =>
+    String(x || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  const c = n(card);
+  return (
+    n(row[1]) === c ||
+    n(row[0] + "-" + row[1]) === c ||
+    n(row[0] + " " + row[1]) === c
+  );
 }
 
 function isGrvUsedByServer(value) {

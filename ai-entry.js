@@ -2,18 +2,19 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const fab = $("aiEntryBtn") || document.createElement("button");
-  fab.textContent = "✨ AI Entry";
+  fab.textContent = "AI";
   fab.className = "btn-summary";
   fab.style.cssText =
     "color:#c4b5fd;border-color:#8b5cf6;font-weight:700;white-space:nowrap";
   const box = document.createElement("div");
   box.style.cssText =
-    "display:none;position:fixed;inset:0;z-index:20001;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px";
-  box.innerHTML = `<div style="width:min(520px,100%);background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);border-radius:18px;padding:18px">
+    "display:none;position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px";
+  box.innerHTML = `<div style="width:min(520px,100%);background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);border-radius:18px;padding:18px;position:relative;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22">
+    <button id="aiX" onclick="this.closest('[data-ov]').style.display='none'" title="Close" style="position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit;opacity:.7;cursor:pointer">✕</button>
     <b style="font-size:1.1rem">✨ AI Transaction Entry</b>
-    <p style="opacity:.7;font-size:.85rem;margin:6px 0 10px">Type or paste SMS/email. e.g. “Sweetie axis flipkart 600”</p>
+    <p style="opacity:.7;font-size:.85rem;margin:6px 0 10px">Paste a bank SMS or email to add a transaction, or ask a question about your spending.</p>
     <textarea id="aiTxt" rows="5" style="width:100%;box-sizing:border-box;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid var(--border,#2a2a3d)"></textarea>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button id="aiX" style="padding:9px 16px;border-radius:12px;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit">Cancel</button><button id="aiGo" style="padding:9px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10">Parse</button></div></div>`;
+    <div style="margin-top:12px"><button id="aiGo" style="width:100%;padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Parse</button></div></div>`;
   const sb = $("summaryBtn");
   if (fab.parentNode) {
   } else if (sb && sb.parentNode) sb.parentNode.insertBefore(fab, sb);
@@ -21,6 +22,7 @@
     fab.style.cssText += ";position:fixed;top:10px;right:10px;z-index:9999";
     document.body.append(fab);
   }
+  box.dataset.ov = 1;
   document.body.append(box);
   const close = () => (box.style.display = "none");
   const warm = () => fetch(apiUrl("action=ver")).catch(() => {});
@@ -31,6 +33,9 @@
     warm();
   };
   $("aiX").onclick = close;
+  box.addEventListener("mousedown", (e) => {
+    if (e.target === box) close();
+  });
   const set = (id, v) => {
     const el = $(id);
     if (el && v !== undefined && v !== "") {
@@ -93,7 +98,7 @@
         return `<label style="display:block;font-size:.78rem;opacity:.8;margin-top:10px">${label}${inp}</label>`;
       })
       .join("");
-    pv.innerHTML = `<div style="width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);border-radius:18px;padding:18px"><b style="font-size:1.1rem">✨ Review ${kind} entry</b>${rows}<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button id="pvC" style="padding:9px 16px;border-radius:12px;border:1px solid #f87171;background:transparent;color:#f87171">✕ Close</button><button id="pvX" style="padding:9px 16px;border-radius:12px;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit">↩ Cancel</button><button id="pvOk" style="padding:9px 20px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10">OK — Save</button></div></div>`;
+    pv.innerHTML = `<div style="width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);position:relative;border-radius:18px;padding:18px;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button id="pvX" title="Back" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">↩</button><button id="pvC" title="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">✕</button></div><b style="font-size:1.1rem">✨ Review ${kind} entry</b>${rows}<div style="margin-top:16px"><button id="pvOk" style="width:100%;padding:10px 20px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">OK — Save</button></div></div>`;
     pv.style.display = "flex";
     $("pvC").onclick = () => {
       pv.style.display = "none";
@@ -109,6 +114,7 @@
       pv.querySelectorAll("[data-k]").forEach(
         (e) => (vals[e.dataset.k] = e.value),
       );
+      if (!(+vals.amount > 0)) return toast("Enter a valid amount", true);
       pv.style.display = "none";
       $("aiTxt").value = "";
       switchTab(m.tab);
@@ -458,9 +464,429 @@
       date: iso(date),
     };
   }
+  // ── Ask your data (all 4 tabs): AI makes a query plan, JS computes exact numbers ──
+  const qa = document.createElement("div");
+  qa.style.cssText =
+    "display:none;position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px";
+  qa.dataset.ov = 1;
+  document.body.append(qa);
+  const inr = (n) =>
+    "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  const esc = (x) =>
+    String(x ?? "").replace(
+      /[&<>"]/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+    );
+  const isQuestion = (t) => {
+    if (
+      /\b(inr|rs\.?)\s*[\d,]+/i.test(t) &&
+      /\b(spent|debited|purchase|txn|transaction|card)\b/i.test(t)
+    )
+      return false;
+    if (t.length > 300) return false;
+    if (!/\d/.test(t)) return true;
+    return (
+      /\?\s*$/.test(t) ||
+      /\b(unpaid|paid|owed|settled|pending|wala|wale|this month|last month|is mahine|pichle)\b/i.test(
+        t,
+      ) ||
+      /^(kitna|kitne|kitni|kya|kaun|kab|kaha|kahan|how|what|which|who|when|show|list|total|batao|bata|dikha|compare|give)\b/i.test(
+        t,
+      ) ||
+      /\b(kitna|kitne|kitni|batao|bataiye|dikhao|how much|how many|sabse zyada|sabse kam|highest|lowest|average|month ?wise)\b/i.test(
+        t,
+      )
+    );
+  };
+  let dataCache = null;
+  const jget = async (q) => {
+    const r = await fetch(apiUrl(q));
+    return JSON.parse(await r.text());
+  };
+  const MK = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12,
+  };
+  const mkIso = (k) => {
+    const m = String(k).match(/^([A-Za-z]{3})[a-z]*[-\s]+(\d{2,4})/);
+    if (!m || !MK[m[1].toLowerCase()]) return "";
+    const y = m[2].length === 2 ? "20" + m[2] : m[2];
+    return y + "-" + String(MK[m[1].toLowerCase()]).padStart(2, "0") + "-01";
+  };
+  const blank = {
+    person: "",
+    card: "",
+    category: "",
+    remarks: "",
+    status: "",
+    type: "",
+  };
+  function extraRows(e, c, sal) {
+    const out = [];
+    const salM = {};
+    (Array.isArray(sal) ? sal.slice(1) : []).forEach((r) => {
+      const d = mkIso(r[0]);
+      if (!d) return;
+      salM[d.slice(0, 7)] = +r[1] || 0;
+      out.push({
+        ...blank,
+        src: "salary",
+        date: d,
+        desc: "Salary " + r[0],
+        amount: +r[1] || 0,
+        category: "Salary",
+      });
+    });
+    const mm = {};
+    (Array.isArray(e) ? e : []).forEach((r) => {
+      const k = String(r[1]).slice(0, 7),
+        cat = String(r[3]).trim();
+      const o = (mm[k] = mm[k] || { exp: 0, rec: 0 });
+      const a = +r[5] || 0;
+      if (cat === "Received") o.rec += a;
+      else if (cat !== "Sweetie Borrow") o.exp += a;
+    });
+    Object.keys({ ...mm, ...salM }).forEach((k) => {
+      const o = mm[k] || { exp: 0, rec: 0 },
+        s = salM[k] || 0;
+      out.push({
+        ...blank,
+        src: "summary",
+        date: k + "-01",
+        category: "Summary",
+        desc:
+          "Salary " +
+          inr(s) +
+          " | Spent " +
+          inr(o.exp) +
+          " | Received " +
+          inr(o.rec),
+        amount: s + o.rec - o.exp,
+      });
+    });
+    const used = {};
+    (Array.isArray(c) ? c : []).forEach((r) => {
+      if (String(r[7]).toUpperCase() === "UNPAID")
+        used[r[1]] = (used[r[1]] || 0) + (+r[6] || 0);
+    });
+    const today = iso(new Date());
+    (typeof cardConfig !== "undefined" ? cardConfig : []).forEach((x) => {
+      const u = used[x.card] || 0,
+        lim = +x.limit || 0;
+      out.push({
+        ...blank,
+        src: "config",
+        card: x.card,
+        date: today,
+        category: "Card limit",
+        desc:
+          "Limit " +
+          inr(lim) +
+          " | Used " +
+          inr(u) +
+          (lim ? " (" + Math.round((u / lim) * 100) + "%)" : "") +
+          " | Due day " +
+          (x.dueDay || "-") +
+          " | Cutoff " +
+          (x.cutoff || "-"),
+        amount: lim - u,
+      });
+    });
+    return out;
+  }
+  const loadData = () => {
+    if (dataCache && Date.now() - dataCache.t < 60000) return dataCache.p;
+    const p = Promise.all([
+      jget("action=get").catch(() => []),
+      jget("action=getCardsByTxnMonth&txnMonth=20").catch(() => []),
+      jget("action=getSweetie").catch(() => []),
+      jget("action=getSalary").catch(() => []),
+    ]).then(([e, c, w, sal]) => [
+      ...extraRows(e, c, sal),
+      ...(Array.isArray(e) ? e : []).map((r) => ({
+        src: "expenses",
+        date: String(r[1]),
+        category: r[3],
+        desc: r[4],
+        amount: +r[5] || 0,
+        person: "",
+        card: "",
+        remarks: "",
+        status: "",
+        type: "",
+      })),
+      ...(Array.isArray(c) ? c : []).map((r) => ({
+        src: "cards",
+        card: r[1],
+        person: r[2],
+        desc: r[3],
+        date: String(r[4]),
+        remarks: r[5],
+        amount: +r[6] || 0,
+        status: r[7],
+        category: "",
+        type: "",
+      })),
+      ...(Array.isArray(w) ? w : []).map((r) => ({
+        src: "sweetie",
+        type: String(r[1]).toUpperCase(),
+        amount:
+          (String(r[1]).toUpperCase() === "DEBIT" ? -1 : 1) *
+          Math.abs(+r[2] || 0),
+        date: String(r[4]),
+        desc: r[5],
+        person: "",
+        card: "",
+        category: "",
+        remarks: "",
+        status: "",
+      })),
+    ]);
+    dataCache = { t: Date.now(), p };
+    return p;
+  };
+  const SELF = ["grv", "gaurav", "me"];
+  function runPlan(pl, all) {
+    const src = (
+      pl.sources && pl.sources.length
+        ? pl.sources
+        : ["cards", "expenses", "sweetie"]
+    ).map((x) => String(x).toLowerCase());
+    const lc = (x) => String(x || "").toLowerCase();
+    const per = lc(pl.person),
+      card = lc(pl.card),
+      cat = lc(pl.category),
+      st = lc(pl.status),
+      ty = lc(pl.type);
+    const words = lc(pl.text)
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 1);
+    const pset = SELF.includes(per) ? SELF : per ? [per] : [];
+    let rows = all.filter((r) => src.includes(r.src));
+    if (pl.from) rows = rows.filter((r) => r.date >= pl.from);
+    if (pl.to) rows = rows.filter((r) => r.date <= pl.to);
+    if (per)
+      rows = rows.filter(
+        (r) =>
+          r.src === "cards" &&
+          pset.some((p) => lc(r.person) === p || lc(r.person).includes(p)),
+      );
+    if (card)
+      rows = rows.filter(
+        (r) =>
+          (r.src !== "cards" && r.src !== "config") ||
+          lc(r.card) === card ||
+          lc(r.card).includes(card) ||
+          card.includes(lc(r.card)),
+      );
+    if (cat)
+      rows = rows.filter(
+        (r) => r.src !== "expenses" || lc(r.category).includes(cat),
+      );
+    else
+      rows = rows.filter(
+        (r) =>
+          !(
+            r.src === "expenses" &&
+            lc(r.category) === "received" &&
+            !words.length
+          ),
+      );
+    if (st) rows = rows.filter((r) => r.src !== "cards" || lc(r.status) === st);
+    if (ty) rows = rows.filter((r) => r.src !== "sweetie" || lc(r.type) === ty);
+    if (words.length)
+      rows = rows.filter((r) => {
+        const h = lc(
+          [r.desc, r.remarks, r.card, r.category, r.person].join(" "),
+        );
+        return words.every((w) => h.includes(w));
+      });
+    rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+    const total = rows.reduce((a, r) => a + r.amount, 0);
+    const key = {
+      month: (r) => r.date.slice(0, 7),
+      person: (r) => r.person || "(self)",
+      card: (r) => r.card || "(none)",
+      category: (r) => r.category || r.type || "(none)",
+      status: (r) => r.status || "(none)",
+    }[pl.group];
+    let groups = null;
+    if (key) {
+      const m = {};
+      rows.forEach((r) => {
+        const k = key(r);
+        m[k] = m[k] || { k, sum: 0, n: 0 };
+        m[k].sum += r.amount;
+        m[k].n++;
+      });
+      groups = Object.values(m).sort((a, b) =>
+        pl.group === "month" ? (a.k < b.k ? -1 : 1) : b.sum - a.sum,
+      );
+    }
+    return { rows, total, groups, n: rows.length };
+  }
+  function showAnswer(q, pl, res) {
+    const agg = pl.agg || "sum";
+    const chips = [
+      pl.person && "👤 " + pl.person,
+      pl.card && "💳 " + pl.card,
+      pl.category && "🏷 " + pl.category,
+      pl.text && "🔎 " + pl.text,
+      pl.status && pl.status,
+      pl.type && pl.type,
+      (pl.from || pl.to) && (pl.from || "…") + " → " + (pl.to || "…"),
+      (pl.sources || []).join("+"),
+    ].filter(Boolean);
+    let big = "";
+    if (agg === "count") big = res.n + " transactions";
+    else if (agg === "avg") big = res.n ? inr(res.total / res.n) + " avg" : "—";
+    else if (agg === "max" || agg === "min") {
+      const t = [...res.rows]
+        .sort((a, b) =>
+          agg === "max" ? b.amount - a.amount : a.amount - b.amount,
+        )
+        .slice(0, pl.top || 5);
+      res = { ...res, rows: t };
+      big = t.length ? inr(t[0].amount) : "—";
+    } else if (agg === "list") big = res.n + " transactions";
+    else big = inr(res.total);
+    const sub = agg === "sum" ? res.n + " transactions" : "";
+    const g = res.groups
+      ? `<table style="width:100%;margin-top:10px;font-size:.88rem">${res.groups
+          .slice(0, pl.top || 30)
+          .map(
+            (x) =>
+              `<tr><td style="padding:3px 0;position:relative"><div style="position:absolute;inset:3px auto 3px 0;width:${Math.round((Math.abs(x.sum) / (Math.max(...res.groups.map((y) => Math.abs(y.sum))) || 1)) * 100)}%;background:#22d3ee22;border-radius:4px"></div><span style="position:relative">${esc(x.k)}</span></td><td style="text-align:right;opacity:.6">${x.n}</td><td style="text-align:right;font-weight:700">${inr(x.sum)}</td></tr>`,
+          )
+          .join("")}</table>`
+      : "";
+    const list = res.rows
+      .slice(0, 60)
+      .map(
+        (r) =>
+          `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 4px;border-top:1px solid var(--border,#2a2a3d);font-size:.84rem;border-radius:6px"><span><b>${esc(r.date.slice(5))}</b> ${esc([r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" · "))}${r.remarks ? ` <i style="opacity:.6">(${esc(r.remarks)})</i>` : ""}</span><b style="color:#22d3ee;white-space:nowrap">${inr(r.amount)}</b></div>`,
+      )
+      .join("");
+    qa.innerHTML = `<div style="width:min(560px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);position:relative;border-radius:18px;padding:20px;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button onclick="window.__qaAgain()" data-a="again" title="Ask again" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">↩</button><button onclick="window.__qaCopy()" data-a="copy" title="Copy" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit;opacity:.75;cursor:pointer">⧉</button><button onclick="this.closest('[data-ov]').style.display='none'" data-a="close" title="Close" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit;opacity:.75;cursor:pointer">✕</button></div><div style="padding-right:76px;opacity:.7;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">✨ ${esc(pl.title || q)}</div><div style="font-size:2.2rem;font-weight:800;margin:8px 0 2px;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(res.n || agg === "count" ? big : "Kuch nahi mila")}</div><div style="opacity:.6;font-size:.8rem">${sub}</div><div style="margin-top:8px;font-size:.72rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid var(--border,#2a2a3d);border-radius:20px;padding:2px 8px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div style="margin-top:10px">${list}</div></div>`;
+    qa.style.display = "flex";
+    const doCopy = () => {
+      const inrR = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+      const line = (r) =>
+        r.date.slice(5) +
+        " " +
+        [r.person, r.card || r.category || r.type, r.desc]
+          .filter(Boolean)
+          .join(" · ") +
+        (r.remarks ? " (" + r.remarks + ")" : "") +
+        " " +
+        inrR(r.amount);
+      const body = res.groups
+        ? res.groups
+            .map((x) => x.k + " (" + x.n + ") " + inrR(x.sum))
+            .join("\n")
+        : res.rows.map(line).join("\n");
+      const txt =
+        (pl.title || q) + "\n" + big + (sub ? " · " + sub : "") + "\n\n" + body;
+      navigator.clipboard.writeText(txt).then(
+        () => toast("Copied"),
+        () => toast("Copy failed", true),
+      );
+    };
+    window.__qaCopy = doCopy;
+    window.__qaAgain = () => {
+      qa.style.display = "none";
+      box.style.display = "flex";
+      $("aiTxt").focus();
+    };
+    qa.onclick = (e) => {
+      const a = e.target.closest("[data-a]")?.dataset.a;
+      if (e.target === qa || a === "close") qa.style.display = "none";
+      else if (a === "copy") doCopy();
+      else if (a === "again") {
+        qa.style.display = "none";
+        box.style.display = "flex";
+        $("aiTxt").focus();
+      }
+    };
+  }
+  async function askData(text) {
+    const b = $("aiGo");
+    b.disabled = true;
+    b.innerHTML = '<span class="spin"></span>Thinking…';
+    try {
+      const people = [
+        ...new Set(
+          [
+            ...document.querySelectorAll(
+              "#cardSection table tbody tr td:nth-child(3)",
+            ),
+          ]
+            .map((td) => td.textContent.trim())
+            .filter(Boolean)
+            .concat(["GRV", "Sweetie", "Tanya"]),
+        ),
+      ].join(" | ");
+      const cards = cardConfig.map((c) => c.card).join(" | ");
+      const cats = [...($("expenseCategory")?.options || [])]
+        .map((o) => o.value)
+        .join(" | ");
+      const dp = loadData();
+      const raw = await (
+        await fetch(
+          apiUrl(
+            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people)}&cards=${encodeURIComponent(cards)}&cats=${encodeURIComponent(cats)}`,
+          ),
+        )
+      ).text();
+      let pl;
+      try {
+        pl = JSON.parse(raw);
+      } catch (_) {
+        throw new Error("Server said: " + raw.slice(0, 160));
+      }
+      if (pl.error) throw new Error(pl.error);
+      const filt = [
+        "person",
+        "card",
+        "category",
+        "text",
+        "status",
+        "type",
+        "from",
+        "to",
+      ].some((k) => pl[k]);
+      if (
+        !filt &&
+        (!pl.group || pl.group === "none") &&
+        (pl.sources || []).length !== 1
+      )
+        throw new Error(
+          "Ask about your spending, e.g. “Tanya ka unpaid card total”",
+        );
+      const all = await dp;
+      close();
+      showAnswer(text, pl, runPlan(pl, all));
+    } catch (e) {
+      toast("AI ask failed: " + e.message, true);
+    } finally {
+      b.disabled = false;
+      b.textContent = "Parse";
+    }
+  }
   $("aiGo").onclick = async () => {
     const text = $("aiTxt").value.trim();
     if (!text) return;
+    if (isQuestion(text)) return askData(text);
     const h0 = splitHint(text),
       body0 = h0 ? h0.body : text;
     let loc = localParse(body0);
