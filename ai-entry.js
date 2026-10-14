@@ -94,6 +94,8 @@
   const warm = () => fetch(apiUrl("action=ver")).catch(() => {});
   setTimeout(warm, 2500);
   fab.onclick = () => {
+    if (chatHist && chatHist.length && typeof openChat === "function")
+      return openChat();
     resetAiEntry();
     box.style.display = "flex";
     setTimeout(() => aiText.focus(), 40);
@@ -114,6 +116,8 @@
     "@keyframes aiGlow{from{box-shadow:0 0 8px #22d3ee88,0 0 18px #8b5cf655}to{box-shadow:0 0 18px #22d3eeff,0 0 40px #8b5cf6aa}}";
   gs.textContent +=
     "#pvN,#pvX,#pvC,#pvOk,#aiX,#aiGo{transition:background .16s,border-color .16s,color .16s,box-shadow .16s,transform .16s,filter .16s}#pvN:hover,#pvX:hover,#aiX:hover,#pvN:focus-visible,#pvX:focus-visible{background:#22d3ee30!important;border-color:#22d3ee!important;color:#67e8f9!important;opacity:1!important;box-shadow:0 0 0 1px #22d3ee33,0 0 18px #22d3ee88!important;transform:translateY(-1px)}#pvC:hover,#pvC:focus-visible{background:#f43f5e30!important;border-color:#f43f5e!important;color:#fda4af!important;box-shadow:0 0 0 1px #f43f5e33,0 0 18px #f43f5e99!important;transform:translateY(-1px)}#pvOk:hover,#aiGo:hover{filter:brightness(1.1);box-shadow:0 0 22px #22d3ee99;transform:translateY(-1px)}#pvN:active,#pvX:active,#pvC:active,#aiX:active,#pvOk:active,#aiGo:active{transform:scale(.95)}";
+  gs.textContent +=
+    "#chGo{transition:filter .16s,box-shadow .16s,transform .16s}#chGo:hover{filter:brightness(1.1);box-shadow:0 0 22px #22d3ee99;transform:translateY(-1px)}#chGo:active{transform:scale(.95)}#chIn:focus{border-color:#22d3eeaa!important;box-shadow:0 0 0 3px #22d3ee18}#qaAnswerOverlay [data-c=copy]{transition:.16s}#qaAnswerOverlay [data-c=copy]:hover{background:#22d3ee30!important;border-color:#22d3ee!important;color:#67e8f9!important;box-shadow:0 0 14px #22d3ee66}";
   document.head.append(gs);
   box.addEventListener("click", (e) => {
     if (e.target === box) close();
@@ -650,7 +654,7 @@
     status: "",
     type: "",
   };
-  function extraRows(e, c, sal) {
+  function extraRows(e, c, sal, cm) {
     const out = [];
     const salM = {};
     (Array.isArray(sal) ? sal.slice(1) : []).forEach((r) => {
@@ -702,6 +706,12 @@
     (typeof cardConfig !== "undefined" ? cardConfig : []).forEach((x) => {
       const u = used[x.card] || 0,
         lim = +x.limit || 0;
+      const k = String(x.card).toLowerCase().trim();
+      const mr = (Array.isArray(cm) ? cm : []).find(
+        (m) =>
+          (String(m[0]).trim() + "-" + String(m[1]).trim()).toLowerCase() ===
+            k || String(m[1]).trim().toLowerCase() === k,
+      );
       out.push({
         ...blank,
         src: "config",
@@ -717,7 +727,17 @@
           " | Due day " +
           (x.dueDay || "-") +
           " | Cutoff " +
-          (x.cutoff || "-"),
+          (x.cutoff || "-") +
+          (mr
+            ? " | Bank " +
+              mr[0] +
+              " | Number " +
+              mr[2] +
+              " | Number/CVV " +
+              mr[3] +
+              " | Expiry " +
+              mr[4]
+            : ""),
         amount: lim - u,
       });
     });
@@ -730,8 +750,9 @@
       jget("action=getCardsByTxnMonth&txnMonth=20").catch(() => []),
       jget("action=getSweetie").catch(() => []),
       jget("action=getSalary").catch(() => []),
-    ]).then(([e, c, w, sal]) => [
-      ...extraRows(e, c, sal),
+      jget("action=getCCMaster").catch(() => []),
+    ]).then(([e, c, w, sal, cm]) => [
+      ...extraRows(e, c, sal, cm),
       ...(Array.isArray(e) ? e : []).map((r) => ({
         src: "expenses",
         date: String(r[1]),
@@ -798,7 +819,13 @@
       rows = rows.filter(
         (r) =>
           r.src === "cards" &&
-          pset.some((p) => lc(r.person) === p || lc(r.person).includes(p)),
+          pset.some(
+            (p) =>
+              lc(r.person) === p ||
+              lc(r.person)
+                .split(/[^a-z0-9]+/)
+                .includes(p),
+          ),
       );
     if (card)
       rows = rows.filter(
@@ -854,15 +881,38 @@
     }
     return { rows, total, groups, n: rows.length };
   }
-  function showAnswer(q, pl, res) {
+  // ── AI chat: multi-turn, follow-ups understood, answers computed exactly from your data ──
+  let chatHist = [];
+  const chatTxt = [];
+  const compact = (pl) => {
+    const o = {};
+    [
+      "sources",
+      "person",
+      "card",
+      "category",
+      "text",
+      "status",
+      "type",
+      "from",
+      "to",
+      "agg",
+      "group",
+    ].forEach((k) => {
+      const v = pl[k];
+      if (v && (!Array.isArray(v) || v.length) && v !== "none") o[k] = v;
+    });
+    return o;
+  };
+  function answerHtml(q, pl, res) {
     const agg = pl.agg || "sum";
     const chips = [
       pl.person && "👤 " + pl.person,
       pl.card && "💳 " + pl.card,
       pl.category && "🏷 " + pl.category,
       pl.text && "🔎 " + pl.text,
-      pl.status && pl.status,
-      pl.type && pl.type,
+      pl.status,
+      pl.type,
       (pl.from || pl.to) && (pl.from || "…") + " → " + (pl.to || "…"),
       (pl.sources || []).join("+"),
     ].filter(Boolean);
@@ -879,111 +929,166 @@
       big = t.length ? inr(t[0].amount) : "—";
     } else if (agg === "list") big = res.n + " transactions";
     else big = inr(res.total);
+    if ((pl.sources || []).length === 1 && pl.sources[0] === "config" && res.n)
+      big = res.n === 1 ? res.rows[0].card : res.n + " cards";
     const sub = agg === "sum" ? res.n + " transactions" : "";
+    const mx = res.groups
+      ? Math.max(...res.groups.map((y) => Math.abs(y.sum))) || 1
+      : 1;
     const g = res.groups
-      ? `<table style="width:100%;margin-top:10px;font-size:.88rem">${res.groups
+      ? `<table style="width:100%;margin-top:8px;font-size:.86rem">${res.groups
           .slice(0, pl.top || 30)
           .map(
             (x) =>
-              `<tr><td style="padding:3px 0;position:relative"><div style="position:absolute;inset:3px auto 3px 0;width:${Math.round((Math.abs(x.sum) / (Math.max(...res.groups.map((y) => Math.abs(y.sum))) || 1)) * 100)}%;background:#22d3ee22;border-radius:4px"></div><span style="position:relative">${esc(x.k)}</span></td><td style="text-align:right;opacity:.6">${x.n}</td><td style="text-align:right;font-weight:700">${inr(x.sum)}</td></tr>`,
+              `<tr><td style="padding:3px 0;position:relative"><div style="position:absolute;inset:3px auto 3px 0;width:${Math.round((Math.abs(x.sum) / mx) * 100)}%;background:#22d3ee22;border-radius:4px"></div><span style="position:relative">${esc(x.k)}</span></td><td style="text-align:right;opacity:.6">${x.n}</td><td style="text-align:right;font-weight:700">${inr(x.sum)}</td></tr>`,
           )
           .join("")}</table>`
       : "";
-    const list = res.rows
-      .slice(0, 60)
-      .map(
-        (r) =>
-          `<div class="qaR" style="display:flex;justify-content:space-between;gap:12px;padding:11px 10px;border-top:1px solid #ffffff12;font-size:.86rem;border-radius:10px"><span><b>${esc(r.date.slice(5))}</b> ${esc([r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" · "))}${r.remarks ? ` <i style="opacity:.6">(${esc(r.remarks)})</i>` : ""}</span><b style="color:#22d3ee;white-space:nowrap">${inr(r.amount)}</b></div>`,
-      )
-      .join("");
-    qa.innerHTML = `<div style="width:min(560px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;position:relative;border-radius:22px;padding:22px;box-shadow:0 24px 70px #000c,0 0 0 1px #ffffff0a inset,0 0 50px #22d3ee22,0 0 90px #8b5cf622;backdrop-filter:blur(12px)"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button type="button" class="qaB" data-a="new" title="New question (clear)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button type="button" class="qaB" data-a="again" title="Back (keep prompt)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button type="button" class="qaB" data-a="copy" title="Copy"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button><button type="button" class="qaB qaX" data-a="close" title="Close"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div style="padding-right:76px;opacity:.7;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">✨ ${esc(pl.title || q)}</div><div style="font-size:2.6rem;font-weight:800;letter-spacing:-.02em;filter:drop-shadow(0 0 14px #22d3ee66);margin:8px 0 2px;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(res.n || agg === "count" ? big : "Kuch nahi mila")}</div><div style="opacity:.6;font-size:.8rem">${sub}</div><div style="margin-top:8px;font-size:.72rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid var(--border,#2a2a3d);border-radius:20px;padding:2px 8px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div style="margin-top:10px">${list}</div></div>`;
-    qa.style.display = "flex";
-    const doCopy = () => {
-      const inrR = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
-      const line = (r) =>
-        r.date.slice(5) +
-        " " +
-        [r.person, r.card || r.category || r.type, r.desc]
-          .filter(Boolean)
-          .join(" · ") +
-        (r.remarks ? " (" + r.remarks + ")" : "") +
-        " " +
-        inrR(r.amount);
-      const body = res.groups
+    const LIM = 12;
+    const row = (r) =>
+      r.src === "config"
+        ? `<div class="qaR" style="padding:9px 6px;border-top:1px solid #ffffff12;border-radius:8px"><b style="color:#22d3ee">${esc(r.card)}</b>${r.desc
+            .split(" | ")
+            .map((p) => {
+              const i = p.indexOf(" ");
+              return `<div style="display:flex;justify-content:space-between;gap:12px;font-size:.82rem;padding:2px 0"><span style="opacity:.6">${esc(p.slice(0, i))}</span><span style="font-family:monospace;overflow-wrap:anywhere;text-align:right">${esc(p.slice(i + 1))}</span></div>`;
+            })
+            .join(
+              "",
+            )}<div style="display:flex;justify-content:space-between;font-size:.82rem;padding:2px 0"><span style="opacity:.6">Remaining limit</span><b>${inr(r.amount)}</b></div></div>`
+        : `<div class="qaR" style="display:flex;justify-content:space-between;gap:12px;padding:8px 6px;border-top:1px solid #ffffff12;font-size:.83rem;border-radius:8px"><span><b>${esc(r.date.slice(5))}</b> ${esc([r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" · "))}${r.remarks ? ` <i style="opacity:.6">(${esc(r.remarks)})</i>` : ""}</span><b style="color:#22d3ee;white-space:nowrap">${inr(r.amount)}</b></div>`;
+    const showRows = res.groups ? [] : res.rows;
+    const list =
+      showRows.slice(0, LIM).map(row).join("") +
+      (showRows.length > LIM
+        ? `<div style="opacity:.6;font-size:.78rem;padding-top:6px">+${showRows.length - LIM} more — use Copy for the full list</div>`
+        : "");
+    const inrR = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+    const line = (r) =>
+      r.date.slice(5) +
+      " " +
+      [r.person, r.card || r.category || r.type, r.desc]
+        .filter(Boolean)
+        .join(" · ") +
+      (r.remarks ? " (" + r.remarks + ")" : "") +
+      " " +
+      inrR(r.amount);
+    const txt =
+      (pl.title || q) +
+      "\n" +
+      big +
+      (sub ? " · " + sub : "") +
+      "\n\n" +
+      (res.groups
         ? res.groups
             .map((x) => x.k + " (" + x.n + ") " + inrR(x.sum))
             .join("\n")
-        : res.rows.map(line).join("\n");
-      const txt =
-        (pl.title || q) + "\n" + big + (sub ? " · " + sub : "") + "\n\n" + body;
-      const fb = () => {
-        const t = document.createElement("textarea");
-        t.value = txt;
-        t.setAttribute("readonly", "");
-        t.style.cssText =
-          "position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none";
-        document.body.appendChild(t);
-        t.focus();
-        t.select();
-        t.setSelectionRange(0, t.value.length);
-        let ok = false;
-        try {
-          ok = document.execCommand("copy");
-        } catch (err) {
-          console.warn("[AI answer copy] Fallback failed:", err);
-        }
-        t.remove();
-        window.__qaT(
-          ok ? "Copied to clipboard" : "Copy blocked by browser",
-          !ok,
-        );
-      };
-      if (
-        navigator.clipboard &&
-        typeof navigator.clipboard.writeText === "function"
-      ) {
-        navigator.clipboard
-          .writeText(txt)
-          .then(() => window.__qaT("Copied to clipboard"))
-          .catch(fb);
-      } else {
-        fb();
-      }
-    };
-    window.__qaCopy = doCopy;
-    window.__qaNew = () => {
-      qa.style.display = "none";
-      resetAiEntry();
-      box.style.display = "flex";
-      requestAnimationFrame(() => aiText.focus());
-    };
-    window.__qaAgain = () => {
-      qa.style.display = "none";
-      box.style.display = "flex";
-      requestAnimationFrame(() => {
-        const input = $("aiTxt");
-        if (input) input.focus();
-      });
-    };
-    const qt = (m, bad) => {
-      const t = document.createElement("div");
-      t.textContent = (bad ? "✕ " : "✓ ") + m;
-      t.style.cssText =
-        "position:fixed;bottom:40px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:12px;font-weight:700;z-index:2147483647;color:#0b0b10;background:" +
-        (bad ? "#fb7185" : "#22d3ee") +
-        ";box-shadow:0 0 24px #22d3ee88";
-      document.body.append(t);
-      setTimeout(() => t.remove(), 1600);
-    };
-    window.__qaT = qt;
-    // Button handling is delegated once when the overlay is created.
-    // No per-render listeners, no pointerup+click double firing, and no
-    // shared debounce that accidentally blocks a different button.
+        : res.rows.map(line).join("\n"));
+    const empty = !(res.n || agg === "count");
+    const html = `<div style="font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;opacity:.65">✨ ${esc(pl.title || q)}</div><div style="font-size:${empty ? "1.1rem" : "1.9rem"};font-weight:800;margin:4px 0 0;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(empty ? "Kuch nahi mila" : big)}</div><div style="opacity:.6;font-size:.78rem">${sub}</div><div style="margin-top:6px;font-size:.7rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid #ffffff22;border-radius:20px;padding:1px 7px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div>${list}</div>`;
+    return { html, txt };
   }
-  async function askData(text) {
-    const b = $("aiGo");
-    b.disabled = true;
-    b.innerHTML = '<span class="spin"></span>Thinking…';
+  function chatShell() {
+    if (qa.dataset.chat) return;
+    qa.dataset.chat = 1;
+    const bs =
+      "width:34px;height:34px;min-width:34px;border-radius:10px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0";
+    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" rows="1" placeholder="Ask anything… ya SMS paste karo" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><button id="chGo" type="button" style="padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Send</button></div></div>`;
+    qa.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-c]");
+      if (!b) return;
+      const c = b.dataset.c;
+      if (c === "close") qa.style.display = "none";
+      else if (c === "clear") {
+        chatHist = [];
+        chatTxt.length = 0;
+        $("chThread").innerHTML = "";
+        $("chIn").focus();
+      } else if (c === "copy") {
+        const t = chatTxt[+b.dataset.i] || "";
+        (navigator.clipboard
+          ? navigator.clipboard.writeText(t)
+          : Promise.reject()
+        ).then(
+          () => (b.textContent = "✓ Copied"),
+          () => {
+            const a = document.createElement("textarea");
+            a.value = t;
+            document.body.appendChild(a);
+            a.select();
+            try {
+              document.execCommand("copy");
+              b.textContent = "✓ Copied";
+            } catch (_) {}
+            a.remove();
+          },
+        );
+      }
+    });
+    $("chGo").onclick = chatSend;
+    $("chIn").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        chatSend();
+      }
+    });
+  }
+  const bub = (html, me) => {
+    const th = $("chThread"),
+      d = document.createElement("div");
+    d.style.cssText = me
+      ? "align-self:flex-end;max-width:85%;background:#22d3ee22;border:1px solid #22d3ee55;border-radius:16px 16px 4px 16px;padding:9px 13px;font-size:.9rem;overflow-wrap:anywhere"
+      : "align-self:stretch;background:#ffffff0a;border:1px solid #ffffff14;border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:.9rem;overflow-wrap:anywhere";
+    d.innerHTML = html;
+    th.append(d);
+    th.scrollTop = th.scrollHeight;
+    return d;
+  };
+  function openChat() {
+    chatShell();
+    qa.style.display = "flex";
+    setTimeout(() => $("chIn") && $("chIn").focus(), 50);
+  }
+  function chatSend() {
+    const inp = $("chIn"),
+      text = inp.value.trim();
+    if (!text) return;
+    if (!isQuestion(text) || localParse(text)) {
+      qa.style.display = "none";
+      aiText.value = text;
+      inp.value = "";
+      $("aiGo").click();
+      return;
+    }
+    inp.value = "";
+    chatAsk(text);
+  }
+  function tryTab(t) {
+    if (
+      !/\b(open|kholo|khol|kro|karo|dikha|dikhao|show|go to|switch|chalo)\b/i.test(
+        t,
+      ) ||
+      t.length > 40 ||
+      /\d/.test(t)
+    )
+      return null;
+    if (/\bgrv\b/i.test(t)) return "grvcc";
+    if (/sweetie/i.test(t)) return "sweetie";
+    if (/credit|card/i.test(t)) return "cards";
+    if (/expense|kharcha/i.test(t)) return "expenses";
+    return null;
+  }
+  async function chatAsk(text) {
+    const tb = tryTab(text);
+    if (tb) {
+      qa.style.display = "none";
+      switchTab(tb);
+      return;
+    }
+    bub(esc(text), true);
+    const wait = bub('<span class="spin"></span>Thinking…');
+    const go = $("chGo");
+    go.disabled = true;
     try {
       const people = [
         ...new Set(
@@ -1001,11 +1106,12 @@
       const cats = [...($("expenseCategory")?.options || [])]
         .map((o) => o.value)
         .join(" | ");
+      const hist = JSON.stringify(chatHist.slice(-3));
       const dp = loadData();
       const raw = await (
         await fetch(
           apiUrl(
-            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people.slice(0, 300))}&cards=${encodeURIComponent(cards.slice(0, 400))}&cats=${encodeURIComponent(cats.slice(0, 500))}`,
+            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people.slice(0, 300))}&cards=${encodeURIComponent(cards.slice(0, 400))}&cats=${encodeURIComponent(cats.slice(0, 500))}&hist=${encodeURIComponent(hist.slice(0, 1200))}`,
           ),
         )
       ).text();
@@ -1013,10 +1119,23 @@
       try {
         pl = JSON.parse(raw);
       } catch (_) {
-        throw new Error("Server said: " + raw.slice(0, 160));
+        throw new Error(
+          /ppConfig|<html|<!doctype/i.test(raw)
+            ? "Server error page — redeploy Apps Script (New version)"
+            : raw.slice(0, 160),
+        );
       }
       if (pl.error) throw new Error(pl.error);
-      const filt = [
+      if (
+        pl.goto &&
+        ["expenses", "cards", "grvcc", "sweetie"].includes(pl.goto)
+      ) {
+        qa.style.display = "none";
+        switchTab(pl.goto);
+        wait.remove();
+        return;
+      }
+      const FK = [
         "person",
         "card",
         "category",
@@ -1025,25 +1144,89 @@
         "type",
         "from",
         "to",
-      ].some((k) => pl[k]);
+      ];
+      let filt = FK.some((k) => pl[k]);
+      const prevP = [...chatHist].reverse().find((h) => h.p);
+      if (prevP && !pl.reply) {
+        const reset =
+          /\b(overall|everything|sabka|sabhi|poore|pura|all time|new topic)\b/i.test(
+            text,
+          );
+        const fu =
+          /^\s*(aur|and|also|isme|isme se|usme|ismein|same|iska|uska|iski|uski|inme|unme|ab|phir|then)\b/i.test(
+            text,
+          );
+        const gr = pl.group && pl.group !== "none";
+        const own =
+          (pl.sources || []).length === 1 &&
+          ["summary", "salary", "config"].includes(pl.sources[0]);
+        if (!reset && !own && ((!filt && !gr) || fu)) {
+          FK.forEach((k) => {
+            if (!pl[k] && prevP.p[k]) pl[k] = prevP.p[k];
+          });
+          if ((pl.sources || []).length !== 1)
+            pl.sources = prevP.p.sources || pl.sources;
+          filt = FK.some((k) => pl[k]);
+        }
+      }
+      if (pl.reply && !filt && (!pl.sources || !pl.sources.length)) {
+        wait.innerHTML = esc(pl.reply);
+        chatHist.push({ q: text, a: String(pl.reply).slice(0, 80) });
+        return;
+      }
       if (
         !filt &&
         (!pl.group || pl.group === "none") &&
-        (pl.sources || []).length !== 1
-      )
-        throw new Error(
-          "Ask about your spending, e.g. “Tanya ka unpaid card total”",
-        );
+        (pl.agg || "sum") === "sum" &&
+        !(pl.sources || []).some((s) =>
+          ["summary", "salary", "config"].includes(s),
+        )
+      ) {
+        wait.innerHTML =
+          "Thoda specific pucho — kaun sa card / person / month / merchant?";
+        return;
+      }
       const all = await dp;
-      box.style.display = "none";
-      showAnswer(text, pl, runPlan(pl, all));
+      const res0 = runPlan(pl, all);
+      const { html, txt } = answerHtml(text, pl, res0);
+      chatTxt.push(txt);
+      wait.innerHTML =
+        html +
+        `<div style="margin-top:8px;text-align:right"><button type="button" data-c="copy" data-i="${chatTxt.length - 1}" style="border:1px solid #ffffff30;background:transparent;color:inherit;border-radius:8px;padding:3px 10px;font-size:.72rem;cursor:pointer">⧉ Copy</button></div>`;
+      chatHist.push({
+        q: text,
+        p: compact(pl),
+        r: res0.rows
+          .slice(0, 3)
+          .map(
+            (r) =>
+              r.date +
+              " " +
+              [r.person, r.card || r.category, r.desc]
+                .filter(Boolean)
+                .join(" ") +
+              " Rs" +
+              Math.round(r.amount),
+          ),
+      });
     } catch (e) {
-      showAiError("Couldn’t answer that", e);
-      console.warn("[AI spending question]", e);
+      wait.innerHTML = `<span style="color:#fda4af">Couldn’t answer: ${esc(
+        String(e.message || e)
+          .replace(/<[^>]*>/g, " ")
+          .slice(0, 180),
+      )}</span>`;
     } finally {
-      b.disabled = false;
-      b.textContent = "Parse";
+      go.disabled = false;
+      const th = $("chThread");
+      th.scrollTop = th.scrollHeight;
+      $("chIn").focus();
     }
+  }
+  async function askData(text) {
+    box.style.display = "none";
+    aiText.value = "";
+    openChat();
+    return chatAsk(text);
   }
   $("aiGo").onclick = async () => {
     clearAiError();
