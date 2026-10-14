@@ -103,6 +103,7 @@
   };
   $("aiX").onclick = close;
   $("aiTxt").addEventListener("keydown", (e) => {
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       $("aiGo").click();
@@ -884,6 +885,8 @@
   // ── AI chat: multi-turn, follow-ups understood, answers computed exactly from your data ──
   let chatHist = [];
   const chatTxt = [];
+  // Keep the actual rows shown in the latest answer for deterministic follow-ups.
+  let lastResultContext = null;
   const compact = (pl) => {
     const o = {};
     [
@@ -986,14 +989,14 @@
         : res.rows.map(line).join("\n"));
     const empty = !(res.n || agg === "count");
     const html = `<div style="font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;opacity:.65">✨ ${esc(pl.title || q)}</div><div style="font-size:${empty ? "1.1rem" : "1.9rem"};font-weight:800;margin:4px 0 0;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(empty ? "Kuch nahi mila" : big)}</div><div style="opacity:.6;font-size:.78rem">${sub}</div><div style="margin-top:6px;font-size:.7rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid #ffffff22;border-radius:20px;padding:1px 7px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div>${list}</div>`;
-    return { html, txt };
+    return { html, txt, resultRows: showRows.slice(0, 100) };
   }
   function chatShell() {
     if (qa.dataset.chat) return;
     qa.dataset.chat = 1;
     const bs =
       "width:34px;height:34px;min-width:34px;border-radius:10px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0";
-    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" rows="1" placeholder="Ask anything… ya SMS paste karo" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><button id="chGo" type="button" style="padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Send</button></div></div>`;
+    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" name="aiq" rows="1" autocomplete="on" autocorrect="on" autocapitalize="sentences" spellcheck="true" inputmode="text" enterkeyhint="send" placeholder="Ask anything… ya SMS paste karo" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><button id="chGo" type="button" style="padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Send</button></div></div>`;
     qa.addEventListener("click", (e) => {
       const b = e.target.closest("[data-c]");
       if (!b) return;
@@ -1002,6 +1005,7 @@
       else if (c === "clear") {
         chatHist = [];
         chatTxt.length = 0;
+        lastResultContext = null;
         $("chThread").innerHTML = "";
         $("chIn").focus();
       } else if (c === "copy") {
@@ -1027,6 +1031,7 @@
     });
     $("chGo").onclick = chatSend;
     $("chIn").addEventListener("keydown", (e) => {
+      if (e.isComposing || e.keyCode === 229) return;
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         chatSend();
@@ -1049,10 +1054,120 @@
     qa.style.display = "flex";
     setTimeout(() => $("chIn") && $("chIn").focus(), 50);
   }
+  function answerFromPrevious(text) {
+    const ctx = lastResultContext;
+    if (!ctx || !ctx.rows || !ctx.rows.length) return false;
+    const q = text.toLowerCase().trim();
+    const refersBack =
+      /\b(above|previous|preceding|same list|from that|from these|from those|in that list|from the list|upar|pichhle|pichli|usme se|isme se|inme se|unme se)\b/i.test(
+        q,
+      ) ||
+      /^(and\s+|aur\s+)?(lowest|highest|minimum|maximum|smallest|largest|cheapest|most expensive|top\s+\d+|bottom\s+\d+|total|sum|average|avg|count|how many)(\s+please)?[?.!]*$/i.test(
+        q,
+      );
+    const aggMatch =
+      /\b(lowest|minimum|smallest|cheapest|least amount|sabse kam|sabse chhota|kam se kam)\b/i.test(
+        q,
+      )
+        ? "min"
+        : /\b(highest|maximum|largest|most expensive|sabse zyada|sabse bada|highest amount)\b/i.test(
+              q,
+            )
+          ? "max"
+          : /\b(average|avg|mean|ausat)\b/i.test(q)
+            ? "avg"
+            : /\b(how many|count|number of|kitne|kitni|kitna transaction)\b/i.test(
+                  q,
+                )
+              ? "count"
+              : /\b(total|sum|combined|in total|kul|jod)\b/i.test(q)
+                ? "sum"
+                : /\b(list|show all|dikhao|details)\b/i.test(q)
+                  ? "list"
+                  : "";
+    if (!refersBack || !aggMatch) return false;
+
+    const stop =
+      /\b(above|previous|preceding|same|list|from|the|that|these|those|in|on|of|and|aur|please|lowest|minimum|smallest|cheapest|least|amount|highest|maximum|largest|expensive|total|sum|combined|average|avg|mean|count|how|many|transactions?|transaction|upar|pichhle|pichli|usme|isme|se|inme|unme|sabse|kam|zyada|bada|chhota|kul|jod|kitne|kitni|kitna|dikhao|show|all)\b/gi;
+    const extra = q
+      .replace(stop, " ")
+      .replace(/[^a-z0-9₹]+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 1);
+    let rows = ctx.rows.slice();
+    if (extra.length) {
+      rows = rows.filter((r) => {
+        const hay = [
+          r.date,
+          r.person,
+          r.card,
+          r.category,
+          r.type,
+          r.desc,
+          r.remarks,
+          r.status,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return extra.every((w) => hay.includes(w));
+      });
+    }
+    if (!rows.length) {
+      bub(
+        "I couldn’t find matching items in the previous list. Try a new question with a card, month, or merchant.",
+      );
+      chatHist.push({ q: text, a: "No matches in previous list" });
+      return true;
+    }
+
+    const sorted = rows.slice().sort((a, b) => a.amount - b.amount);
+    const pl = {
+      ...(ctx.plan || {}),
+      title: text,
+      agg: aggMatch,
+      top: /^(and\s+|aur\s+)?(top|bottom)\s+\d+/i.test(q)
+        ? Math.min(12, +(q.match(/\d+/) || [5])[0])
+        : 5,
+    };
+    if (aggMatch === "max") sorted.reverse();
+    const resultRows =
+      aggMatch === "min" || aggMatch === "max" ? sorted.slice(0, pl.top) : rows;
+    const result = {
+      rows: resultRows,
+      total: rows.reduce((sum, r) => sum + (+r.amount || 0), 0),
+      n: rows.length,
+      groups: null,
+    };
+    const view = answerHtml(text, pl, result);
+    chatTxt.push(view.txt);
+    const idx = chatTxt.length - 1;
+    bub(
+      view.html +
+        `<div style="margin-top:8px;text-align:right"><button type="button" data-c="copy" data-i="${idx}" style="border:1px solid #ffffff30;background:transparent;color:inherit;border-radius:8px;padding:3px 10px;font-size:.72rem;cursor:pointer">⧉ Copy</button></div>`,
+    );
+    lastResultContext = { plan: compact(pl), rows: view.resultRows, q: text };
+    chatHist.push({
+      q: text,
+      p: compact(pl),
+      r: view.resultRows
+        .slice(0, 5)
+        .map(
+          (r) =>
+            `${r.date} ${[r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" ")} Rs${Math.round(r.amount)}`,
+        ),
+    });
+    return true;
+  }
+
   function chatSend() {
     const inp = $("chIn"),
       text = inp.value.trim();
     if (!text) return;
+    if (answerFromPrevious(text)) {
+      inp.value = "";
+      return;
+    }
     if (!isQuestion(text) || localParse(text)) {
       qa.style.display = "none";
       aiText.value = text;
@@ -1106,12 +1221,12 @@
       const cats = [...($("expenseCategory")?.options || [])]
         .map((o) => o.value)
         .join(" | ");
-      const hist = JSON.stringify(chatHist.slice(-3));
+      const hist = JSON.stringify(chatHist.slice(-4));
       const dp = loadData();
       const raw = await (
         await fetch(
           apiUrl(
-            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people.slice(0, 300))}&cards=${encodeURIComponent(cards.slice(0, 400))}&cats=${encodeURIComponent(cats.slice(0, 500))}&hist=${encodeURIComponent(hist.slice(0, 1200))}`,
+            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people.slice(0, 300))}&cards=${encodeURIComponent(cards.slice(0, 400))}&cats=${encodeURIComponent(cats.slice(0, 500))}&hist=${encodeURIComponent(hist.slice(0, 2200))}`,
           ),
         )
       ).text();
@@ -1188,7 +1303,9 @@
       }
       const all = await dp;
       const res0 = runPlan(pl, all);
-      const { html, txt } = answerHtml(text, pl, res0);
+      const view = answerHtml(text, pl, res0);
+      const { html, txt } = view;
+      lastResultContext = { plan: compact(pl), rows: view.resultRows, q: text };
       chatTxt.push(txt);
       wait.innerHTML =
         html +
@@ -1196,13 +1313,13 @@
       chatHist.push({
         q: text,
         p: compact(pl),
-        r: res0.rows
-          .slice(0, 3)
+        r: view.resultRows
+          .slice(0, 5)
           .map(
             (r) =>
               r.date +
               " " +
-              [r.person, r.card || r.category, r.desc]
+              [r.person, r.card || r.category || r.type, r.desc]
                 .filter(Boolean)
                 .join(" ") +
               " Rs" +

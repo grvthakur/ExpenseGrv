@@ -1,151 +1,137 @@
-/* Expense Tracker — safe custom Category dropdown prototype.
-   Only #expenseCategory is enhanced. The original <select> remains the
-   source of truth so existing .value reads and change handlers keep working. */
+/* Expense Tracker dropdown repair
+   Custom searchable UI for Expense Category and Credit Card only.
+   Original select elements remain the source of truth for existing app logic. */
 (function () {
-  "use strict";
+  'use strict';
+  const TARGETS = ['expenseCategory', 'cardSelect'];
 
-  function initCategoryDropdown() {
-    const select = document.getElementById("expenseCategory");
-    if (!select || select.dataset.customDropdownReady === "1") return;
+  function initDropdown(select) {
+    if (!select || select.dataset.etDropdownReady === '1') return;
+    select.dataset.etDropdownReady = '1';
 
-    const host = document.createElement("div");
-    host.className = "et-cd-host";
+    const host = document.createElement('div');
+    host.className = 'et-cd-host';
+    host.style.width = '100%';
     select.parentNode.insertBefore(host, select);
     host.appendChild(select);
-    select.classList.add("et-cd-native");
+    select.classList.add('et-cd-native');
     select.tabIndex = -1;
-    select.setAttribute("aria-hidden", "true");
-    select.dataset.customDropdownReady = "1";
+    select.setAttribute('aria-hidden', 'true');
 
-    const trigger = document.createElement("button");
-    trigger.type = "button";
-    trigger.className = "et-cd-trigger";
-    trigger.setAttribute("aria-haspopup", "listbox");
-    trigger.setAttribute("aria-expanded", "false");
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'et-cd-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
     trigger.innerHTML = '<span class="et-cd-value"></span><span class="et-cd-chevron" aria-hidden="true">⌄</span>';
-
-    const backdrop = document.createElement("div");
-    backdrop.className = "et-cd-backdrop";
-
-    const panel = document.createElement("div");
-    panel.className = "et-cd-panel";
-    panel.setAttribute("role", "dialog");
-    panel.setAttribute("aria-label", "Category selection");
-
-    const searchWrap = document.createElement("div");
-    searchWrap.className = "et-cd-search-wrap";
-    searchWrap.innerHTML = '<span class="et-cd-search-icon" aria-hidden="true">⌕</span><input class="et-cd-search" type="search" placeholder="Search category…" autocomplete="off">';
-
-    const list = document.createElement("div");
-    list.className = "et-cd-list";
-    list.setAttribute("role", "listbox");
-
-    panel.appendChild(searchWrap);
-    panel.appendChild(list);
     host.appendChild(trigger);
-    document.body.appendChild(backdrop);
-    document.body.appendChild(panel);
 
-    const search = searchWrap.querySelector(".et-cd-search");
+    const panel = document.createElement('div');
+    panel.className = 'et-cd-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', select.id === 'expenseCategory' ? 'Choose category' : 'Choose credit card');
+    panel.innerHTML = '<div class="et-cd-search-wrap"><span class="et-cd-search-icon" aria-hidden="true">⌕</span><input class="et-cd-search" type="search" autocomplete="off" placeholder="Search ' + (select.id === 'expenseCategory' ? 'category' : 'card') + '..." aria-label="Search options"></div><div class="et-cd-list" role="listbox"></div>';
+    host.appendChild(panel);
+
+    const value = trigger.querySelector('.et-cd-value');
+    const search = panel.querySelector('.et-cd-search');
+    const list = panel.querySelector('.et-cd-list');
     let activeIndex = -1;
-    let visibleOptions = [];
 
     function options() {
-      return Array.from(select.options).map((o) => ({ value: o.value, text: o.textContent.trim() }));
+      return Array.from(select.options).filter(o => !o.disabled && (o.value !== '' || o.textContent.trim()));
     }
-
-    function syncTrigger() {
+    function selectedText() {
       const opt = select.options[select.selectedIndex];
-      trigger.querySelector(".et-cd-value").textContent = opt ? opt.textContent.trim() : "Select category";
+      return opt ? opt.textContent.trim() : (select.id === 'expenseCategory' ? 'Select category' : 'Select credit card');
     }
+    function syncValue() { value.textContent = selectedText(); }
 
-    function render(filter) {
-      const q = String(filter || "").trim().toLowerCase();
-      const all = options();
-      visibleOptions = all.filter((o) => !q || o.text.toLowerCase().includes(q));
-      list.innerHTML = "";
-      activeIndex = visibleOptions.length ? Math.max(0, visibleOptions.findIndex((o) => o.value === select.value)) : -1;
-
-      if (!visibleOptions.length) {
-        list.innerHTML = '<div class="et-cd-empty">No category found</div>';
+    function render() {
+      const query = search.value.trim().toLocaleLowerCase();
+      const filtered = options().filter(o => (o.textContent + ' ' + o.value).toLocaleLowerCase().includes(query));
+      list.replaceChildren();
+      activeIndex = -1;
+      if (!filtered.length) {
+        const empty = document.createElement('div');
+        empty.className = 'et-cd-empty';
+        empty.textContent = 'No matching options';
+        list.appendChild(empty);
         return;
       }
-
-      visibleOptions.forEach((o, i) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "et-cd-option" + (o.value === select.value ? " is-selected" : "") + (i === activeIndex ? " is-active" : "");
-        btn.setAttribute("role", "option");
-        btn.setAttribute("aria-selected", o.value === select.value ? "true" : "false");
-        btn.dataset.index = String(i);
-        btn.innerHTML = '<span>' + escapeHtml(o.text) + '</span><span class="et-cd-check" aria-hidden="true">✓</span>';
-        btn.addEventListener("click", function () { choose(o.value); });
-        list.appendChild(btn);
+      filtered.forEach((option, index) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'et-cd-option' + (option.value === select.value ? ' is-selected' : '');
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', option.value === select.value ? 'true' : 'false');
+        const label = document.createElement('span');
+        label.textContent = option.textContent.trim();
+        const check = document.createElement('span');
+        check.className = 'et-cd-check';
+        check.textContent = '✓';
+        item.append(label, check);
+        item.addEventListener('click', () => {
+          select.value = option.value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          syncValue();
+          close();
+          trigger.focus({ preventScroll: true });
+        });
+        list.appendChild(item);
       });
     }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>'"]/g, function (c) {
-        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c];
-      });
-    }
-
-    function setActive(index) {
-      if (!visibleOptions.length) return;
-      activeIndex = (index + visibleOptions.length) % visibleOptions.length;
-      list.querySelectorAll(".et-cd-option").forEach((el, i) => el.classList.toggle("is-active", i === activeIndex));
-      const active = list.querySelector('.et-cd-option[data-index="' + activeIndex + '"]');
-      if (active) active.scrollIntoView({ block: "nearest" });
-    }
-
-    function choose(value) {
-      const old = select.value;
-      select.value = value;
-      if (select.value !== old) select.dispatchEvent(new Event("change", { bubbles: true }));
-      syncTrigger();
-      close();
-      trigger.focus();
-    }
-
     function open() {
-      render(search.value);
-      trigger.setAttribute("aria-expanded", "true");
-      panel.classList.add("is-open");
-      backdrop.classList.add("is-open");
-      search.value = "";
-      render("");
-      requestAnimationFrame(function () { search.focus(); });
+      closeOthers();
+      render();
+      panel.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      host.classList.add('is-open');
+      search.value = '';
+      render();
+      requestAnimationFrame(() => search.focus({ preventScroll: true }));
     }
-
     function close() {
-      trigger.setAttribute("aria-expanded", "false");
-      panel.classList.remove("is-open");
-      backdrop.classList.remove("is-open");
-      search.value = "";
+      panel.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      host.classList.remove('is-open');
+    }
+    function closeOthers() {
+      document.querySelectorAll('.et-cd-host.is-open').forEach(other => {
+        if (other !== host) {
+          other.classList.remove('is-open');
+          other.querySelector('.et-cd-panel')?.classList.remove('is-open');
+          other.querySelector('.et-cd-trigger')?.setAttribute('aria-expanded', 'false');
+        }
+      });
     }
 
-    trigger.addEventListener("click", function () {
-      if (trigger.getAttribute("aria-expanded") === "true") close(); else open();
+    trigger.addEventListener('click', () => panel.classList.contains('is-open') ? close() : open());
+    search.addEventListener('input', render);
+    search.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); close(); trigger.focus(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); list.querySelector('.et-cd-option')?.focus(); }
     });
-    backdrop.addEventListener("click", close);
-    search.addEventListener("input", function () { render(search.value); });
-    search.addEventListener("keydown", function (e) {
-      if (e.key === "ArrowDown") { e.preventDefault(); setActive(activeIndex + 1); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
-      else if (e.key === "Enter" && activeIndex >= 0) { e.preventDefault(); choose(visibleOptions[activeIndex].value); }
-      else if (e.key === "Escape") { e.preventDefault(); close(); trigger.focus(); }
+    trigger.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      if (e.key === 'Escape') close();
     });
-
-    document.addEventListener("keydown", function (e) {
-      if (trigger.getAttribute("aria-expanded") !== "true") return;
-      if (e.key === "Escape") { e.preventDefault(); close(); trigger.focus(); }
+    document.addEventListener('pointerdown', e => {
+      if (!host.contains(e.target)) close();
     });
-
-    // Keep the custom label synchronized if existing app code changes the select.
-    select.addEventListener("change", syncTrigger);
-    syncTrigger();
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    select.addEventListener('change', syncValue);
+    new MutationObserver(() => { syncValue(); if (panel.classList.contains('is-open')) render(); })
+      .observe(select, { childList: true, subtree: true, attributes: true });
+    syncValue();
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initCategoryDropdown);
-  else initCategoryDropdown();
+  function boot() {
+    TARGETS.forEach(id => initDropdown(document.getElementById(id)));
+    // Card options may be populated after initial page setup.
+    const card = document.getElementById('cardSelect');
+    if (card && card.dataset.etDropdownReady !== '1') initDropdown(card);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  else boot();
 })();

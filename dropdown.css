@@ -143,3 +143,33 @@ body.light-mode .et-cd-panel {
 @media (prefers-reduced-motion: reduce) {
   .et-cd-panel, .et-cd-trigger, .et-cd-chevron, .et-cd-option { transition: none !important; }
 }
+
+/* Desktop guard: never turn these dropdowns into a viewport-wide bottom sheet. */
+@media (min-width: 601px) {
+  .et-cd-host { position: relative !important; }
+  .et-cd-panel {
+    position: absolute !important;
+    inset: auto 0 auto 0 !important;
+    top: calc(100% + 7px) !important;
+    bottom: auto !important;
+    width: 100% !important;
+    max-height: 360px;
+    transform-origin: top center !important;
+    border-radius: 14px !important;
+  }
+  .et-cd-list { max-height: 260px !important; }
+  .et-cd-backdrop { display: none !important; }
+}
+
+/* Keep browser-native fallback controls and scrollbars dark as well. */
+select, select option {
+  color-scheme: dark;
+}
+body.light-mode select, body.light-mode select option {
+  color-scheme: light;
+}
+.et-cd-host { min-width: 0; }
+.et-cd-host.is-open { z-index: 1201; }
+.et-cd-panel { box-sizing: border-box; }
+.et-cd-search { color-scheme: dark; }
+body.light-mode .et-cd-search { color-scheme: light; }

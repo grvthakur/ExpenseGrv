@@ -1,0 +1,12 @@
+EXPENSE TRACKER — DROPDOWN FIX
+
+This patch repairs the category and credit-card selectors without changing expense calculations or backend logic.
+
+Files to upload to the SAME GitHub Pages folder as index.html:
+1. dropdown.css  (replace the existing file)
+2. dropdown.js   (add this missing file)
+
+Your current index.html already links to dropdown.css and dropdown.js, so do not edit index.html for this patch.
+
+After committing both files, wait for GitHub Pages to deploy, then hard-refresh the app with Ctrl+Shift+R.
+The category and credit-card dropdowns remain searchable and anchored to their fields on desktop; narrow screens retain a compact mobile sheet. Existing select values and change events remain the source of truth.

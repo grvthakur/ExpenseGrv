@@ -265,12 +265,14 @@ function doGet(e) {
       const errs = [];
       for (const [name, fn] of providers) {
         try {
-          const m = fn().match(/\{[\s\S]*\}/);
-          if (m)
-            return ContentService.createTextOutput(m[0]).setMimeType(
+          const m = extractJsonText(fn());
+          if (m) {
+            JSON.parse(m);
+            return ContentService.createTextOutput(m).setMimeType(
               ContentService.MimeType.JSON,
             );
-          errs.push(name + ": no JSON");
+          }
+          errs.push(name + ": no valid JSON");
         } catch (er) {
           errs.push(name + ": " + er.message);
         }
@@ -284,24 +286,24 @@ function doGet(e) {
         "Asia/Kolkata",
         "yyyy-MM-dd",
       );
-      const prompt =
-        "Today is " +
-        today +
-        '. Convert the user\'s question about their finance data into ONE JSON query plan. Reply ONLY JSON: {"sources":[],"reply":"","goto":"","person":"","card":"","category":"","text":"","status":"","type":"","from":"YYYY-MM-DD","to":"YYYY-MM-DD","agg":"sum|count|list|max|min|avg","group":"none|month|person|card|category|status","top":0,"title":""}. ' +
-        "Sources: cards = credit-card txns (card, person=usedBy, desc, remarks, amount, status UNPAID|PAID|OWED|SETTLED); expenses = owner's personal expenses (category, desc, amount); sweetie = savings ledger (type SAVING|CREDIT|DEBIT); salary = monthly salary rows (amount=salary); summary = one row per month (amount=REMAINING money, desc has salary/expenses/received); config = one row per card with ALL card details (bank, card number, CVV, expiry, limit, used, used%, cutoff, due day; amount=REMAINING limit). Use config alone for any question about a card's details/number/cvv/expiry/limit/due/cutoff/utilization, with card=closest exact name, agg=list; 'limit ke paas/near limit'=agg min across cards. If the user says 'not transactional' or asks about the card itself, NEVER use cards. 'credit card'/a person's name => [\"cards\"] (person filters cards only). 'kharcha' without card/person => [\"expenses\"]. 'bacha/remaining/savings left' => [\"summary\"]. salary => [\"salary\"]. limit/utilization/due => [\"config\"]. Unsure => cards+expenses+sweetie. Known people: " +
-        (e.parameter.people || "") +
-        ". Cards: " +
-        (e.parameter.cards || "") +
-        " (use closest exact name, or leave empty and put the keyword in text). Expense category EXACTLY from: " +
-        (e.parameter.cats || "") +
-        " or empty. text = merchant/product keyword. Month without year = latest such month not after today; 'this month','last month','this year' relative to today; set from/to inclusive (summary/salary dates are the 1st of the month). Defaults agg=sum, group=none. kitna/how much=sum; kitne/how many=count; list/dikhao/show=list; sabse zyada/highest=max; month wise=group month. title = short heading in the user's language. Leave unknown fields empty. If the message is a greeting, small talk, a help request, or too unclear to query, return ONLY {\"reply\":\"short helpful answer or ONE clarifying question in the user\'s language\"}. If the user asks to open/go to a tab return ONLY {\"goto\":\"expenses|cards|grvcc|sweetie\"}. " +
-        (e.parameter.hist
-          ? "Previous turns of this chat (oldest first, each with its query plan): " +
-            String(e.parameter.hist).slice(0, 1200) +
-            '. If the new question is a follow-up (aur, and, uska, isme, pichle, same, ab, wahi, compare), START from the last plan and change only what the user changed; otherwise ignore the history. Each previous turn may carry r = its top result rows; if the new question only asks a detail about the previous answer (date, who, which card, how much) return ONLY {"reply":"answer taken from r"}. '
-          : "") +
-        "\n\nQUESTION:\n" +
-        String(e.parameter.q || "").slice(0, 500);
+      const history = String(e.parameter.hist || "").slice(0, 2200);
+      const prompt = [
+        "Today is " + today + ". You are the intent-understanding layer for a personal finance tracker.",
+        "Translate natural language into ONE executable query plan. Output valid JSON only, no markdown.",
+        'Schema: {"sources":[],"reply":"","goto":"","person":"","card":"","category":"","text":"","status":"","type":"","from":"","to":"","agg":"sum|count|list|max|min|avg","group":"none|month|person|card|category|status","top":5,"title":""}.',
+        "Never invent transaction facts or calculate amounts; the app computes results from actual rows.",
+        "Understand meaning, English, Hinglish, shorthand, and spelling mistakes; do not rely only on exact keywords.",
+        "AGGREGATION: highest/max/maximum/largest/biggest single transaction => max; lowest/minimum/smallest/cheapest => min; average/avg/mean => avg; how many/count/number of => count; show/list/details => list; total/how much spent/combined => sum. A biggest/smallest SINGLE transaction is never sum. Top N/bottom N set top=N and agg=max/min.",
+        "SOURCES: cards=credit-card transactions; expenses=personal expenses; sweetie=Sweetie ledger; salary=salary; summary=monthly remaining balance; config=card configuration/details.",
+        "Use config alone for card number/CVV/expiry/limit/due/cutoff/utilization questions, agg=list. Never use config for transaction questions. Explicit credit card/card or a named card => cards. Person name usually filters card transactions by person. My expenses/kharcha without a card => expenses. Salary => salary. Remaining/bacha/savings left => summary. Ask one short clarification if scope is genuinely ambiguous.",
+        "Known people: " + (e.parameter.people || "") + ". Exact card names: " + (e.parameter.cards || "") + ". Expense categories (exact spelling): " + (e.parameter.cats || "") + ".",
+        "Set person/card/category/status/type only when intended. Use text only for merchant/product/description keywords. Do NOT put words like transaction, amount, this month, highest, lowest, or total in text.",
+        "Dates are inclusive YYYY-MM-DD. Month without year means latest occurrence not after today. Resolve this month, last month, this year, named months, and relative dates using today. Salary/summary rows use the first day of the month.",
+        "FOLLOW-UPS: inspect recent history. For above/previous list, lowest from above, and highest?, same, that one, usme se, isme se, aur, etc., inherit the previous plan's sources and unchanged filters. Change only the requested part. If the user changes lowest/highest/total/count/average, change agg but preserve scope. Answer details from history only if explicitly present; otherwise ask a focused question. Never silently convert min/max into sum.",
+        'For greeting/small talk/help, return {"reply":"short helpful reply in the user\'s language"}. For opening a tab, return {"goto":"expenses|cards|grvcc|sweetie"}. Otherwise return a query plan.',
+        history ? "Recent turns (JSON, oldest first): " + history + ". Use only to resolve references; a new explicit topic overrides old context." : "",
+        "QUESTION:\n" + String(e.parameter.q || "").slice(0, 500)
+      ].filter(Boolean).join("\n");
       return llmJson(prompt);
     }
 
@@ -902,6 +904,27 @@ function doGet(e) {
   }
 }
 
+// Extract first balanced JSON object, respecting quoted braces and escaped quotes.
+function extractJsonText(value) {
+  const s = String(value || "").replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  const start = s.indexOf("{");
+  if (start < 0) return "";
+  let depth = 0, quoted = false, escaped = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') quoted = false;
+      continue;
+    }
+    if (c === '"') quoted = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return s.slice(start, i + 1);
+  }
+  return "";
+}
+
 // Shared LLM provider chain (Groq -> Cerebras -> OpenRouter). Returns JSON output.
 function llmJson(prompt) {
   const P = PropertiesService.getScriptProperties();
@@ -919,7 +942,14 @@ function llmJson(prompt) {
     const body = {
       model: model,
       temperature: 0,
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a precise finance-query planner, not a financial calculator. Follow the supplied schema exactly. Output one valid JSON object only. Preserve unchanged filters on follow-ups and never confuse min/max/count/average with sum. Never invent records or totals.",
+        },
+        { role: "user", content: prompt },
+      ],
     };
     if (extra) for (const k in extra) body[k] = extra[k];
     const j = post(url, { Authorization: "Bearer " + key }, body);
@@ -932,21 +962,21 @@ function llmJson(prompt) {
     O = P.getProperty("OPENROUTER_KEY");
   if (G) {
     providers.push([
-      "Groq-20b",
-      oa(
-        "https://api.groq.com/openai/v1/chat/completions",
-        G,
-        "openai/gpt-oss-20b",
-        { reasoning_effort: "low" },
-      ),
-    ]);
-    providers.push([
       "Groq-120b",
       oa(
         "https://api.groq.com/openai/v1/chat/completions",
         G,
         "openai/gpt-oss-120b",
-        { reasoning_effort: "low" },
+        { reasoning_effort: "medium" },
+      ),
+    ]);
+    providers.push([
+      "Groq-20b",
+      oa(
+        "https://api.groq.com/openai/v1/chat/completions",
+        G,
+        "openai/gpt-oss-20b",
+        { reasoning_effort: "medium" },
       ),
     ]);
   }
@@ -965,12 +995,14 @@ function llmJson(prompt) {
   const errs = [];
   for (const [name, fn] of providers) {
     try {
-      const m = fn().match(/\{[\s\S]*\}/);
-      if (m)
-        return ContentService.createTextOutput(m[0]).setMimeType(
+      const m = extractJsonText(fn());
+      if (m) {
+        JSON.parse(m);
+        return ContentService.createTextOutput(m).setMimeType(
           ContentService.MimeType.JSON,
         );
-      errs.push(name + ": no JSON");
+      }
+      errs.push(name + ": no valid JSON");
     } catch (er) {
       errs.push(name + ": " + er.message);
     }
