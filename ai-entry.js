@@ -48,15 +48,20 @@
   };
   const showAiError = (kind, error) => {
     const raw = String(error && error.message ? error.message : error || "")
-      .replace(/^Server said:\\s*/i, "")
+      .replace(/^Server said:\s*/i, "")
       .replace(/<[^>]*>/g, " ")
-      .replace(/\\s+/g, " ")
+      .replace(/\s+/g, " ")
       .trim();
     let message;
     if (/Ask about your spending/i.test(raw)) {
-      message = "Try a more specific question, for example: “Tanya ka unpaid card total”.";
-    } else if (!raw || raw.length > 180 || /<!doctype|<html|stack trace| at .*:\\d+/i.test(raw)) {
-      message = "We couldn’t process that request. Check your connection and try again.";
+      message =
+        "Try a more specific question, for example: “Tanya ka unpaid card total”.";
+    } else if (/ppConfig|<script|window\[|<!doctype|<html/i.test(raw)) {
+      message =
+        "Google returned an error page instead of data. Redeploy the Apps Script (New version), then retry.";
+    } else if (!raw || raw.length > 180) {
+      message =
+        "We couldn’t process that request. Check your connection and try again.";
     } else {
       message = raw;
     }
@@ -107,6 +112,8 @@
   gs.textContent =
     "#qaAnswerOverlay .qaB{width:38px;height:38px;min-width:38px;min-height:38px;flex:0 0 38px;position:relative;z-index:2;border-radius:12px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;padding:0;opacity:1;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}#qaAnswerOverlay .qaB svg{pointer-events:none;display:block}#qaAnswerOverlay .qaB:hover,#qaAnswerOverlay .qaB:focus-visible{background:#22d3ee30!important;border-color:#22d3ee!important;color:#67e8f9!important;box-shadow:0 0 0 1px #22d3ee33,0 0 18px #22d3ee88!important;transform:translateY(-1px)}#qaAnswerOverlay .qaB:active{transform:scale(.94)}#qaAnswerOverlay .qaX:hover,#qaAnswerOverlay .qaX:focus-visible{background:#f43f5e30!important;border-color:#f43f5e!important;color:#fda4af!important;box-shadow:0 0 0 1px #f43f5e33,0 0 18px #f43f5e99!important}.qaR{transition:.15s}.qaR:hover{background:#22d3ee14;padding-left:14px!important}" +
     "@keyframes aiGlow{from{box-shadow:0 0 8px #22d3ee88,0 0 18px #8b5cf655}to{box-shadow:0 0 18px #22d3eeff,0 0 40px #8b5cf6aa}}";
+  gs.textContent +=
+    "#pvN,#pvX,#pvC,#pvOk,#aiX,#aiGo{transition:background .16s,border-color .16s,color .16s,box-shadow .16s,transform .16s,filter .16s}#pvN:hover,#pvX:hover,#aiX:hover,#pvN:focus-visible,#pvX:focus-visible{background:#22d3ee30!important;border-color:#22d3ee!important;color:#67e8f9!important;opacity:1!important;box-shadow:0 0 0 1px #22d3ee33,0 0 18px #22d3ee88!important;transform:translateY(-1px)}#pvC:hover,#pvC:focus-visible{background:#f43f5e30!important;border-color:#f43f5e!important;color:#fda4af!important;box-shadow:0 0 0 1px #f43f5e33,0 0 18px #f43f5e99!important;transform:translateY(-1px)}#pvOk:hover,#aiGo:hover{filter:brightness(1.1);box-shadow:0 0 22px #22d3ee99;transform:translateY(-1px)}#pvN:active,#pvX:active,#pvC:active,#aiX:active,#pvOk:active,#aiGo:active{transform:scale(.95)}";
   document.head.append(gs);
   box.addEventListener("click", (e) => {
     if (e.target === box) close();
@@ -176,11 +183,17 @@
         return `<label style="display:block;font-size:.78rem;opacity:.8;margin-top:10px">${label}${inp}</label>`;
       })
       .join("");
-    pv.innerHTML = `<div style="width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);position:relative;border-radius:18px;padding:18px;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button id="pvX" title="Back" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">↩</button><button id="pvC" title="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">✕</button></div><b style="font-size:1.1rem">✨ Review ${kind} entry</b>${rows}<div style="margin-top:16px"><button id="pvOk" style="width:100%;padding:10px 20px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">OK — Save</button></div></div>`;
+    pv.innerHTML = `<div style="width:min(520px,100%);max-height:90vh;overflow:auto;background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);position:relative;border-radius:18px;padding:18px;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button id="pvN" title="New (clear)" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">✎</button><button id="pvX" title="Back (keep prompt)" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">↩</button><button id="pvC" title="Close" style="width:36px;height:36px;border-radius:50%;border:1px solid #22d3ee99;background:#22d3ee1f;color:#67e8f9;cursor:pointer;font-size:1.05rem;line-height:1;position:relative;z-index:5;pointer-events:auto">✕</button></div><b style="font-size:1.1rem">✨ Review ${kind} entry</b>${rows}<div style="margin-top:16px"><button id="pvOk" style="width:100%;padding:10px 20px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">OK — Save</button></div></div>`;
     pv.style.display = "flex";
     $("pvC").onclick = () => {
       pv.style.display = "none";
       box.style.display = "none";
+    };
+    $("pvN").onclick = () => {
+      pv.style.display = "none";
+      resetAiEntry();
+      box.style.display = "flex";
+      $("aiTxt").focus();
     };
     $("pvX").onclick = () => {
       pv.style.display = "none";
@@ -327,9 +340,12 @@
   const skel = (w) => w.replace(/[aeiou]/g, "");
   const wm = (w, t) =>
     w === t ||
-    (w.length > 3 &&
+    (w.length > 1 &&
+      skel(w).length >= 2 &&
       (skel(w) === skel(t) ||
-        (skel(w).length > 3 && skel(w) === skel(t).slice(0, skel(w).length))));
+        (w.length > 3 &&
+          skel(w).length > 3 &&
+          skel(w) === skel(t).slice(0, skel(w).length))));
   const KWX =
     /^(already|paid|pay|payed|kotak|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
   function localParse(text) {
@@ -562,6 +578,8 @@
         if (typeof window.__qaCopy === "function") window.__qaCopy();
       } else if (action === "again") {
         if (typeof window.__qaAgain === "function") window.__qaAgain();
+      } else if (action === "new") {
+        if (typeof window.__qaNew === "function") window.__qaNew();
       }
       return;
     }
@@ -590,9 +608,7 @@
     if (!/\d/.test(t)) return true;
     return (
       /\?\s*$/.test(t) ||
-      /\b(unpaid|paid|owed|settled|pending|wala|wale|this month|last month|is mahine|pichle)\b/i.test(
-        t,
-      ) ||
+      /\b(this month|last month|is mahine|pichle mahine)\b/i.test(t) ||
       /^(kitna|kitne|kitni|kya|kaun|kab|kaha|kahan|how|what|which|who|when|show|list|total|batao|bata|dikha|compare|give)\b/i.test(
         t,
       ) ||
@@ -880,7 +896,7 @@
           `<div class="qaR" style="display:flex;justify-content:space-between;gap:12px;padding:11px 10px;border-top:1px solid #ffffff12;font-size:.86rem;border-radius:10px"><span><b>${esc(r.date.slice(5))}</b> ${esc([r.person, r.card || r.category || r.type, r.desc].filter(Boolean).join(" · "))}${r.remarks ? ` <i style="opacity:.6">(${esc(r.remarks)})</i>` : ""}</span><b style="color:#22d3ee;white-space:nowrap">${inr(r.amount)}</b></div>`,
       )
       .join("");
-    qa.innerHTML = `<div style="width:min(560px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;position:relative;border-radius:22px;padding:22px;box-shadow:0 24px 70px #000c,0 0 0 1px #ffffff0a inset,0 0 50px #22d3ee22,0 0 90px #8b5cf622;backdrop-filter:blur(12px)"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button type="button" class="qaB" data-a="again" title="Ask again"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button type="button" class="qaB" data-a="copy" title="Copy"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button><button type="button" class="qaB qaX" data-a="close" title="Close"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div style="padding-right:76px;opacity:.7;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">✨ ${esc(pl.title || q)}</div><div style="font-size:2.6rem;font-weight:800;letter-spacing:-.02em;filter:drop-shadow(0 0 14px #22d3ee66);margin:8px 0 2px;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(res.n || agg === "count" ? big : "Kuch nahi mila")}</div><div style="opacity:.6;font-size:.8rem">${sub}</div><div style="margin-top:8px;font-size:.72rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid var(--border,#2a2a3d);border-radius:20px;padding:2px 8px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div style="margin-top:10px">${list}</div></div>`;
+    qa.innerHTML = `<div style="width:min(560px,100%);max-height:90vh;overflow:auto;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;position:relative;border-radius:22px;padding:22px;box-shadow:0 24px 70px #000c,0 0 0 1px #ffffff0a inset,0 0 50px #22d3ee22,0 0 90px #8b5cf622;backdrop-filter:blur(12px)"><div style="position:absolute;top:10px;right:10px;display:flex;gap:6px"><button type="button" class="qaB" data-a="new" title="New question (clear)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button type="button" class="qaB" data-a="again" title="Back (keep prompt)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button><button type="button" class="qaB" data-a="copy" title="Copy"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button><button type="button" class="qaB qaX" data-a="close" title="Close"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div><div style="padding-right:76px;opacity:.7;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase">✨ ${esc(pl.title || q)}</div><div style="font-size:2.6rem;font-weight:800;letter-spacing:-.02em;filter:drop-shadow(0 0 14px #22d3ee66);margin:8px 0 2px;background:linear-gradient(90deg,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">${esc(res.n || agg === "count" ? big : "Kuch nahi mila")}</div><div style="opacity:.6;font-size:.8rem">${sub}</div><div style="margin-top:8px;font-size:.72rem;opacity:.6">${chips.map((c) => `<span style="border:1px solid var(--border,#2a2a3d);border-radius:20px;padding:2px 8px;margin:0 4px 4px 0;display:inline-block">${esc(c)}</span>`).join("")}</div>${g}<div style="margin-top:10px">${list}</div></div>`;
     qa.style.display = "flex";
     const doCopy = () => {
       const inrR = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
@@ -904,7 +920,8 @@
         const t = document.createElement("textarea");
         t.value = txt;
         t.setAttribute("readonly", "");
-        t.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none";
+        t.style.cssText =
+          "position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none";
         document.body.appendChild(t);
         t.focus();
         t.select();
@@ -916,10 +933,17 @@
           console.warn("[AI answer copy] Fallback failed:", err);
         }
         t.remove();
-        window.__qaT(ok ? "Copied to clipboard" : "Copy blocked by browser", !ok);
+        window.__qaT(
+          ok ? "Copied to clipboard" : "Copy blocked by browser",
+          !ok,
+        );
       };
-      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-        navigator.clipboard.writeText(txt)
+      if (
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === "function"
+      ) {
+        navigator.clipboard
+          .writeText(txt)
           .then(() => window.__qaT("Copied to clipboard"))
           .catch(fb);
       } else {
@@ -927,6 +951,12 @@
       }
     };
     window.__qaCopy = doCopy;
+    window.__qaNew = () => {
+      qa.style.display = "none";
+      resetAiEntry();
+      box.style.display = "flex";
+      requestAnimationFrame(() => aiText.focus());
+    };
     window.__qaAgain = () => {
       qa.style.display = "none";
       box.style.display = "flex";
@@ -963,7 +993,7 @@
             ),
           ]
             .map((td) => td.textContent.trim())
-            .filter(Boolean)
+            .filter((n) => n && n.length <= 20)
             .concat(["GRV", "Sweetie", "Tanya"]),
         ),
       ].join(" | ");
@@ -975,7 +1005,7 @@
       const raw = await (
         await fetch(
           apiUrl(
-            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people)}&cards=${encodeURIComponent(cards)}&cats=${encodeURIComponent(cats)}`,
+            `action=aiAsk&q=${encodeURIComponent(text)}&people=${encodeURIComponent(people.slice(0, 300))}&cards=${encodeURIComponent(cards.slice(0, 400))}&cats=${encodeURIComponent(cats.slice(0, 500))}`,
           ),
         )
       ).text();
@@ -1005,7 +1035,7 @@
           "Ask about your spending, e.g. “Tanya ka unpaid card total”",
         );
       const all = await dp;
-      close();
+      box.style.display = "none";
       showAnswer(text, pl, runPlan(pl, all));
     } catch (e) {
       showAiError("Couldn’t answer that", e);
@@ -1019,10 +1049,13 @@
     clearAiError();
     const text = $("aiTxt").value.trim();
     if (!text) {
-      showAiError("Text needed", new Error("Type a question or paste a bank SMS first."));
+      showAiError(
+        "Text needed",
+        new Error("Type a question or paste a bank SMS first."),
+      );
       return;
     }
-    if (isQuestion(text)) return askData(text);
+    if (isQuestion(text) && !localParse(text)) return askData(text);
     const h0 = splitHint(text),
       body0 = h0 ? h0.body : text;
     let loc = localParse(body0);
@@ -1033,7 +1066,7 @@
         if (h0.rem) loc.remarks = h0.rem;
         if (h0.who && loc.kind === "card") loc.usedBy = h0.who;
       }
-      close();
+      box.style.display = "none";
       preview(loc);
       return;
     }
@@ -1104,7 +1137,7 @@
           }
         } catch (_) {}
       }
-      close();
+      box.style.display = "none";
       preview(r);
     } catch (e) {
       showAiError("Couldn’t parse that text", e);
