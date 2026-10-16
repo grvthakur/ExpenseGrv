@@ -1275,7 +1275,17 @@
         const own =
           (pl.sources || []).length === 1 &&
           ["summary", "salary", "config"].includes(pl.sources[0]);
-        if (!reset && !own && ((!filt && !gr) || fu)) {
+        // Follow-up rule: keep the previous answer's filters unless this question
+        // names its own new person/card/category/keyword/status/type.
+        const ent = [
+          "person",
+          "card",
+          "category",
+          "text",
+          "status",
+          "type",
+        ].some((k) => pl[k]);
+        if (!reset && !own && (!ent || fu)) {
           FK.forEach((k) => {
             if (!pl[k] && prevP.p[k]) pl[k] = prevP.p[k];
           });

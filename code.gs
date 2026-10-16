@@ -288,7 +288,9 @@ function doGet(e) {
       );
       const history = String(e.parameter.hist || "").slice(0, 2200);
       const prompt = [
-        "Today is " + today + ". You are the intent-understanding layer for a personal finance tracker.",
+        "Today is " +
+          today +
+          ". You are the intent-understanding layer for a personal finance tracker.",
         "Translate natural language into ONE executable query plan. Output valid JSON only, no markdown.",
         'Schema: {"sources":[],"reply":"","goto":"","person":"","card":"","category":"","text":"","status":"","type":"","from":"","to":"","agg":"sum|count|list|max|min|avg","group":"none|month|person|card|category|status","top":5,"title":""}.',
         "Never invent transaction facts or calculate amounts; the app computes results from actual rows.",
@@ -296,14 +298,26 @@ function doGet(e) {
         "AGGREGATION: highest/max/maximum/largest/biggest single transaction => max; lowest/minimum/smallest/cheapest => min; average/avg/mean => avg; how many/count/number of => count; show/list/details => list; total/how much spent/combined => sum. A biggest/smallest SINGLE transaction is never sum. Top N/bottom N set top=N and agg=max/min.",
         "SOURCES: cards=credit-card transactions; expenses=personal expenses; sweetie=Sweetie ledger; salary=salary; summary=monthly remaining balance; config=card configuration/details.",
         "Use config alone for card number/CVV/expiry/limit/due/cutoff/utilization questions, agg=list. Never use config for transaction questions. Explicit credit card/card or a named card => cards. Person name usually filters card transactions by person. My expenses/kharcha without a card => expenses. Salary => salary. Remaining/bacha/savings left => summary. Ask one short clarification if scope is genuinely ambiguous.",
-        "Known people: " + (e.parameter.people || "") + ". Exact card names: " + (e.parameter.cards || "") + ". Expense categories (exact spelling): " + (e.parameter.cats || "") + ".",
+        "Known people: " +
+          (e.parameter.people || "") +
+          ". Exact card names: " +
+          (e.parameter.cards || "") +
+          ". Expense categories (exact spelling): " +
+          (e.parameter.cats || "") +
+          ".",
         "Set person/card/category/status/type only when intended. Use text only for merchant/product/description keywords. Do NOT put words like transaction, amount, this month, highest, lowest, or total in text.",
         "Dates are inclusive YYYY-MM-DD. Month without year means latest occurrence not after today. Resolve this month, last month, this year, named months, and relative dates using today. Salary/summary rows use the first day of the month.",
         "FOLLOW-UPS: inspect recent history. For above/previous list, lowest from above, and highest?, same, that one, usme se, isme se, aur, etc., inherit the previous plan's sources and unchanged filters. Change only the requested part. If the user changes lowest/highest/total/count/average, change agg but preserve scope. Answer details from history only if explicitly present; otherwise ask a focused question. Never silently convert min/max into sum.",
         'For greeting/small talk/help, return {"reply":"short helpful reply in the user\'s language"}. For opening a tab, return {"goto":"expenses|cards|grvcc|sweetie"}. Otherwise return a query plan.',
-        history ? "Recent turns (JSON, oldest first): " + history + ". Use only to resolve references; a new explicit topic overrides old context." : "",
-        "QUESTION:\n" + String(e.parameter.q || "").slice(0, 500)
-      ].filter(Boolean).join("\n");
+        history
+          ? "Recent turns (JSON, oldest first): " +
+            history +
+            ". Use only to resolve references; a new explicit topic overrides old context."
+          : "",
+        "QUESTION:\n" + String(e.parameter.q || "").slice(0, 500),
+      ]
+        .filter(Boolean)
+        .join("\n");
       return llmJson(prompt);
     }
 
@@ -797,7 +811,7 @@ function doGet(e) {
           cc.getRange(crow, 1, 1, 5).setValues([
             [
               bank || current[0] || "",
-              current[1] || ccName || card,
+              ccName || current[1] || card,
               number || current[2] || "",
               numberCvv || current[3] || "",
               expDate || current[4] || "",
@@ -906,10 +920,14 @@ function doGet(e) {
 
 // Extract first balanced JSON object, respecting quoted braces and escaped quotes.
 function extractJsonText(value) {
-  const s = String(value || "").replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  const s = String(value || "")
+    .replace(/^\s*```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/i, "");
   const start = s.indexOf("{");
   if (start < 0) return "";
-  let depth = 0, quoted = false, escaped = false;
+  let depth = 0,
+    quoted = false,
+    escaped = false;
   for (let i = start; i < s.length; i++) {
     const c = s[i];
     if (quoted) {
