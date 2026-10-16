@@ -1,6 +1,6 @@
 // ── AI Orb (premium): turns #aiEntryBtn into a glass sphere of flowing colour streaks ──
 // Purely visual. Keeps the button element, its id, and ai-entry.js's onclick untouched.
-// Load AFTER ai-entry.js:  <script src="ai-orb.js?v=2"></script>
+// Load AFTER ai-entry.js:  <script src="ai-orb.js?v=6"></script>
 (function () {
   "use strict";
   const SHOW_ICON = true; // sparkle symbol in the middle; false = pure orb
@@ -28,12 +28,12 @@
 html body #aiEntryBtn#aiEntryBtn{
   overflow:visible !important;border:0 !important;padding:0 !important;
   background:#04050a !important;
-  box-shadow:0 0 0 1px rgba(255,255,255,.16),0 0 0 3px rgba(255,255,255,.03),0 10px 26px rgba(0,0,0,.6),0 0 30px rgba(179,107,255,.6),0 0 48px rgba(46,230,197,.38),0 0 70px rgba(255,77,141,.22) !important;
+  box-shadow:0 0 0 1px rgba(2,3,8,.7),0 10px 26px rgba(0,0,0,.6),0 0 30px rgba(179,107,255,.6),0 0 48px rgba(46,230,197,.38),0 0 70px rgba(255,77,141,.22) !important;
   animation:aiOrbBreath 4.5s ease-in-out infinite !important;
   transition:transform .22s cubic-bezier(.2,.9,.3,1.2) !important}
 @keyframes aiOrbBreath{
-  0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.16),0 0 0 3px rgba(255,255,255,.03),0 10px 26px rgba(0,0,0,.6),0 0 28px rgba(179,107,255,.52),0 0 46px rgba(46,230,197,.34),0 0 64px rgba(255,77,141,.2)}
-  50%{box-shadow:0 0 0 1px rgba(255,255,255,.24),0 0 0 3px rgba(255,255,255,.05),0 12px 30px rgba(0,0,0,.65),0 0 44px rgba(255,77,141,.8),0 0 72px rgba(58,184,255,.55),0 0 96px rgba(179,107,255,.3)}}
+  0%,100%{box-shadow:0 0 0 1px rgba(2,3,8,.7),0 10px 26px rgba(0,0,0,.6),0 0 28px rgba(179,107,255,.52),0 0 46px rgba(46,230,197,.34),0 0 64px rgba(255,77,141,.2)}
+  50%{box-shadow:0 0 0 1px rgba(2,3,8,.7),0 12px 30px rgba(0,0,0,.65),0 0 44px rgba(255,77,141,.8),0 0 72px rgba(58,184,255,.55),0 0 96px rgba(179,107,255,.3)}}
 html body #aiEntryBtn#aiEntryBtn::before,
 html body #aiEntryBtn#aiEntryBtn::after{content:none !important;display:none !important;animation:none !important}
 html body #aiEntryBtn#aiEntryBtn:hover{transform:scale(1.08) translateY(-1px)}
@@ -157,7 +157,7 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
     let g = ctx.createRadialGradient(R * 0.92, R * 0.86, R * 0.18, R, R, R);
     g.addColorStop(0, "rgba(0,0,0,0)");
     g.addColorStop(0.62, "rgba(2,3,8,.03)");
-    g.addColorStop(1, "rgba(2,3,8,.26)");
+    g.addColorStop(1, "rgba(2,3,8,.08)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, S, S);
 
@@ -176,18 +176,6 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, S, S);
     ctx.restore();
-
-    // Fine rim light: bright top-left → transparent → coloured bottom-right.
-    g = ctx.createLinearGradient(0, 0, S, S);
-    g.addColorStop(0, "rgba(255,255,255,.75)");
-    g.addColorStop(0.45, "rgba(255,255,255,.06)");
-    g.addColorStop(0.7, "rgba(103,232,249,.25)");
-    g.addColorStop(1, "rgba(240,171,252,.6)");
-    ctx.lineWidth = Math.max(1, S * 0.022);
-    ctx.strokeStyle = g;
-    ctx.beginPath();
-    ctx.arc(R, R, R - ctx.lineWidth / 2, 0, 6.2832);
-    ctx.stroke();
   }
 
   // 4) Animation loop — eases faster on hover/press; static for reduced-motion.
