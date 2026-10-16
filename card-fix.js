@@ -218,8 +218,8 @@
     const exp = txt(".cc-exp") || "—";
     const cvv = txt(".cc-cvv") || "—";
     const text =
-      `${[bank, name].filter(Boolean).join(" ")}\n` +
-      `Card: ${waNumber(plain)}${plain ? " / " + plain : ""}\n` +
+      `${[bank, name].filter(Boolean).join(" ")} ` +
+      `Card: ${(plain.match(/.{1,4}/g) || [plain]).join(" ")}${plain ? " / " + plain : ""}\n` +
       `Exp: ${exp}\n` +
       `CVV: ${cvv}`;
     const ok = await copy(text);
