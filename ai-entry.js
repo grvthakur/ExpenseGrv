@@ -31,12 +31,11 @@
   aiError.style.cssText =
     "display:none;margin:10px 0 0;padding:11px 13px;border:1px solid #fb718566;border-left:3px solid #fb7185;border-radius:12px;background:linear-gradient(135deg,#fb718514,#f43f5e0a);color:#fecdd3;font-size:.88rem;line-height:1.45;overflow-wrap:anywhere;box-shadow:0 6px 20px #0002";
   const aiText = $("aiTxt");
-  aiText.setAttribute("autocomplete", "on");
+  aiText.setAttribute("autocomplete", "off");
   aiText.setAttribute("autocorrect", "on");
   aiText.setAttribute("autocapitalize", "sentences");
   aiText.setAttribute("spellcheck", "true");
-  aiText.setAttribute("enterkeyhint", "go");
-  aiText.setAttribute("inputmode", "text");
+  aiText.setAttribute("enterkeyhint", "enter");
   aiText.setAttribute("placeholder", "Type a question or paste a bank SMS…");
   aiText.style.cssText +=
     ";font:inherit;line-height:1.5;resize:vertical;min-height:110px;max-height:38vh;outline:none;transition:border-color .18s,box-shadow .18s";
@@ -104,7 +103,11 @@
   $("aiX").onclick = close;
   $("aiTxt").addEventListener("keydown", (e) => {
     if (e.isComposing || e.keyCode === 229) return;
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey &&
+      !(window.matchMedia && matchMedia("(pointer:coarse)").matches)
+    ) {
       e.preventDefault();
       $("aiGo").click();
     }
@@ -819,14 +822,17 @@
     if (per)
       rows = rows.filter(
         (r) =>
-          r.src === "cards" &&
-          pset.some(
-            (p) =>
-              lc(r.person) === p ||
-              lc(r.person)
-                .split(/[^a-z0-9]+/)
-                .includes(p),
-          ),
+          (r.src !== "cards" &&
+            SELF.includes(per) &&
+            ["expenses", "sweetie", "salary", "summary"].includes(r.src)) ||
+          (r.src === "cards" &&
+            pset.some(
+              (p) =>
+                lc(r.person) === p ||
+                lc(r.person)
+                  .split(/[^a-z0-9]+/)
+                  .includes(p),
+            )),
       );
     if (card)
       rows = rows.filter(
@@ -883,6 +889,13 @@
     return { rows, total, groups, n: rows.length };
   }
   // ── AI chat: multi-turn, follow-ups understood, answers computed exactly from your data ──
+  const touch = !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);
+  const focusIn = () => {
+    if (!touch) {
+      const e = $("chIn");
+      if (e) e.focus();
+    }
+  };
   let chatHist = [];
   const chatTxt = [];
   // Keep the actual rows shown in the latest answer for deterministic follow-ups.
@@ -996,7 +1009,7 @@
     qa.dataset.chat = 1;
     const bs =
       "width:34px;height:34px;min-width:34px;border-radius:10px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0";
-    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" name="aiq" rows="1" autocomplete="on" autocorrect="on" autocapitalize="sentences" spellcheck="true" inputmode="text" enterkeyhint="send" placeholder="Ask anything… ya SMS paste karo" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><button id="chGo" type="button" style="padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Send</button></div></div>`;
+    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Ask anything…" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><button id="chGo" type="button" style="padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Send</button></div></div>`;
     qa.addEventListener("click", (e) => {
       const b = e.target.closest("[data-c]");
       if (!b) return;
@@ -1007,7 +1020,7 @@
         chatTxt.length = 0;
         lastResultContext = null;
         $("chThread").innerHTML = "";
-        $("chIn").focus();
+        focusIn();
       } else if (c === "copy") {
         const t = chatTxt[+b.dataset.i] || "";
         (navigator.clipboard
@@ -1032,7 +1045,11 @@
     $("chGo").onclick = chatSend;
     $("chIn").addEventListener("keydown", (e) => {
       if (e.isComposing || e.keyCode === 229) return;
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey &&
+        !(window.matchMedia && matchMedia("(pointer:coarse)").matches)
+      ) {
         e.preventDefault();
         chatSend();
       }
@@ -1052,7 +1069,7 @@
   function openChat() {
     chatShell();
     qa.style.display = "flex";
-    setTimeout(() => $("chIn") && $("chIn").focus(), 50);
+    setTimeout(focusIn, 50);
   }
   function answerFromPrevious(text) {
     const ctx = lastResultContext;
@@ -1346,7 +1363,7 @@
       go.disabled = false;
       const th = $("chThread");
       th.scrollTop = th.scrollHeight;
-      $("chIn").focus();
+      focusIn();
     }
   }
   async function askData(text) {

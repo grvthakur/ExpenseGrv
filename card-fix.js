@@ -136,3 +136,175 @@
     toast("⚠️ Not saved: " + txt.slice(0, 140), true, 8000);
   };
 })();
+
+// ─── CC Master copy: shared helper ───────────────────────────────────────────
+// Works on https, http://localhost and falls back to execCommand for old/insecure contexts.
+(function () {
+  const st = document.createElement("style");
+  st.textContent = `#ccMasterBody .cc-num,#ccMasterBody .cc-cvv,#ccMasterBody .cc-exp,#ccMasterBody .cc-card-name{-webkit-user-select:all;user-select:all;-webkit-touch-callout:default;cursor:copy;touch-action:manipulation}
+#ccMasterBody .cc-num:active,#ccMasterBody .cc-cvv:active,#ccMasterBody .cc-exp:active,#ccMasterBody .cc-card-name:active{opacity:.6}`;
+  document.head.appendChild(st);
+
+  const copy = async (t) => {
+    try {
+      await navigator.clipboard.writeText(t);
+      return true;
+    } catch (_) {}
+    const a = document.createElement("textarea");
+    a.value = t;
+    a.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    (document.getElementById("ccMasterModal") || document.body).appendChild(a);
+    a.focus();
+    a.select();
+    a.setSelectionRange(0, t.length);
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch (_) {}
+    a.remove();
+    return ok;
+  };
+
+  // Tap on number / CVV / expiry / name copies just that value.
+  // Number is copied as plain digits (no spaces) so it pastes cleanly in any payment form.
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest(
+      "#ccMasterBody .cc-num,#ccMasterBody .cc-cvv,#ccMasterBody .cc-exp,#ccMasterBody .cc-card-name",
+    );
+    if (!el) return;
+    let v = el.textContent.trim();
+    if (!v || v === "—") return;
+    const isNum = el.classList.contains("cc-num");
+    if (isNum) v = v.replace(/\s+/g, "");
+    const label = isNum
+      ? "Card number"
+      : el.classList.contains("cc-cvv")
+        ? "CVV"
+        : el.classList.contains("cc-exp")
+          ? "Expiry"
+          : "Name";
+    toast(
+      (await copy(v)) ? "✓ " + label + " copied" : "Copy failed",
+      false,
+      1500,
+    );
+  });
+
+  // "⧉ Copy" button: copies full details, number in BOTH formats:
+  //   ROARBANK ROARBANK-RUPAY
+  //   Card: 6529 7401 0084 8829 / 6529740100848829
+  //   Exp: Oct-26
+  //   CVV: 447
+  // WhatsApp only turns a number green (tap -> Copy) if it parses as a phone number.
+  // A group starting with "00" can be read as an international prefix and splits the number
+  // (e.g. 6529 7401 0084 8829 turned green only partly). For such numbers use hyphens,
+  // otherwise normal 4-4-4-4 spacing.
+  const waNumber = (digits) => {
+    const g = digits.match(/.{1,4}/g) || [];
+    if (g.length < 2) return digits;
+    return g.slice(1).some((x) => x.startsWith("00"))
+      ? g.join("-")
+      : g.join(" ");
+  };
+
+  window.copyCC = async function (btn) {
+    const card = btn.closest(".cc-card-item");
+    if (!card) return;
+    const txt = (sel) => (card.querySelector(sel)?.textContent || "").trim();
+    const bank = txt(".cc-bank-badge");
+    const name = txt(".cc-card-name");
+    const spaced = txt(".cc-num");
+    const plain = spaced.replace(/\s+/g, "");
+    const exp = txt(".cc-exp") || "—";
+    const cvv = txt(".cc-cvv") || "—";
+    const text =
+      `${[bank, name].filter(Boolean).join(" ")}\n` +
+      `Card: ${waNumber(plain)}${plain ? " / " + plain : ""}\n` +
+      `Exp: ${exp}\n` +
+      `CVV: ${cvv}`;
+    const ok = await copy(text);
+    toast(ok ? "✓ Copied" : "Copy failed", !ok, 1500);
+    if (!ok) return;
+    btn.textContent = "✓ Copied";
+    btn.classList.add("done");
+    setTimeout(() => {
+      btn.textContent = "⧉ Copy";
+      btn.classList.remove("done");
+    }, 1500);
+  };
+})();
+
+// ─── CC Master INSTANT OPEN ──────────────────────────────────────────────────
+// Last-known card list is kept on this device, so CC Master opens the moment you tap it.
+// Fresh data is fetched silently in the background and the list updates only if something changed.
+// Set CC_PERSIST = false if you ever want nothing stored in the browser (opens slower then).
+const CC_PERSIST = true;
+const CC_CACHE_KEY = "cc_master_cache_v1";
+(function () {
+  if (CC_PERSIST) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CC_CACHE_KEY) || "null");
+      if (Array.isArray(saved) && saved.length) ccMasterCache = saved;
+    } catch (_) {}
+  } else {
+    try {
+      localStorage.removeItem(CC_CACHE_KEY);
+    } catch (_) {}
+  }
+  const note = document.querySelector(
+    "#ccMasterModal .modal-content > div:last-child",
+  );
+  if (note && CC_PERSIST)
+    note.textContent =
+      "🔒 Opens instantly from this device · refreshes live from sheet in background";
+})();
+
+// CC Master loading: 60s timeout, NO retry pile-up (retries were doubling the load on Apps Script).
+(function () {
+  fetchCCMasterData = function () {
+    if (ccMasterFetchPromise) return ccMasterFetchPromise;
+    ccMasterFetchPromise = (async () => {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 60000);
+      try {
+        const r = await fetch(apiUrl("action=getCCMaster"), {
+          signal: c.signal,
+        });
+        const d = await r.json();
+        if (!Array.isArray(d))
+          throw new Error(d.error || "Unable to load CC Master");
+        ccMasterCache = d;
+        if (CC_PERSIST) {
+          try {
+            localStorage.setItem(CC_CACHE_KEY, JSON.stringify(d));
+          } catch (_) {}
+        }
+        return d;
+      } catch (e) {
+        throw new Error(
+          e.name === "AbortError"
+            ? "Server bahut slow hai — thodi der baad CC Master dobara tap karo"
+            : e.message || "Could not load CC Master",
+        );
+      } finally {
+        clearTimeout(t);
+        ccMasterFetchPromise = null;
+      }
+    })();
+    return ccMasterFetchPromise;
+  };
+
+  // Warm up right now (don't wait for the user to tap), then keep it fresh every 5 min.
+  fetchCCMasterData().catch(() => {});
+  setInterval(
+    () => {
+      if (document.visibilityState === "visible")
+        fetchCCMasterData().catch(() => {});
+    },
+    5 * 60 * 1000,
+  );
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible")
+      fetchCCMasterData().catch(() => {});
+  });
+})();
