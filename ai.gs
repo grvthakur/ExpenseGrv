@@ -161,7 +161,7 @@ const AI_RULES = [
   "Helpers in scope: today ('YYYY-MM-DD'), sum(arr,f?), by(arr,keyFn)->[{k,v,n}] sorted by v desc (v=sum amount), mon(dateStr)->'YYYY-MM', inr(n)->'₹1,234', add(d,{m:-5})->date string shifted months. Compare dates as strings. 'last N months' = from first day of month N-1 months before this month up to today (state the range in text).",
   "Program must `return {text, value, groups, rows}`: text = short answer in the USER'S language/script (Hinglish if he wrote Hinglish) with exact computed numbers via inr() and the time range used; value = main number or null; groups = optional breakdown [{k,v,n}]; rows = up to 40 most relevant source rows (the evidence). Never invent numbers; compute everything from R. If nothing matches, return text saying so with what you searched.",
   "Do NOT use async, fetch, eval, Function, require, SpreadsheetApp, or globals. Plain JS only (const/let/arrow fns OK).",
-  'Output ONLY JSON: {"reply":"","title":"short","code":"<program body, use \\n or ; for newlines>"}. For greetings/help/non-data chat output {"reply":"..."} only. If the question is genuinely ambiguous, put one short clarifying question in reply.',
+  'Output ONLY JSON: {"reply":"","title":"short","code":"<program body, use \\n or ; for newlines>"}. For greetings/help/non-data chat output {"reply":"..."} only. Any question about money, spending, cards, people, dates or sheets MUST have code - never answer from guesswork. If the question is genuinely ambiguous, put one short clarifying question in reply.',
 ].join("\n");
 
 // ── 3. Safe execution ───────────────────────────────────────────────────────
@@ -270,10 +270,21 @@ function aiQuery_(e) {
       continue;
     }
     if (plan.error) return jsonOut({ error: plan.error });
-    if (!plan.code)
+    if (!plan.code) {
+      const chat =
+        /^\s*(hi|hello|hey|namaste|thanks|thank you|shukriya|help|kaun ho|who are you)\b/i.test(
+          q,
+        );
+      if (!chat && attempt === 0) {
+        err =
+          "You returned a reply without code. NEVER claim 'no record' without computing it. Write the program.";
+        last = "(none)";
+        continue;
+      }
       return jsonOut({
         reply: plan.reply || "Kuch samajh nahi aaya, thoda aur batao.",
       });
+    }
     last = plan.code;
     try {
       out = aiRun_(plan.code, R);

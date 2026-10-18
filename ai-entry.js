@@ -1489,7 +1489,14 @@
       );
       return;
     }
-    if (isQuestion(text) && !localParse(text)) return askData(text);
+    const qLike =
+      /\b(kitna|kitne|kitni|kharcha|kharch|expenses? (of|on|for)|how (much|many)|total|average|avg|last \d+ (day|week|month|year)s?|pichle|pichhle|is (mahine|saal|month|year)|this (month|year|week)|show|list|compare|sabse|highest|lowest|biggest|smallest|count|batao|btao|bata|dikhao|kya|kab|kaun|which|what)\b/i.test(
+        text,
+      ) &&
+      !/\b(inr|rs\.?|₹)\s*[\d,]+.*\b(spent|debited|credited|purchase|txn|transaction|paid)\b/i.test(
+        text,
+      );
+    if (qLike || (isQuestion(text) && !localParse(text))) return askData(text);
     const h0 = splitHint(text),
       body0 = h0 ? h0.body : text;
     let loc = localParse(body0);
