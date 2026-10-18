@@ -1236,6 +1236,74 @@
     const go = $("chGo");
     go.disabled = true;
     try {
+      // Universal engine (ai.gs): AI writes a program, server computes exactly. Falls back to the classic flow if unavailable.
+      try {
+        const hs = JSON.stringify(
+          chatHist
+            .filter((h) => h.code)
+            .slice(-2)
+            .map((h) => ({ q: h.q, a: h.a, code: h.code })),
+        );
+        const rawQ = await (
+          await fetch(
+            apiUrl(
+              `action=aiQuery&q=${encodeURIComponent(text)}&hist=${encodeURIComponent(hs.slice(0, 2200))}`,
+            ),
+          )
+        ).text();
+        const j = JSON.parse(rawQ);
+        if (j && !j.error && (j.text || j.reply)) {
+          const money = (n) =>
+            "₹" +
+            Math.round(n || 0)
+              .toString()
+              .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+          let html;
+          let plain;
+          if (!j.code) {
+            html = esc(j.reply);
+            plain = j.reply;
+          } else {
+            const g = (j.groups || [])
+              .map(
+                (x) =>
+                  `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #ffffff10"><span>${esc(x.k)}${x.n ? ` <small style="opacity:.55">×${x.n}</small>` : ""}</span><b>${money(x.v)}</b></div>`,
+              )
+              .join("");
+            const rr = (j.rows || [])
+              .slice(0, 15)
+              .map(
+                (r) =>
+                  `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:.78rem;opacity:.85"><span>${esc(r.date || "")} · ${esc([r.person, r.card || r.cat, r.desc].filter(Boolean).join(" · ")).slice(0, 70)}</span><b>${money(r.amount)}</b></div>`,
+              )
+              .join("");
+            html =
+              `<div style="font-size:.72rem;opacity:.6;text-transform:uppercase;letter-spacing:.04em">✨ ${esc(j.title || text)}</div>` +
+              (j.value != null
+                ? `<div style="font-size:1.5rem;font-weight:800;color:#67e8f9;margin:4px 0">${money(j.value)}</div>`
+                : "") +
+              `<div style="margin:4px 0 8px">${esc(j.text)}</div>` +
+              (g ? `<div style="margin:6px 0">${g}</div>` : "") +
+              (rr
+                ? `<details style="margin-top:6px"><summary style="cursor:pointer;font-size:.78rem;opacity:.7">Transactions (${(j.rows || []).length})</summary>${rr}</details>`
+                : "");
+            plain =
+              j.text +
+              (j.groups || []).map((x) => `\n${x.k}: ${money(x.v)}`).join("");
+          }
+          chatTxt.push(plain);
+          wait.innerHTML =
+            html +
+            `<div style="margin-top:8px;text-align:right"><button type="button" data-c="copy" data-i="${chatTxt.length - 1}" style="border:1px solid #ffffff30;background:transparent;color:inherit;border-radius:8px;padding:3px 10px;font-size:.72rem;cursor:pointer">⧉ Copy</button></div>`;
+          chatHist.push({
+            q: text,
+            a: String(j.text || j.reply).slice(0, 150),
+            code: j.code ? String(j.code).slice(0, 600) : "",
+          });
+          if (!j.code) chatHist[chatHist.length - 1].code = "";
+          return;
+        }
+      } catch (_) {}
       const people = [
         ...new Set(
           [
