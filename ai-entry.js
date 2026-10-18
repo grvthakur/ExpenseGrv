@@ -30,7 +30,19 @@
   aiError.setAttribute("aria-live", "polite");
   aiError.style.cssText =
     "display:none;margin:10px 0 0;padding:11px 13px;border:1px solid #fb718566;border-left:3px solid #fb7185;border-radius:12px;background:linear-gradient(135deg,#fb718514,#f43f5e0a);color:#fecdd3;font-size:.88rem;line-height:1.45;overflow-wrap:anywhere;box-shadow:0 6px 20px #0002";
-  const aiText = $("aiTxt");
+  let aiText = $("aiTxt");
+  {
+    // fresh node: iOS caches AutoFill heuristics per element, so rebuild with attrs set before insert
+    const f = aiText.cloneNode(false);
+    f.removeAttribute("name");
+    f.removeAttribute("inputmode");
+    f.removeAttribute("type");
+    f.setAttribute("autocomplete", "off");
+    f.setAttribute("data-form-type", "other");
+    f.setAttribute("data-lpignore", "true");
+    aiText.replaceWith(f);
+    aiText = f;
+  }
   aiText.setAttribute("autocomplete", "off");
   aiText.setAttribute("autocorrect", "on");
   aiText.setAttribute("autocapitalize", "sentences");
@@ -857,12 +869,14 @@
       );
     if (st) rows = rows.filter((r) => r.src !== "cards" || lc(r.status) === st);
     if (ty) rows = rows.filter((r) => r.src !== "sweetie" || lc(r.type) === ty);
-    if (words.length)
+    if (pl._m)
+      rows = rows.filter((r) => pl._m.has(lc(r.desc || r.remarks || "")));
+    else if (words.length)
       rows = rows.filter((r) => {
         const h = lc(
           [r.desc, r.remarks, r.card, r.category, r.person].join(" "),
         );
-        return words.every((w) => h.includes(w));
+        return words.some((w) => h.includes(w));
       });
     rows.sort((a, b) => (a.date < b.date ? 1 : -1));
     const total = rows.reduce((a, r) => a + r.amount, 0);
@@ -1329,6 +1343,31 @@
         return;
       }
       const all = await dp;
+      if (pl.text) {
+        try {
+          const lc = (x) => String(x || "").toLowerCase();
+          const base = runPlan({ ...pl, text: "" }, all).rows;
+          const ds = [
+            ...new Set(
+              base.map((r) => lc(r.desc || r.remarks || "")).filter(Boolean),
+            ),
+          ].slice(0, 200);
+          if (ds.length) {
+            const items = ds.map((d, i) => i + ":" + d.slice(0, 28)).join("|");
+            const m = JSON.parse(
+              await (
+                await fetch(
+                  apiUrl(
+                    `action=aiMatch&q=${encodeURIComponent(text.slice(0, 200))}&concept=${encodeURIComponent(pl.text)}&items=${encodeURIComponent(items.slice(0, 6500))}`,
+                  ),
+                )
+              ).text(),
+            );
+            if (Array.isArray(m.match))
+              pl._m = new Set(m.match.map((i) => ds[i]).filter(Boolean));
+          }
+        } catch (_) {}
+      }
       const res0 = runPlan(pl, all);
       const view = answerHtml(text, pl, res0);
       const { html, txt } = view;
