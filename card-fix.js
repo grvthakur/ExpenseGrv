@@ -308,3 +308,67 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
       fetchCCMasterData().catch(() => {});
   });
 })();
+
+// ─── CC-only cards → dropdowns ───────────────────────────────────────────────
+// Cards present only in CC Master (e.g. ROARBANK-RUPAY) are merged into cardConfig
+// so they show in every card dropdown (add form, filters, AI review). Runs after each
+// CC Master fetch, each card sync, and once at page load (from the cached CC list).
+(function () {
+  const lc = (x) =>
+    String(x || "")
+      .trim()
+      .toLowerCase();
+  function merge() {
+    if (!Array.isArray(ccMasterCache) || !Array.isArray(cardConfig)) return;
+    let add = 0;
+    ccMasterCache.forEach((r) => {
+      const b = String(r[0] || "").trim(),
+        n = String(r[1] || "").trim();
+      const name = b && n ? b + "-" + n : n;
+      if (!name) return;
+      if (
+        cardConfig.some((x) => lc(x.card) === lc(name) || lc(x.card) === lc(n))
+      )
+        return;
+      cardConfig.push({
+        card: name,
+        cutoff: 0,
+        limit: 0,
+        dueDay: 0,
+        dueMonthOffset: 0,
+      });
+      add++;
+    });
+    if (!add) return;
+    try {
+      saveLocal();
+    } catch (_) {}
+    try {
+      populateCardDropdown();
+    } catch (_) {}
+    try {
+      populateGrvCardDropdown();
+    } catch (_) {}
+    try {
+      populateCCCardFilter();
+    } catch (_) {}
+    try {
+      renderGrvManageCards();
+    } catch (_) {}
+  }
+  const f0 = fetchCCMasterData;
+  fetchCCMasterData = function () {
+    return f0.apply(this, arguments).then((d) => {
+      merge();
+      return d;
+    });
+  };
+  const s0 = syncCardsFromSheet;
+  syncCardsFromSheet = async function () {
+    const r = await s0.apply(this, arguments);
+    merge();
+    return r;
+  };
+  window.addEventListener("DOMContentLoaded", () => setTimeout(merge, 0));
+  window.__mergeCCCards = merge;
+})();
