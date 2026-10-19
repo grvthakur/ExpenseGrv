@@ -12,7 +12,7 @@
   box.innerHTML = `<div style="width:min(520px,100%);background:var(--surface,#13131c);color:var(--text,#eef);border:1px solid var(--border,#2a2a3d);border-radius:18px;padding:18px;position:relative;border-top:3px solid #22d3ee;box-shadow:0 20px 60px #000a,0 0 40px #22d3ee22">
     <button id="aiX" onclick="this.closest('[data-ov]').style.display='none'" title="Close" style="position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;border:1px solid var(--border,#2a2a3d);background:transparent;color:inherit;opacity:.7;cursor:pointer">✕</button>
     <b style="font-size:1.1rem">✨ AI Transaction Entry</b>
-    <p style="opacity:.7;font-size:.85rem;margin:6px 0 10px">Paste a bank SMS or email to add a transaction, or ask a question about your spending.</p>
+    <p style="opacity:.7;font-size:.85rem;margin:6px 0 10px">Paste a bank message to add a transaction, or ask a question about your spending.</p>
     <textarea id="aiTxt" rows="5" style="width:100%;box-sizing:border-box;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid var(--border,#2a2a3d)"></textarea>
     <div style="margin-top:12px"><button id="aiGo" style="width:100%;padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Parse</button></div></div>`;
   const sb = $("summaryBtn");
@@ -104,10 +104,43 @@
   });
   const warm = () => fetch(apiUrl("action=ver")).catch(() => {});
   setTimeout(warm, 2500);
+  // iOS decides "AutoFill Contact" per element at creation: rebuild the box fresh on every open (same way the chat box is built, which gets plain word suggestions).
+  const remount = () => {
+    const old = aiText;
+    const w = document.createElement("div");
+    w.innerHTML =
+      '<textarea id="aiTxt" rows="5" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Type a question or paste a bank SMS…"></textarea>';
+    const f = w.firstChild;
+    f.style.cssText = old.style.cssText;
+    f.value = old.value;
+    old.replaceWith(f);
+    aiText = f;
+    f.addEventListener("input", clearAiError);
+    f.addEventListener("focus", () => {
+      f.style.borderColor = "#22d3eeaa";
+      f.style.boxShadow = "0 0 0 3px #22d3ee18";
+    });
+    f.addEventListener("blur", () => {
+      f.style.borderColor = "var(--border,#2a2a3d)";
+      f.style.boxShadow = "none";
+    });
+    f.addEventListener("keydown", (e) => {
+      if (e.isComposing || e.keyCode === 229) return;
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey &&
+        !(window.matchMedia && matchMedia("(pointer:coarse)").matches)
+      ) {
+        e.preventDefault();
+        $("aiGo").click();
+      }
+    });
+  };
   fab.onclick = () => {
     if (chatHist && chatHist.length && typeof openChat === "function")
       return openChat();
     resetAiEntry();
+    remount();
     box.style.display = "flex";
     setTimeout(() => aiText.focus(), 40);
     warm();
@@ -198,7 +231,7 @@
         const sel = $(id) && $(id).tagName === "SELECT";
         const v = String(r[k] ?? "").replace(/"/g, "&quot;");
         const inp = sel
-          ? `<select data-k="${k}" style="${st}">${[...$(id).options].map((o) => `<option value="${o.value}" ${o.value === r[k] ? "selected" : ""} style="color:#000">${o.text}</option>`).join("")}</select>`
+          ? `<select data-k="${k}" style="${st}">${[...$(id).options].some((o) => o.value === r[k]) ? "" : '<option value="" selected style="color:#000">— Select —</option>'}${[...$(id).options].map((o) => `<option value="${o.value}" ${o.value === r[k] ? "selected" : ""} style="color:#000">${o.text}</option>`).join("")}</select>`
           : `<input data-k="${k}" type="${k === "date" ? "date" : k === "amount" ? "number" : "text"}" value="${v}" style="${st}">`;
         return `<label style="display:block;font-size:.78rem;opacity:.8;margin-top:10px">${label}${inp}</label>`;
       })
@@ -226,6 +259,13 @@
         (e) => (vals[e.dataset.k] = e.value),
       );
       if (!(+vals.amount > 0)) return toast("Enter a valid amount", true);
+      for (const e of pv.querySelectorAll("select[data-k]"))
+        if (!e.value)
+          return toast(
+            "Please select " +
+              (e.dataset.k === "card" ? "a card" : e.dataset.k),
+            true,
+          );
       pv.style.display = "none";
       $("aiTxt").value = "";
       switchTab(m.tab);
@@ -246,11 +286,47 @@
       ? w.toUpperCase()
       : w[0].toUpperCase() + w.slice(1).toLowerCase();
   // Short extra line before/after an SMS ("GRV,FLIPKART") = who + description.
+  // Explicit labels ("Used by: X", "Desc: Y", "Remarks: Z") always win over any guessing.
+  function labelHint(text) {
+    const lines = String(text)
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const LB =
+      /^(used\s*by|usedby|user|person|by|desc(?:ription)?|merchant|remarks?|note|notes)\s*[:\-=]\s*(.+)$/i;
+    const lab = { who: "", desc: "", rem: "" };
+    const rest = [];
+    lines.forEach((l) => {
+      const m = l.match(LB);
+      if (!m) return rest.push(l);
+      const k = m[1].toLowerCase().replace(/\s+/g, "");
+      const v = m[2].trim();
+      if (/^(usedby|user|person|by)$/.test(k))
+        lab.who = v
+          .split(/\s+/)
+          .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+      else if (/^(desc|description|merchant)/.test(k))
+        lab.desc = v.toUpperCase();
+      else lab.rem = v.toUpperCase();
+    });
+    if (rest.length === lines.length || !rest.length) return null;
+    return {
+      body: rest.join("\n"),
+      who: lab.who,
+      desc: lab.desc,
+      rem: lab.rem,
+    };
+  }
   function splitHint(text) {
     const lines = text
       .split(/\n+/)
       .map((l) => l.trim())
       .filter(Boolean);
+    {
+      const L = labelHint(text);
+      if (L) return L;
+    }
     if (lines.length < 2) return null;
     const junk =
       /^(dear|hi\b|hello|thank|your\b|info\b|regards|warm|team|note\b|if you|please|kindly|sincerely|to dispute|call\b|available|avl)/i;
@@ -1497,18 +1573,20 @@
         text,
       );
     if (qLike || (isQuestion(text) && !localParse(text))) return askData(text);
-    const h0 = splitHint(text),
-      body0 = h0 ? h0.body : text;
-    let loc = localParse(body0);
-    if (!loc) loc = await smsParse(body0);
-    if (loc) {
-      if (h0) {
-        if (h0.desc) loc.desc = h0.desc;
-        if (h0.rem) loc.remarks = h0.rem;
-        if (h0.who && loc.kind === "card") loc.usedBy = h0.who;
-      }
+    const lab = labelHint(text);
+    const body0 = lab ? lab.body : text;
+    const applyLab = (o) => {
+      if (!lab || !o) return o;
+      if (lab.desc) o.desc = lab.desc;
+      if (lab.rem) o.remarks = lab.rem;
+      if (lab.who && o.kind === "card") o.usedBy = lab.who;
+      return o;
+    };
+    // 1) crisp short formats ("flipkart 500 grv") - instant, no AI
+    const quick = localParse(body0);
+    if (quick) {
       box.style.display = "none";
-      preview(loc);
+      preview(applyLab(quick));
       return;
     }
     const b = $("aiGo");
@@ -1519,36 +1597,80 @@
       const cats = [...($("expenseCategory")?.options || [])]
         .map((o) => o.value)
         .join(" | ");
-      const hint = splitHint(text);
-      const raw = await (
-        await fetch(
-          apiUrl(
-            `action=aiParse&text=${encodeURIComponent(hint ? hint.body : text)}&cards=${encodeURIComponent(cards)}&cats=${encodeURIComponent(cats)}`,
-          ),
-        )
-      ).text();
-      let r;
+      let r = null,
+        aiErr = null;
+      // 2) AI reads the WHOLE message (SMS, labels, names, notes) and extracts every field
       try {
-        r = JSON.parse(raw);
-      } catch (_) {
-        throw new Error("Server said: " + raw.slice(0, 160));
+        const raw = await (
+          await fetch(
+            apiUrl(
+              `action=aiParse&text=${encodeURIComponent(text)}&cards=${encodeURIComponent(cards)}&cats=${encodeURIComponent(cats)}&people=${encodeURIComponent([...peopleSet()].join(" | ").slice(0, 300))}`,
+            ),
+          )
+        ).text();
+        try {
+          r = JSON.parse(raw);
+        } catch (_) {
+          throw new Error("Server said: " + raw.slice(0, 160));
+        }
+        if (r.error) throw new Error(r.error);
+      } catch (e) {
+        aiErr = e;
+        r = null;
       }
-      if (r.error) throw new Error(r.error);
-      if (hint) {
-        if (hint.desc) r.desc = hint.desc;
-        if (hint.rem) r.remarks = hint.rem;
-        if (hint.who && r.kind === "card") r.usedBy = hint.who;
+      // 3) offline fallback if AI is unreachable
+      if (!r) {
+        const h0 = splitHint(text);
+        const loc =
+          (await smsParse(h0 ? h0.body : body0)) ||
+          localParse(h0 ? h0.body : body0);
+        if (!loc) throw aiErr || new Error("Could not understand this text");
+        if (h0) {
+          if (h0.desc) loc.desc = h0.desc;
+          if (h0.rem) loc.remarks = h0.rem;
+          if (h0.who && loc.kind === "card") loc.usedBy = h0.who;
+        }
+        box.style.display = "none";
+        preview(applyLab(loc));
+        return;
+      }
+      applyLab(r);
+      // Client-side guards (work even if the server is an older version)
+      if (
+        r.kind !== "sweetie" &&
+        /\b(credit\s*card|debit\s*card|bank\s*card|cc)\b|\bcard\s*(no\.?\s*)?[x*]{2,}\s*\d{4}|\b[x*]{2,}\s*\d{4}\b/i.test(
+          text,
+        )
+      )
+        r.kind = "card";
+      if (r.kind === "card" && !r.usedBy && !(lab && lab.who)) {
+        const nm = text
+          .split(/\n+/)
+          .map((l) => l.trim())
+          .find(
+            (l) =>
+              l &&
+              l.length <= 30 &&
+              !/\d/.test(l) &&
+              l.split(/\s+/).length <= 3,
+          );
+        if (nm)
+          r.usedBy = nm
+            .split(/\s+/)
+            .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ");
       }
       if (r.kind === "card") {
         if (
-          !hint?.who &&
+          !(lab && lab.who) &&
           r.usedBy &&
           !text.toLowerCase().includes(String(r.usedBy).toLowerCase())
         )
           r.usedBy = "";
         try {
-          const d = (text.match(/\b(?:card|a\/c|acct?)[^\d]{0,12}(\d{4})\b/i) ||
-            [])[1];
+          const d = (text.match(
+            /\b(?:card|a\/c|acct?|x{2,}|\*{2,})\s*[^\d]{0,12}(\d{4})\b/i,
+          ) || [])[1];
           if (d) {
             const rows =
               (typeof ccMasterCache !== "undefined" && ccMasterCache) ||
