@@ -7240,6 +7240,36 @@
                 white-space: nowrap !important;
             }
         }
+
+        @media (max-width: 600px) {
+
+            /* Long text ko mobile par table ke andar rakho */
+            #cardTable td,
+            #grvCardTable td {
+                overflow: hidden !important;
+            }
+
+            #cardTable td .table-data-pill,
+            #cardTable td .cc-rem,
+            #grvCardTable td .table-data-pill {
+                display: block !important;
+                max-width: 200px !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
+
+            #cardTable,
+            #grvCardTable,
+            #expenseTable,
+            #sweetieTable {
+                min-width: 100% !important;
+            }
+
+            #cardSection .table-wrapper>div {
+                overflow-x: auto !important;
+            }
+        }
     </style>
 
     <style id="mobile-hide-checkbox">
@@ -7315,6 +7345,23 @@
             html body #expenseTable th:nth-child(3),
             html body #expenseTable td:nth-child(3) {
                 min-width: 170px !important
+            }
+        }
+
+
+        @media (max-width: 600px) {
+
+            #cardTable td:nth-child(5),
+            #cardTable th:nth-child(5) {
+                white-space: nowrap !important;
+                min-width: 105px !important;
+                width: 105px !important;
+            }
+
+            #cardTable td:nth-child(5) * {
+                white-space: nowrap !important;
+                word-break: normal !important;
+                overflow-wrap: normal !important;
             }
         }
     </style>

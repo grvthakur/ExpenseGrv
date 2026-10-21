@@ -1451,7 +1451,12 @@ function refundFieldSync() {
   const card = document.getElementById("cardSelect").value,
     keep = sel.value;
   const list = cardTxns
-    .filter((t) => t.card === card && Number(t.amount) > 0)
+    .filter(
+      (t) =>
+        t.card === card &&
+        Number(t.amount) > 0 &&
+        String(t.status).toUpperCase() === "UNPAID",
+    )
     .sort(
       (a, b) =>
         String(b.txnDate).localeCompare(String(a.txnDate)) ||
