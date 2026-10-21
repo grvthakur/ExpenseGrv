@@ -1372,7 +1372,7 @@ function renderCards() {
     tr.insertCell(4).innerHTML =
       `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
     tr.insertCell(5).innerHTML =
-      `<span class="table-data-pill table-amount-pill table-negative-pill">${money(t.amount)}</span>`;
+      `<span class="table-data-pill table-amount-pill ${t.amount < 0 ? "table-positive-pill" : "table-negative-pill"}">${money(t.amount)}</span>`;
 
     const statusCell = tr.insertCell(6);
     const statusBtn = document.createElement("button");
@@ -1418,6 +1418,74 @@ function renderCards() {
     actCell.appendChild(delBtn);
   });
 }
+
+// Refund = a card entry with a NEGATIVE amount (reduces the bill). The user PICKS the original transaction
+// in the "Refund of" dropdown (shown only for negative amounts) - nothing is guessed.
+function linkRefund(r, origId) {
+  const t = cardTxns.find((x) => x.id === origId);
+  const need = -r.amount;
+  if (!t || !(need > 0) || Number(t.amount) < need - 0.001) return null;
+  const note = `REFUND ${money(need)} (${formatDisplayDate(r.txnDate)})`;
+  t.remarks = t.remarks ? `${t.remarks} | ${note}` : note;
+  const back = `REFUND OF ${money(t.amount)} (${formatDisplayDate(t.txnDate)})`;
+  r.remarks = r.remarks ? `${r.remarks} | ${back}` : back;
+  sheetWrite(
+    apiUrl(
+      `action=updateCard&id=${enc(t.id)}&card=${enc(t.card)}&usedBy=${enc(t.usedBy || "")}&description=${enc(t.description || "")}&txnDate=${enc(t.txnDate)}&remarks=${enc(t.remarks)}&amount=${t.amount}&status=${enc(t.status || "UNPAID")}&billingMonth=${enc(t.billingMonth || "")}`,
+    ),
+  );
+  return t;
+}
+// "Refund of" picker: appears under Amount only when the amount is negative (and not editing)
+function refundFieldSync() {
+  const amt = document.getElementById("cardAmount"),
+    box = document.getElementById("refundOfField"),
+    sel = document.getElementById("cardRefundOf");
+  if (!amt || !box || !sel) return;
+  const neg = parseFloat(amt.value) < 0 && !editingCardId;
+  box.style.display = neg ? "" : "none";
+  if (!neg) {
+    sel.value = "";
+    return;
+  }
+  const card = document.getElementById("cardSelect").value,
+    keep = sel.value;
+  const list = cardTxns
+    .filter((t) => t.card === card && Number(t.amount) > 0)
+    .sort(
+      (a, b) =>
+        String(b.txnDate).localeCompare(String(a.txnDate)) ||
+        String(b.id).localeCompare(String(a.id)),
+    )
+    .slice(0, 60);
+  sel.innerHTML =
+    '<option value="">— Not linked —</option>' +
+    list
+      .map(
+        (t) =>
+          `<option value="${esc(t.id)}">${esc(formatDisplayDate(t.txnDate))} · ${esc((t.description || "—").slice(0, 28))} · ${money(t.amount)}</option>`,
+      )
+      .join("");
+  if ([...sel.options].some((o) => o.value === keep)) sel.value = keep;
+}
+function initRefundField() {
+  const amt = document.getElementById("cardAmount");
+  if (!amt || document.getElementById("refundOfField")) return;
+  const f = amt.closest(".field");
+  if (!f) return;
+  const box = document.createElement("div");
+  box.className = "field";
+  box.id = "refundOfField";
+  box.style.display = "none";
+  box.innerHTML =
+    '<label>Refund of (pick the original purchase)</label><select id="cardRefundOf"></select>';
+  f.after(box);
+  amt.addEventListener("input", refundFieldSync);
+  document
+    .getElementById("cardSelect")
+    .addEventListener("change", refundFieldSync);
+}
+document.addEventListener("DOMContentLoaded", initRefundField);
 
 function sortCards(col) {
   if (cardSort.col === col)
@@ -1476,7 +1544,8 @@ function addCardEntry() {
   if (!card || !txnDate || !rawAmt)
     return toast("Card, date & amount required", true);
   const amount = parseFloat(rawAmt);
-  if (isNaN(amount) || amount <= 0) return toast("Enter a valid amount", true);
+  // negative amount = refund / reversal (reduces the card bill)
+  if (isNaN(amount) || amount === 0) return toast("Enter a valid amount", true);
 
   // Duplicate protection: same card + amount + date + description + Used By.
   // During edit, ignore the transaction currently being edited.
@@ -1551,10 +1620,18 @@ function addCardEntry() {
     billingMonth,
   };
 
+  const refId = (document.getElementById("cardRefundOf") || {}).value || "";
+  const linked = entry.amount < 0 && refId ? linkRefund(entry, refId) : null;
+  if (entry.amount < 0 && refId && !linked)
+    toast("Refund is more than the picked purchase — added without link", true);
   cardTxns.push(entry);
   saveLocal();
   renderCards();
-  toast("Card entry added ✓");
+  toast(
+    linked
+      ? `Refund added ✓ — noted on ${linked.description || "original"}`
+      : "Card entry added ✓",
+  );
 
   document.getElementById("cardUsedBy").value = "";
   document.getElementById("cardDesc").value = "";
@@ -1565,6 +1642,7 @@ function addCardEntry() {
   document.getElementById("cancelCardEditBtn").style.display = "none";
   document.getElementById("cancelCardEditBtn").textContent = "✕ Cancel Edit";
   document.getElementById("cardAmount").value = "";
+  refundFieldSync();
 
   sheetWrite(
     apiUrl(
@@ -3317,7 +3395,7 @@ function getDueInfo(cfg, statement) {
 }
 function money(v) {
   const n = Number(v) || 0;
-  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${n < 0 ? "−" : ""}₹${Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function formatCycleRange(c) {
   return `${c.start.getDate()} ${MONTHS[c.start.getMonth()]} ${c.start.getFullYear()} – ${c.end.getDate()} ${MONTHS[c.end.getMonth()]} ${c.end.getFullYear()}`;
