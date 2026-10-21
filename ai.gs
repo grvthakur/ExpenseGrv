@@ -489,7 +489,7 @@ function aiParse_(e) {
     "KIND: 'card' if the text mentions cc / credit card / card / a bank-card name or a card SMS. 'sweetie' if it mentions Sweetie saving/credit/debit/borrow. Otherwise 'expense'.",
     "CARD (kind=card): pick EXACTLY one string from this list by fuzzy/phonetic match on bank/card words, ignoring spelling mistakes (e.g. 'first bank', 'idfc', 'roar bank' ~ a similar-sounding bank in the list; 'amazon pay'=ICICI-AMAZON PAY; 'flipkart'=AXIS-FLIPKART). If two cards fit equally, pick the first listed. If nothing is even remotely similar, leave card empty.",
     "CARDS: " + cards,
-    "USEDBY: a person from this list if the text names one (GRV/Gaurav/me => GRV). Never invent. Known people: " +
+    "USEDBY: the person who used the card. Prefer a name from the known list (GRV/Gaurav/me => GRV); but if the user's own line names someone else (mummy, papa, bhai, wife, any name) use that word exactly as typed. Never invent a name that is not in the text. Known people: " +
       people,
     "DESC: the merchant or item, UPPERCASE, short (e.g. BEER, PETROL, FLIPKART). Remove filler words like transaction, cc, credit card, bank name, amount, person name.",
     "CATEGORY (kind=expense): pick EXACTLY from: " +

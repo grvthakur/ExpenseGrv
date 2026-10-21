@@ -221,9 +221,75 @@
   document.body.append(pv);
   const st =
     "width:100%;box-sizing:border-box;border-radius:10px;padding:9px;background:transparent;color:inherit;border:1px solid var(--border,#2a2a3d);font:inherit";
+  // ── Merchant normaliser: learned aliases (from your edits) > built-in brand list > raw ──
+  const ALIAS_KEY = "ai_alias_v1";
+  const aKey = (x) =>
+    String(x || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const aLoad = () => {
+    try {
+      return JSON.parse(localStorage.getItem(ALIAS_KEY) || "{}") || {};
+    } catch (_) {
+      return {};
+    }
+  };
+  const BRANDS = [
+    [/irctc|indian\s*rail|iil\b/i, "IRCTC"],
+    [/amazon|amzn/i, "AMAZON"],
+    [/flipkart|fkrt/i, "FLIPKART"],
+    [/swiggy/i, "SWIGGY"],
+    [/zomato/i, "ZOMATO"],
+    [/blinkit|grofers/i, "BLINKIT"],
+    [/zepto/i, "ZEPTO"],
+    [/bigbasket|big\s*basket/i, "BIGBASKET"],
+    [/myntra/i, "MYNTRA"],
+    [/\buber\b/i, "UBER"],
+    [/\bola\b|olacabs/i, "OLA"],
+    [/netflix/i, "NETFLIX"],
+    [/spotify/i, "SPOTIFY"],
+    [/bookmyshow|bms\b/i, "BOOKMYSHOW"],
+    [/makemytrip|\bmmt\b/i, "MAKEMYTRIP"],
+    [/dmart|d\s*mart|avenue\s*super/i, "DMART"],
+    [/\bjio\b/i, "JIO"],
+    [/airtel/i, "AIRTEL"],
+    [/tanishq/i, "TANISHQ"],
+  ];
+  function normDesc(d) {
+    const raw = String(d || "").trim();
+    if (!raw) return raw;
+    const L = aLoad(),
+      k = aKey(raw);
+    if (L[k]) return L[k];
+    let n = raw.toUpperCase();
+    for (const [re, name] of BRANDS)
+      if (re.test(raw)) {
+        n = name;
+        break;
+      }
+    return L[aKey(n)] || n;
+  }
+  function learnAlias(orig, now) {
+    try {
+      const a = String(orig || "")
+          .trim()
+          .toUpperCase(),
+        b = String(now || "")
+          .trim()
+          .toUpperCase();
+      if (!a || !b || a === b || a.length > 40 || b.length > 40) return;
+      const L = aLoad();
+      L[aKey(a)] = b;
+      const ks = Object.keys(L);
+      if (ks.length > 300) delete L[ks[0]];
+      localStorage.setItem(ALIAS_KEY, JSON.stringify(L));
+    } catch (_) {}
+  }
   function preview(r) {
     const m = M[r.kind] || M.expense,
       kind = M[r.kind] ? r.kind : "expense";
+    if (r.desc) r.desc = normDesc(r.desc);
+    const origDesc = kind === "card" || !r.remarks ? String(r.desc || "") : "";
     if (kind !== "card" && r.remarks)
       r.desc = (r.desc ? r.desc + " - " : "") + r.remarks;
     const rows = m.f
@@ -259,6 +325,7 @@
         (e) => (vals[e.dataset.k] = e.value),
       );
       if (!(+vals.amount > 0)) return toast("Enter a valid amount", true);
+      if (origDesc && vals.desc) learnAlias(origDesc, vals.desc);
       for (const e of pv.querySelectorAll("select[data-k]"))
         if (!e.value)
           return toast(
@@ -544,6 +611,131 @@
     }
     return null;
   }
+  // User's own hint line under a pasted SMS ("hdfc tata neu mummy 9oct2026"): card + person + date + remarks, no AI needed.
+  function userLine(text) {
+    const lines = text
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (lines.length < 2) return null;
+    const bad =
+      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!:]|\b(call|dispute|click|link|otp|available|avl|limit|bank|merchant|dear|hi|hello|thank|regards|team|please|kindly|sincerely)\b/i;
+    let line = "";
+    for (let k = lines.length - 1; k >= 0; k--)
+      if (
+        lines[k].split(/\s+/).length <= 7 &&
+        lines[k].length <= 80 &&
+        !bad.test(lines[k])
+      ) {
+        line = lines[k];
+        break;
+      }
+    if (!line) return null;
+    let t = " " + line.toLowerCase().replace(/[₹,]/g, " ") + " ";
+    let date = "",
+      m;
+    if (
+      (m = t.match(
+        /\b(\d{1,2})\s*[-\/]?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*[-\/,]?\s*(\d{4}|\d{2})?\b/,
+      ))
+    ) {
+      const y = m[3]
+        ? m[3].length === 2
+          ? 2000 + +m[3]
+          : +m[3]
+        : new Date().getFullYear();
+      date = iso(new Date(y, MON.indexOf(m[2]), +m[1]));
+      t = t.replace(m[0], " ");
+    } else if (
+      (m = t.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/))
+    ) {
+      const y = m[3]
+        ? m[3].length === 2
+          ? 2000 + +m[3]
+          : +m[3]
+        : new Date().getFullYear();
+      date = iso(new Date(y, +m[2] - 1, +m[1]));
+      t = t.replace(m[0], " ");
+    } else if (/\b(yesterday|kal)\b/.test(t)) {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      date = iso(d);
+      t = t.replace(/\b(yesterday|kal)\b/, " ");
+    } else if (/\b(today|aaj)\b/.test(t)) t = t.replace(/\b(today|aaj)\b/, " ");
+    t = t.replace(/\d+(?:\.\d+)?/g, " ");
+    const words = t.split(/[^a-z]+/).filter(Boolean);
+    const cards = (typeof cardConfig !== "undefined" ? cardConfig : []).map(
+      (c) => c.card,
+    );
+    let best = null,
+      bs = 0,
+      tie = false;
+    cards.forEach((c) => {
+      const tk = c
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((x) => x.length > 2);
+      const sc = tk.filter((x) => words.some((w) => wm(w, x))).length;
+      if (sc > bs) {
+        best = c;
+        bs = sc;
+        tie = false;
+      } else if (sc === bs && sc > 0) tie = true;
+    });
+    const card = best && !tie && bs >= 1 ? best : "";
+    const used = card ? card.toLowerCase().split(/[^a-z0-9]+/) : [];
+    const BANK =
+      /^(hdfc|icici|axis|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|amazon|flipkart|tata|neu|first|bank|credit|card|cc)$/;
+    const FILL =
+      /^(is|ka|ki|ke|ko|se|ne|for|by|the|a|an|of|wala|wali|used|use|me|my|mera|meri|from|on|at|ye|yeh|wo|woh|liye|hai|hain|ho|tha|thi|kar|kiya|aur|and|ka)$/;
+    const RT =
+      /^(split|splits|with|shared|share|sharing|between|betwen|bhej|sent|send|sab|baki|baaki)$/;
+    const ppl = peopleSet();
+    const others = lines
+      .filter((l) => l !== line)
+      .join(" ")
+      .toLowerCase();
+    // words that already appear in the SMS part are the merchant, never a person
+    const rest = words.filter(
+      (w) =>
+        !BANK.test(w) &&
+        !FILL.test(w) &&
+        !used.some((u) => wm(w, u)) &&
+        !(w.length > 3 && others.includes(w)),
+    );
+    const k0 = rest.findIndex((w) => KWX.test(w) || RT.test(w));
+    const main = k0 >= 0 ? rest.slice(0, k0) : rest;
+    const kw = k0 >= 0 ? words.indexOf(rest[k0]) : -1;
+    // person = first word (+ second only if it is also a known person or both were typed Capitalised); anything extra is a remark
+    let nm = main.slice(0, 1);
+    if (main.length > 1) {
+      const caps = line.split(/[^A-Za-z]+/).filter(Boolean);
+      const c1 = caps.find((x) => x.toLowerCase() === main[0]),
+        c2 = caps.find((x) => x.toLowerCase() === main[1]);
+      if (
+        ppl.has(main[1]) ||
+        (c1 && c2 && /^[A-Z]/.test(c1) && /^[A-Z]/.test(c2))
+      )
+        nm = main.slice(0, 2);
+    }
+    const extra = main.slice(nm.length);
+    let rem =
+      kw >= 0
+        ? words
+            .slice(kw)
+            .filter((w) => !FILL.test(w))
+            .join(" ")
+        : "";
+    if (extra.length) rem = (extra.join(" ") + " " + rem).trim();
+    rem = rem.toUpperCase();
+    const who = nm.map(cap).join(" ");
+    if (!card && !who && !rem && !date) return null;
+    const REL =
+      /^(mummy|mommy|mom|maa|mama|papa|pappa|dad|bhai|bhaiya|didi|behen|bhabhi|wife|biwi|sweetie|dost|friend|self|gaurav|grv)$/;
+    const sure =
+      !who || ppl.has(who.toLowerCase()) || REL.test(who.toLowerCase());
+    return { card, who, rem, date, sure, line };
+  }
   // Txn amount = first money value NOT labelled limit/balance/outstanding/due (works for any bank format).
   function bankAmount(t) {
     const re = /(?:\b(?:inr|rs\.?)|₹)\s*([\d,]+(?:\.\d+)?)/gi;
@@ -660,8 +852,12 @@
     const lm = t.match(
       /\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i,
     );
+    const fm = t.match(
+      /\bfor\s+([A-Z][A-Z0-9 &.\-*']{2,40}?)(?=\s*(?:\.|,|\s+(?:click|on|ref|via|using|pls|please)\b|$))/,
+    );
     const mm =
       lm ||
+      (fm && !/\b(at|towards|@)\s+[A-Za-z0-9]/i.test(t) ? fm : null) ||
       t.match(
         /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
       );
@@ -1649,6 +1845,46 @@
       const cats = [...($("expenseCategory")?.options || [])]
         .map((o) => o.value)
         .join(" | ");
+      // 0) PATTERN FIRST: complete bank SMS (+ clear hint line) => instant, no AI. Anything doubtful falls through to AI below.
+      try {
+        const ul0 = lab && lab.who ? null : userLine(text);
+        const bodyP = ul0
+          ? text
+              .split(/\n+/)
+              .filter((l) => l.trim() !== ul0.line)
+              .join("\n")
+          : body0;
+        const sm = await smsParse(bodyP);
+        if (sm && sm.amount > 0 && sm.card && sm.desc && (!ul0 || ul0.sure)) {
+          applyLab(sm);
+          if (ul0) {
+            if (ul0.card) sm.card = ul0.card;
+            if (ul0.date) sm.date = ul0.date;
+            if (ul0.who) sm.usedBy = ul0.who;
+            if (ul0.rem && !(lab && lab.rem)) sm.remarks = ul0.rem;
+          }
+          if (!sm.usedBy && !(lab && lab.who)) {
+            const nm = text
+              .split(/\n+/)
+              .map((l) => l.trim())
+              .find(
+                (l) =>
+                  l &&
+                  l.length <= 30 &&
+                  !/\d/.test(l) &&
+                  l.split(/\s+/).length <= 3,
+              );
+            if (nm)
+              sm.usedBy = nm
+                .split(/\s+/)
+                .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+                .join(" ");
+          }
+          box.style.display = "none";
+          preview(sm);
+          return;
+        }
+      } catch (_) {}
       let r = null,
         aiErr = null;
       // 2) AI reads the WHOLE message (SMS, labels, names, notes) and extracts every field
@@ -1687,6 +1923,16 @@
         return;
       }
       applyLab(r);
+      const ul = lab && lab.who ? null : userLine(text);
+      if (ul) {
+        if (ul.card) {
+          r.card = ul.card;
+          r.kind = "card";
+        }
+        if (ul.date) r.date = ul.date;
+        if (r.kind === "card" && ul.who) r.usedBy = ul.who;
+        if (ul.rem && !(lab && lab.rem)) r.remarks = ul.rem;
+      }
       // Client-side guards (work even if the server is an older version)
       if (
         r.kind !== "sweetie" &&
@@ -1723,7 +1969,7 @@
           const d = (text.match(
             /\b(?:card|a\/c|acct?|x{2,}|\*{2,})\s*[^\d]{0,12}(\d{4})\b/i,
           ) || [])[1];
-          if (d) {
+          if (d && !(ul && ul.card)) {
             const rows =
               (typeof ccMasterCache !== "undefined" && ccMasterCache) ||
               (await fetchCCMasterData());
