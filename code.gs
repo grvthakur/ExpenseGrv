@@ -152,7 +152,8 @@ function doGet(e) {
     const expSheet = ss.getSheetByName("Expenses");
     const salSheet = ss.getSheetByName("Salary");
     const action = e.parameter.action || "";
-
+    const _ai = aiHandle(action, e);
+    if (_ai) return _ai;
     // Serialize all mutating routes. This prevents double-taps / concurrent
     // requests from interleaving delete+recalc, status updates, bill payment,
     // settlement, and other multi-step writes. Read-only routes remain unlocked.

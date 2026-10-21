@@ -101,7 +101,11 @@ function getCardCutoff(ss, card) {
   const rows = cfgSheet.getDataRange().getValues();
   const wanted = String(card).trim().toLowerCase();
   for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][0] || "").trim().toLowerCase() === wanted) {
+    if (
+      String(rows[i][0] || "")
+        .trim()
+        .toLowerCase() === wanted
+    ) {
       const cutoff = parseInt(rows[i][1], 10);
       return Number.isFinite(cutoff) && cutoff > 0 ? cutoff : 0;
     }
@@ -143,31 +147,909 @@ function onEdit(e) {
 
 // ─── MAIN ENTRY POINT ────────────────────────────────────────────────────────
 function doGet(e) {
-  let writeLock = null;
-
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const expSheet = ss.getSheetByName("Expenses");
     const salSheet = ss.getSheetByName("Salary");
     const action = e.parameter.action || "";
-
+    const _ai = aiHandle(action, e);
+    if (_ai) return _ai;
+    // Serialize all mutating routes. This prevents double-taps / concurrent
+    // requests from interleaving delete+recalc, status updates, bill payment,
+    // settlement, and other multi-step writes. Read-only routes remain unlocked.
     const writeActions = new Set([
-      "setSalary", "delete", "add",
-      "addCard", "updateCard", "updateCardStatusBulk", "payBill", "settle",
-      "deleteCard", "updateCardStatus",
-      "upsertCardConfig", "deleteCardConfig",
-      "addSweetie", "deleteSweetie",
-      "updateExpense", "updateSweetie",
+      "setSalary",
+      "delete",
+      "add",
+      "addCard",
+      "updateCard",
+      "updateCardStatusBulk",
+      "payBill",
+      "settle",
+      "deleteCard",
+      "updateCardStatus",
+      "upsertCardConfig",
+      "deleteCardConfig",
+      "addSweetie",
+      "deleteSweetie",
+      "updateExpense",
+      "updateSweetie",
     ]);
-
+    var writeLock = null;
     if (writeActions.has(action)) {
       writeLock = LockService.getScriptLock();
       writeLock.waitLock(20000);
     }
 
-    // BAaki tumhara existing code exactly same rahega...
+    if (action === "ver") return textOut("groq-v3");
+    if (action === "aiParse") {
+      const P = PropertiesService.getScriptProperties();
+      const today = Utilities.formatDate(
+        new Date(),
+        "Asia/Kolkata",
+        "yyyy-MM-dd",
+      );
+      const prompt =
+        "Today is " +
+        today +
+        '. Extract ONE transaction from the text. Reply ONLY JSON: {"kind":"card|expense|sweetie","card":"","usedBy":"","desc":"","amount":0,"date":"YYYY-MM-DD","category":"","type":"SAVING|CREDIT|DEBIT"}. ' +
+        "kind=card if a credit card is involved (pick card EXACTLY from: " +
+        (e.parameter.cards || "") +
+        "); kind=sweetie if text mentions Sweetie savings/credit/debit; else expense (category EXACTLY from: " +
+        (e.parameter.cats || "") +
+        "). Use date in text if present else today. desc = merchant, uppercase. If the text starts with a person name (e.g. GRV, Sweetie, Tanya) put it in usedBy and treat the other free words (like FLIPKART) that are not card/bank/amount/date as desc, overriding the SMS merchant. Never invent usedBy. For bank SMS use the card whose bank matches. Leave unknown fields empty.\n\nTEXT:\n" +
+        String(e.parameter.text || "").slice(0, 1500);
+      const post = (url, headers, body) =>
+        JSON.parse(
+          UrlFetchApp.fetch(url, {
+            method: "post",
+            contentType: "application/json",
+            muteHttpExceptions: true,
+            headers: headers,
+            payload: JSON.stringify(body),
+          }).getContentText(),
+        );
+      const oa = (url, key, model, extra) => () => {
+        const body = {
+          model: model,
+          temperature: 0,
+          messages: [{ role: "user", content: prompt }],
+        };
+        if (extra) for (const k in extra) body[k] = extra[k];
+        const j = post(url, { Authorization: "Bearer " + key }, body);
+        if (!j.choices)
+          throw new Error((j.error && j.error.message) || "no reply");
+        return j.choices[0].message.content;
+      };
+      const providers = [];
+      const G = P.getProperty("GROQ_KEY"),
+        C = P.getProperty("CEREBRAS_KEY"),
+        O = P.getProperty("OPENROUTER_KEY");
+      if (G) {
+        providers.push([
+          "Groq-20b",
+          oa(
+            "https://api.groq.com/openai/v1/chat/completions",
+            G,
+            "openai/gpt-oss-20b",
+            { reasoning_effort: "low" },
+          ),
+        ]);
+        providers.push([
+          "Groq-120b",
+          oa(
+            "https://api.groq.com/openai/v1/chat/completions",
+            G,
+            "openai/gpt-oss-120b",
+            { reasoning_effort: "low" },
+          ),
+        ]);
+      }
+      if (C)
+        providers.push([
+          "Cerebras",
+          oa("https://api.cerebras.ai/v1/chat/completions", C, "gpt-oss-120b"),
+        ]);
+      if (O)
+        providers.push([
+          "OpenRouter",
+          oa(
+            "https://openrouter.ai/api/v1/chat/completions",
+            O,
+            "openrouter/free",
+          ),
+        ]);
+      if (!providers.length)
+        return jsonOut({
+          error: "Set GROQ_KEY (free, console.groq.com) in Script Properties",
+        });
+      const errs = [];
+      for (const [name, fn] of providers) {
+        try {
+          const m = extractJsonText(fn());
+          if (m) {
+            JSON.parse(m);
+            return ContentService.createTextOutput(m).setMimeType(
+              ContentService.MimeType.JSON,
+            );
+          }
+          errs.push(name + ": no valid JSON");
+        } catch (er) {
+          errs.push(name + ": " + er.message);
+        }
+      }
+      return jsonOut({ error: errs.join(" | ") });
+    }
+
+    if (action === "aiAsk") {
+      const today = Utilities.formatDate(
+        new Date(),
+        "Asia/Kolkata",
+        "yyyy-MM-dd",
+      );
+      const history = String(e.parameter.hist || "").slice(0, 2200);
+      const prompt = [
+        "Today is " +
+          today +
+          ". You are the intent-understanding layer for a personal finance tracker.",
+        "Translate natural language into ONE executable query plan. Output valid JSON only, no markdown.",
+        'Schema: {"sources":[],"reply":"","goto":"","person":"","card":"","category":"","text":"","status":"","type":"","from":"","to":"","agg":"sum|count|list|max|min|avg","group":"none|month|person|card|category|status","top":5,"title":""}.',
+        "Never invent transaction facts or calculate amounts; the app computes results from actual rows.",
+        "Understand meaning, English, Hinglish, shorthand, and spelling mistakes; do not rely only on exact keywords.",
+        "AGGREGATION: highest/max/maximum/largest/biggest single transaction => max; lowest/minimum/smallest/cheapest => min; average/avg/mean => avg; how many/count/number of => count; show/list/details => list; total/how much spent/combined => sum. A biggest/smallest SINGLE transaction is never sum. Top N/bottom N set top=N and agg=max/min.",
+        "SOURCES: cards=credit-card transactions; expenses=personal expenses; sweetie=Sweetie ledger; salary=salary; summary=monthly remaining balance; config=card configuration/details.",
+        "Use config alone for card number/CVV/expiry/limit/due/cutoff/utilization questions, agg=list. Never use config for transaction questions. Explicit credit card/card or a named card => cards. Person name usually filters card transactions by person. My expenses/kharcha without a card => expenses. Salary => salary. Remaining/bacha/savings left => summary. Ask one short clarification if scope is genuinely ambiguous.",
+        "Known people: " +
+          (e.parameter.people || "") +
+          ". Exact card names: " +
+          (e.parameter.cards || "") +
+          ". Expense categories (exact spelling): " +
+          (e.parameter.cats || "") +
+          ".",
+        "Set person/card/category/status/type only when intended. Use text only for merchant/product/description keywords. Do NOT put words like transaction, amount, this month, highest, lowest, or total in text.",
+        "Dates are inclusive YYYY-MM-DD. Month without year means latest occurrence not after today. Resolve this month, last month, this year, named months, and relative dates using today. Salary/summary rows use the first day of the month.",
+        "FOLLOW-UPS: inspect recent history. For above/previous list, lowest from above, and highest?, same, that one, usme se, isme se, aur, etc., inherit the previous plan's sources and unchanged filters. Change only the requested part. If the user changes lowest/highest/total/count/average, change agg but preserve scope. Answer details from history only if explicitly present; otherwise ask a focused question. Never silently convert min/max into sum.",
+        'For greeting/small talk/help, return {"reply":"short helpful reply in the user\'s language"}. For opening a tab, return {"goto":"expenses|cards|grvcc|sweetie"}. Otherwise return a query plan.',
+        history
+          ? "Recent turns (JSON, oldest first): " +
+            history +
+            ". Use only to resolve references; a new explicit topic overrides old context."
+          : "",
+        "QUESTION:\n" + String(e.parameter.q || "").slice(0, 500),
+      ]
+        .filter(Boolean)
+        .join("\n");
+      return llmJson(prompt);
+    }
+
+    // ── EXPENSES ─────────────────────────────────────────────────────────
+    if (action === "get") {
+      const rows = expSheet.getDataRange().getValues();
+      const out = rows
+        .slice(1)
+        .map(normalizeExpRow)
+        .map((r) => [
+          r.id,
+          r.date,
+          r.month,
+          r.category,
+          r.description,
+          r.amount,
+        ]);
+      return jsonOut(out);
+    }
+
+    if (action === "getByMonth") {
+      const month = String(e.parameter.month || "").trim();
+      const rows = expSheet.getDataRange().getValues();
+      const out = rows
+        .slice(1)
+        .map(normalizeExpRow)
+        .filter((r) => r.month === month)
+        .map((r) => [
+          r.id,
+          r.date,
+          r.month,
+          r.category,
+          r.description,
+          r.amount,
+        ]);
+      return jsonOut(out);
+    }
+
+    if (action === "getSalary") {
+      const rows = salSheet.getDataRange().getValues();
+      const out = rows.map((row, i) => {
+        if (i === 0) return row;
+        return [
+          toMonthKey(row[0]),
+          typeof row[1] === "number" ? row[1] : parseFloat(row[1]) || 0,
+        ];
+      });
+      return jsonOut(out);
+    }
+
+    if (action === "setSalary") {
+      const month = String(e.parameter.month || "").trim();
+      const salary = parseFloat(e.parameter.salary || "0");
+      if (!month || isNaN(salary))
+        return textOut("ERROR: missing month or salary");
+      upsertSalary(salSheet, month, salary);
+      recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+      return textOut("OK");
+    }
+
+    if (action === "delete") {
+      const id = String(e.parameter.id || "").trim();
+      if (!id) return textOut("ERROR: missing id");
+      const rows = expSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === id) {
+          const month = toMonthKey(rows[i][2]);
+          expSheet.deleteRow(i + 1);
+          recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+          return textOut("Deleted");
+        }
+      }
+      return textOut("NotFound");
+    }
+
+    if (action === "add") {
+      const id = String(e.parameter.id || Date.now()).trim();
+      const date = String(e.parameter.date || "").trim();
+      const month = String(e.parameter.month || "").trim();
+      const category = String(e.parameter.category || "").trim();
+      const description = String(e.parameter.description || "").trim();
+      const amount = parseFloat(e.parameter.amount || "0");
+      if (!date || !month || !category || isNaN(amount))
+        return textOut("ERROR: missing fields");
+      expSheet.appendRow([id, date, month, category, description, amount]);
+      forceText(expSheet, expSheet.getLastRow(), 3);
+      recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+      return textOut("Added");
+    }
+
+    // ── CREDIT CARDS ─────────────────────────────────────────────────────
+    // Cards sheet columns: ID | CREDIT CARD | USED BY | DESCRIPTION | TRANSACTION DATE | REMARKS | AMOUNT | STATUS | BILLING MONTH
+
+    if (action === "getCardConfig") {
+      const cfgSheet = ss.getSheetByName("CardConfig");
+      if (!cfgSheet) return jsonOut([]);
+      return jsonOut(cfgSheet.getDataRange().getValues());
+    }
+
+    if (action === "getCardsByMonth") {
+      const billingMonth = String(e.parameter.billingMonth || "").trim();
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      const out = rows
+        .slice(1)
+        .filter((row) => String(row[8] || "").trim() === billingMonth)
+        .map((row) => [
+          String(row[0] || ""),
+          String(row[1] || ""),
+          String(row[2] || ""),
+          String(row[3] || ""),
+          toDateStr(row[4]),
+          String(row[5] || ""),
+          typeof row[6] === "number" ? row[6] : parseFloat(row[6]) || 0,
+          String(row[7] || "UNPAID"),
+          String(row[8] || ""),
+        ]);
+      return jsonOut(out);
+    }
+
+    // Fetch cards by transaction date month prefix(es) e.g. "2026-04" or "2026-04,2026-03,2026-02"
+    if (action === "getCardsByTxnMonth") {
+      const txnMonthParam = String(e.parameter.txnMonth || "").trim();
+      const prefixes = txnMonthParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      const out = rows
+        .slice(1)
+        .filter((row) => {
+          const dateStr = toDateStr(row[4]);
+          return prefixes.some((p) => dateStr.startsWith(p));
+        })
+        .map((row) => [
+          String(row[0] || ""),
+          String(row[1] || ""),
+          String(row[2] || ""),
+          String(row[3] || ""),
+          toDateStr(row[4]),
+          String(row[5] || ""),
+          typeof row[6] === "number" ? row[6] : parseFloat(row[6]) || 0,
+          String(row[7] || "UNPAID"),
+          String(row[8] || ""),
+        ]);
+      return jsonOut(out);
+    }
+
+    if (action === "addCard") {
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const id = String(e.parameter.id || Date.now()).trim();
+      const card = String(e.parameter.card || "").trim();
+      const usedBy = String(e.parameter.usedBy || "").trim();
+      const description = String(e.parameter.description || "").trim();
+      const txnDate = String(e.parameter.txnDate || "").trim();
+      const remarks = String(e.parameter.remarks || "").trim();
+      const amount = parseFloat(e.parameter.amount || "0");
+      const status = String(e.parameter.status || "UNPAID").trim();
+      if (!card || !txnDate || isNaN(amount))
+        return textOut("ERROR: missing fields");
+
+      // Server is authoritative for billing month. Ignore any client-supplied
+      // billingMonth so txnDate and billingMonth can never diverge.
+      const cutoff = getCardCutoff(ss, card);
+      const billingMonth = calcBillingMonth(txnDate, cutoff);
+      if (!billingMonth) return textOut("ERROR: invalid transaction date");
+
+      cardSheet.appendRow([
+        id,
+        card,
+        usedBy,
+        description,
+        txnDate,
+        remarks,
+        amount,
+        status,
+        billingMonth,
+      ]);
+      return textOut("Added");
+    }
+
+    if (action === "updateCard") {
+      const id = String(e.parameter.id || "").trim();
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === id) {
+          cardSheet
+            .getRange(i + 1, 1, 1, 9)
+            .setValues([
+              [
+                id,
+                String(e.parameter.card || rows[i][1] || "").trim(),
+                String(e.parameter.usedBy || "").trim(),
+                String(e.parameter.description || "").trim(),
+                String(e.parameter.txnDate || rows[i][4] || "").trim(),
+                String(e.parameter.remarks || "").trim(),
+                parseFloat(e.parameter.amount || rows[i][6] || "0") || 0,
+                String(e.parameter.status || rows[i][7] || "UNPAID").trim(),
+                "",
+              ],
+            ]);
+          const savedTxnDate = String(
+            e.parameter.txnDate || rows[i][4] || "",
+          ).trim();
+          const savedCard = String(e.parameter.card || rows[i][1] || "").trim();
+          const cutoff = getCardCutoff(ss, savedCard);
+          const billingMonth = calcBillingMonth(savedTxnDate, cutoff);
+          if (!billingMonth) return textOut("ERROR: invalid transaction date");
+          cardSheet.getRange(i + 1, 9).setValue(billingMonth);
+          return textOut("Updated");
+        }
+      }
+      return textOut("NotFound");
+    }
+
+    if (action === "updateCardStatusBulk") {
+      const ids = String(e.parameter.ids || "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const status = String(e.parameter.status || "").trim();
+      if (!ids.length || !status) return textOut("ERROR: missing ids/status");
+      const wanted = new Set(ids);
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (wanted.has(String(rows[i][0]).trim()))
+          cardSheet.getRange(i + 1, 8).setValue(status);
+      }
+      return textOut("Updated");
+    }
+
+    if (action === "payBill") {
+      const ids = String(e.parameter.ids || "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const card = String(e.parameter.card || "").trim();
+      const paymentDate = String(e.parameter.paymentDate || "").trim();
+      const paymentAmount = parseFloat(e.parameter.paymentAmount || "0");
+      const description = String(e.parameter.description || "").trim();
+      if (
+        !ids.length ||
+        !card ||
+        !paymentDate ||
+        !Number.isFinite(paymentAmount) ||
+        paymentAmount <= 0
+      )
+        return textOut("ERROR: missing bill payment fields");
+
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      const wanted = new Set(ids);
+      const matched = [];
+      for (let i = 1; i < rows.length; i++) {
+        const id = String(rows[i][0] || "").trim();
+        if (!wanted.has(id)) continue;
+        if (String(rows[i][1] || "").trim() !== card)
+          return textOut("ERROR: card mismatch for " + id);
+        const status = String(rows[i][7] || "UNPAID")
+          .trim()
+          .toUpperCase();
+        if (status !== "UNPAID")
+          return textOut("ERROR: one or more rows are no longer UNPAID");
+        matched.push({
+          sheetRow: i + 1,
+          id,
+          usedBy: String(rows[i][2] || "").trim(),
+          amount: parseFloat(rows[i][6]) || 0,
+        });
+      }
+      if (matched.length !== ids.length)
+        return textOut("ERROR: one or more transaction IDs were not found");
+
+      const statementTotal = matched.reduce((sum, r) => sum + r.amount, 0);
+      if (Math.abs(paymentAmount - statementTotal) > 0.01)
+        return textOut(
+          "ERROR: full bill payment required; payment must equal " +
+            statementTotal.toFixed(2),
+        );
+
+      // Gaurav's own rows become PAID. Everyone else's rows become OWED.
+      matched.forEach((r) => {
+        const next = isGrvUsedByServer(r.usedBy) ? "PAID" : "OWED";
+        cardSheet.getRange(r.sheetRow, 8).setValue(next);
+      });
+
+      const month = paymentDate.slice(0, 7);
+      const expSheet = getOrCreateExpensesSheet(ss);
+      const expId = "CCPAY-" + Date.now();
+      const myShare = matched
+        .filter((r) => isGrvUsedByServer(r.usedBy))
+        .reduce((sum, r) => sum + r.amount, 0);
+      const othersShare = matched
+        .filter((r) => !isGrvUsedByServer(r.usedBy))
+        .reduce((sum, r) => sum + r.amount, 0);
+      const finalDescription =
+        description ||
+        card +
+          " bill payment | My share " +
+          myShare.toFixed(2) +
+          " | Others " +
+          othersShare.toFixed(2);
+      expSheet.appendRow([
+        expId,
+        paymentDate,
+        month,
+        "Bill Repayment",
+        finalDescription,
+        paymentAmount,
+      ]);
+      forceText(expSheet, expSheet.getLastRow(), 3);
+      recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+      return textOut("Paid");
+    }
+
+    if (action === "settle") {
+      const ids = String(e.parameter.ids || "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const person = String(e.parameter.person || "").trim();
+      const paymentDate = String(e.parameter.paymentDate || "").trim();
+      const receivedAmount = parseFloat(e.parameter.receivedAmount || "0");
+      const description = String(e.parameter.description || "").trim();
+      if (
+        !ids.length ||
+        !person ||
+        !paymentDate ||
+        !Number.isFinite(receivedAmount) ||
+        receivedAmount <= 0
+      )
+        return textOut("ERROR: missing settlement fields");
+
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      const wanted = new Set(ids);
+      const matched = [];
+      for (let i = 1; i < rows.length; i++) {
+        const id = String(rows[i][0] || "").trim();
+        if (!wanted.has(id)) continue;
+        const usedBy = String(rows[i][2] || "").trim();
+        if (usedBy.toLowerCase() !== person.toLowerCase())
+          return textOut("ERROR: person mismatch for " + id);
+        if (
+          String(rows[i][7] || "")
+            .trim()
+            .toUpperCase() !== "OWED"
+        )
+          return textOut("ERROR: one or more rows are not OWED");
+        matched.push({
+          sheetRow: i + 1,
+          id,
+          amount: parseFloat(rows[i][6]) || 0,
+        });
+      }
+      if (matched.length !== ids.length)
+        return textOut(
+          "ERROR: one or more OWED transaction IDs were not found",
+        );
+      const owedTotal = matched.reduce((sum, r) => sum + r.amount, 0);
+      if (Math.abs(receivedAmount - owedTotal) > 0.01)
+        return textOut(
+          "ERROR: full settlement required; amount must equal " +
+            owedTotal.toFixed(2),
+        );
+
+      matched.forEach((r) =>
+        cardSheet.getRange(r.sheetRow, 8).setValue("SETTLED"),
+      );
+
+      const month = paymentDate.slice(0, 7);
+      const expSheet = getOrCreateExpensesSheet(ss);
+      const expId = "CCSETTLE-" + Date.now();
+      const finalDescription =
+        description ||
+        person + " settled credit-card share " + owedTotal.toFixed(2);
+      expSheet.appendRow([
+        expId,
+        paymentDate,
+        month,
+        "Received",
+        finalDescription,
+        receivedAmount,
+      ]);
+      forceText(expSheet, expSheet.getLastRow(), 3);
+      recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+      return textOut("Settled");
+    }
+
+    if (action === "deleteCard") {
+      const id = String(e.parameter.id || "").trim();
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === id) {
+          cardSheet.deleteRow(i + 1);
+          return textOut("Deleted");
+        }
+      }
+      return textOut("NotFound");
+    }
+
+    if (action === "updateCardStatus") {
+      const id = String(e.parameter.id || "").trim();
+      const status = String(e.parameter.status || "").trim();
+      const cardSheet = getOrCreateCardsSheet(ss);
+      const rows = cardSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === id) {
+          cardSheet.getRange(i + 1, 8).setValue(status);
+          return textOut("Updated");
+        }
+      }
+      return textOut("NotFound");
+    }
+
+    if (action === "upsertCardConfig") {
+      let cfgSheet = ss.getSheetByName("CardConfig");
+      if (!cfgSheet) {
+        cfgSheet = ss.insertSheet("CardConfig");
+        cfgSheet.appendRow([
+          "CARD",
+          "CUTOFF",
+          "LIMIT",
+          "DUE DAY",
+          "DUE MONTH OFFSET",
+        ]);
+      }
+      const oldCard = String(e.parameter.oldCard || "").trim();
+      const card = String(e.parameter.card || "").trim();
+      const bl = (v) => {
+        v = String(v == null ? "" : v).trim();
+        return v === "" || isNaN(Number(v)) ? "" : Number(v);
+      };
+      const cutoff = bl(e.parameter.cutoff),
+        limit = bl(e.parameter.limit),
+        dueDay = bl(e.parameter.dueDay),
+        dueMonthOffset = bl(e.parameter.dueMonthOffset);
+      if (!card) return textOut("ERROR: missing card");
+      const rows = cfgSheet.getDataRange().getValues();
+      let found = -1;
+      for (let i = 1; i < rows.length; i++)
+        if (
+          String(rows[i][0]).trim() === oldCard ||
+          (!oldCard && String(rows[i][0]).trim() === card)
+        ) {
+          found = i + 1;
+          break;
+        }
+      const values = [card, cutoff, limit, dueDay, dueMonthOffset];
+      if (found > 0) cfgSheet.getRange(found, 1, 1, 5).setValues([values]);
+      else cfgSheet.appendRow(values);
+      // CC Master is updated only when supplied; preserve existing fields on edit.
+      let cc = ss.getSheetByName("CC");
+      if (
+        !cc &&
+        (e.parameter.bank ||
+          e.parameter.number ||
+          e.parameter.numberCvv ||
+          e.parameter.expDate)
+      ) {
+        cc = ss.insertSheet("CC");
+        cc.appendRow([
+          "BANK",
+          "CREDIT CARD NAME",
+          "NUMBER",
+          "NUMBER & CVV",
+          "EXP DATE",
+        ]);
+      }
+      if (cc) {
+        const crows = cc.getDataRange().getValues();
+        let crow = -1;
+        const ck = oldCard || card,
+          ccName = String(e.parameter.ccName || "").trim();
+        for (let i = 1; i < crows.length; i++)
+          if (ccMatches(crows[i], ck)) {
+            crow = i + 1;
+            break;
+          }
+        const bank = String(e.parameter.bank || "").trim(),
+          number = String(e.parameter.number || "").trim(),
+          numberCvv = String(e.parameter.numberCvv || "").trim(),
+          expDate = String(e.parameter.expDate || "").trim();
+        if (crow > 0) {
+          const current = crows[crow - 1];
+          cc.getRange(crow, 3, 1, 3).setNumberFormat("@");
+          cc.getRange(crow, 1, 1, 5).setValues([
+            [
+              bank || current[0] || "",
+              ccName || current[1] || card,
+              number || current[2] || "",
+              numberCvv || current[3] || "",
+              expDate || current[4] || "",
+            ],
+          ]);
+        } else if (bank || number || numberCvv || expDate) {
+          const nr = cc.getLastRow() + 1;
+          cc.getRange(nr, 3, 1, 3).setNumberFormat("@");
+          cc.getRange(nr, 1, 1, 5).setValues([
+            [bank, ccName || card, number, numberCvv, expDate],
+          ]);
+        }
+      }
+      return textOut(found > 0 ? "Updated" : "Added");
+    }
+
+    if (action === "deleteCardConfig") {
+      const card = String(e.parameter.card || "").trim();
+      if (!card) return textOut("ERROR: missing card");
+      const cfgSheet = ss.getSheetByName("CardConfig");
+      if (cfgSheet) {
+        const rows = cfgSheet.getDataRange().getValues();
+        for (let i = rows.length - 1; i >= 1; i--)
+          if (String(rows[i][0]).trim() === card) cfgSheet.deleteRow(i + 1);
+      }
+      const cc = ss.getSheetByName("CC");
+      if (cc) {
+        const rows = cc.getDataRange().getValues();
+        for (let i = rows.length - 1; i >= 1; i--)
+          if (ccMatches(rows[i], card)) cc.deleteRow(i + 1);
+      }
+      return textOut("Deleted");
+    }
+
+    // ── SWEETIE TRACKER ──────────────────────────────────────────────────
+    // Sweetie sheet columns: ID | TYPE | AMOUNT | Remaining Amount | DATE | Description
+    // Remaining Amount is calculated server-side and WRITTEN BACK to the sheet
+    // every time the sheet changes — exactly like a bank passbook.
+    if (action === "getSweetie") {
+      const sweetieSheet = getOrCreateSweetieSheet(ss);
+      const rows = sweetieSheet.getDataRange().getValues();
+      const out = rows
+        .slice(1)
+        .filter((row) => row[0] && row[1]) // ID and TYPE both required
+        .map((row) => [
+          String(row[0] || ""),
+          String(row[1] || ""),
+          typeof row[2] === "number" ? row[2] : parseFloat(row[2]) || 0,
+          typeof row[3] === "number" ? row[3] : parseFloat(row[3]) || 0,
+          toDateStr(row[4]),
+          String(row[5] || ""),
+        ]);
+      return jsonOut(out);
+    }
+
+    if (action === "addSweetie") {
+      const sweetieSheet = getOrCreateSweetieSheet(ss);
+      const id = String(e.parameter.id || Date.now()).trim();
+      const type = String(e.parameter.type || "").trim();
+      const amount = parseFloat(e.parameter.amount || "0");
+      const date = String(e.parameter.date || "").trim();
+      const description = String(e.parameter.description || "").trim();
+      if (!type || !date || isNaN(amount))
+        return textOut("ERROR: missing fields");
+      // Remaining Amount column written as 0 here — recalcSweetieBalances() fixes it below
+      sweetieSheet.appendRow([id, type, amount, 0, date, description]);
+      recalcSweetieBalances(sweetieSheet);
+      return textOut("Added");
+    }
+
+    if (action === "deleteSweetie") {
+      const id = String(e.parameter.id || "").trim();
+      const sweetieSheet = getOrCreateSweetieSheet(ss);
+      const rows = sweetieSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === id) {
+          sweetieSheet.deleteRow(i + 1);
+          recalcSweetieBalances(sweetieSheet);
+          return textOut("Deleted");
+        }
+      }
+      return textOut("NotFound");
+    }
+
+    // ── CC MASTER LIST ───────────────────────────────────────────────────
+    // Direct read — no password prompt in the UI.
+    if (action === "getCCMaster") {
+      const ccSheet = ss.getSheetByName("CC");
+      if (!ccSheet)
+        return jsonOut({ error: "CC sheet not found in spreadsheet." });
+      const rows = ccSheet.getDataRange().getValues();
+      return jsonOut(rows.slice(1).filter((r) => r[0] || r[1]));
+    }
+
+    return textOut("ERROR: unknown action");
+  } catch (err) {
+    return textOut("ERROR: " + err.message);
+  } finally {
+    if (writeLock) {
+      try {
+        writeLock.releaseLock();
+      } catch (e) {}
+    }
+  }
+}
+
+// Extract first balanced JSON object, respecting quoted braces and escaped quotes.
+function extractJsonText(value) {
+  const s = String(value || "")
+    .replace(/^\s*```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/i, "");
+  const start = s.indexOf("{");
+  if (start < 0) return "";
+  let depth = 0,
+    quoted = false,
+    escaped = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') quoted = false;
+      continue;
+    }
+    if (c === '"') quoted = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return s.slice(start, i + 1);
+  }
+  return "";
+}
+
+// Shared LLM provider chain (Groq -> Cerebras -> OpenRouter). Returns JSON output.
+function llmJson(prompt) {
+  const P = PropertiesService.getScriptProperties();
+  const post = (url, headers, body) =>
+    JSON.parse(
+      UrlFetchApp.fetch(url, {
+        method: "post",
+        contentType: "application/json",
+        muteHttpExceptions: true,
+        headers: headers,
+        payload: JSON.stringify(body),
+      }).getContentText(),
+    );
+  const oa = (url, key, model, extra) => () => {
+    const body = {
+      model: model,
+      temperature: 0,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a precise finance-query planner, not a financial calculator. Follow the supplied schema exactly. Output one valid JSON object only. Preserve unchanged filters on follow-ups and never confuse min/max/count/average with sum. Never invent records or totals.",
+        },
+        { role: "user", content: prompt },
+      ],
+    };
+    if (extra) for (const k in extra) body[k] = extra[k];
+    const j = post(url, { Authorization: "Bearer " + key }, body);
+    if (!j.choices) throw new Error((j.error && j.error.message) || "no reply");
+    return j.choices[0].message.content;
+  };
+  const providers = [];
+  const G = P.getProperty("GROQ_KEY"),
+    C = P.getProperty("CEREBRAS_KEY"),
+    O = P.getProperty("OPENROUTER_KEY");
+  if (G) {
+    providers.push([
+      "Groq-120b",
+      oa(
+        "https://api.groq.com/openai/v1/chat/completions",
+        G,
+        "openai/gpt-oss-120b",
+        { reasoning_effort: "medium" },
+      ),
+    ]);
+    providers.push([
+      "Groq-20b",
+      oa(
+        "https://api.groq.com/openai/v1/chat/completions",
+        G,
+        "openai/gpt-oss-20b",
+        { reasoning_effort: "medium" },
+      ),
+    ]);
+  }
+  if (C)
+    providers.push([
+      "Cerebras",
+      oa("https://api.cerebras.ai/v1/chat/completions", C, "gpt-oss-120b"),
+    ]);
+  if (O)
+    providers.push([
+      "OpenRouter",
+      oa("https://openrouter.ai/api/v1/chat/completions", O, "openrouter/free"),
+    ]);
+  if (!providers.length)
+    return jsonOut({ error: "Set GROQ_KEY in Script Properties" });
+  const errs = [];
+  for (const [name, fn] of providers) {
+    try {
+      const m = extractJsonText(fn());
+      if (m) {
+        JSON.parse(m);
+        return ContentService.createTextOutput(m).setMimeType(
+          ContentService.MimeType.JSON,
+        );
+      }
+      errs.push(name + ": no valid JSON");
+    } catch (er) {
+      errs.push(name + ": " + er.message);
+    }
+  }
+  return jsonOut({ error: errs.join(" | ") });
+}
+
+function getOrCreateExpensesSheet(ss) {
+  return ss.getSheetByName("Expenses") || ss.insertSheet("Expenses");
+}
+function ccMatches(row, card) {
+  const n = (x) =>
+    String(x || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  const c = n(card);
+  return (
+    n(row[1]) === c ||
+    n(row[0] + "-" + row[1]) === c ||
+    n(row[0] + " " + row[1]) === c
+  );
+}
+
 function isGrvUsedByServer(value) {
-  const v = String(value || "").trim().toUpperCase();
+  const v = String(value || "")
+    .trim()
+    .toUpperCase();
   return v === "GRV" || v === "GAURAV" || v === "ME";
 }
 
@@ -196,7 +1078,14 @@ function getOrCreateSweetieSheet(ss) {
   let sheet = ss.getSheetByName("Sweetie");
   if (!sheet) {
     sheet = ss.insertSheet("Sweetie");
-    sheet.appendRow(["ID", "TYPE", "AMOUNT", "Remaining Amount", "DATE", "Description"]);
+    sheet.appendRow([
+      "ID",
+      "TYPE",
+      "AMOUNT",
+      "Remaining Amount",
+      "DATE",
+      "Description",
+    ]);
   }
   return sheet;
 }
@@ -237,11 +1126,15 @@ function recalcSweetieBalances(sheet) {
   // (important since writing also re-fires the onEdit trigger below).
   let running = 0;
   items.forEach((item) => {
-    const signedAmt = item.type.toUpperCase() === "DEBIT" ? -Math.abs(item.amount) : Math.abs(item.amount);
+    const signedAmt =
+      item.type.toUpperCase() === "DEBIT"
+        ? -Math.abs(item.amount)
+        : Math.abs(item.amount);
     running += signedAmt;
     const cell = sheet.getRange(item.sheetRow, 4);
     const current = cell.getValue();
-    const currentNum = typeof current === "number" ? current : parseFloat(current) || 0;
+    const currentNum =
+      typeof current === "number" ? current : parseFloat(current) || 0;
     if (Math.round(currentNum * 100) !== Math.round(running * 100)) {
       cell.setValue(running);
     }

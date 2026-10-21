@@ -14,7 +14,7 @@
     <b style="font-size:1.1rem">✨ AI Transaction Entry</b>
     <p style="opacity:.7;font-size:.85rem;margin:6px 0 10px">Paste a bank message to add a transaction, or ask a question about your spending.</p>
     <textarea id="aiTxt" rows="5" style="width:100%;box-sizing:border-box;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid var(--border,#2a2a3d)"></textarea>
-    <div style="margin-top:12px"><button id="aiGo" style="width:100%;padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Parse</button></div></div>`;
+    <div style="margin-top:12px;display:flex;gap:8px"><button id="aiGo" style="flex:1;padding:10px 12px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">➕ Parse</button><button id="aiAsk" style="flex:1;padding:10px 12px;border-radius:12px;border:1px solid #8b5cf6;font-weight:700;background:#8b5cf622;color:#c4b5fd;cursor:pointer">🔍 AI Search</button></div></div>`;
   const sb = $("summaryBtn");
   if (fab.parentNode) {
   } else if (sb && sb.parentNode) sb.parentNode.insertBefore(fab, sb);
@@ -86,7 +86,7 @@
     const go = $("aiGo");
     if (go) {
       go.disabled = false;
-      go.textContent = "Parse";
+      go.textContent = "➕ Parse";
     }
   };
   const close = () => {
@@ -544,18 +544,38 @@
     }
     return null;
   }
+  // Txn amount = first money value NOT labelled limit/balance/outstanding/due (works for any bank format).
+  function bankAmount(t) {
+    const re = /(?:\b(?:inr|rs\.?)|₹)\s*([\d,]+(?:\.\d+)?)/gi;
+    let m,
+      first = 0;
+    while ((m = re.exec(t))) {
+      const v = +m[1].replace(/,/g, "");
+      if (!(v > 0)) continue;
+      const before = t.slice(Math.max(0, m.index - 34), m.index).toLowerCase();
+      if (
+        /(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(
+          before,
+        )
+      )
+        continue;
+      if (!first) first = v;
+      if (
+        /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(
+          before,
+        )
+      )
+        return v;
+    }
+    return first;
+  }
   // Instant bank SMS / email parser (no AI): amount, card last-4/bank, date, merchant.
   async function smsParse(t) {
     if (t.length > 3000) return null;
-    const am = t.match(/(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d+)?)/i);
-    if (
-      !am ||
-      !/\b(spent|debited|purchase|paid|payment|txn|transaction|charged)\b/i.test(
-        t,
-      )
-    )
-      return null;
-    const amount = +am[1].replace(/,/g, "");
+    if (!isBankSms(t)) return null;
+    const am = bankAmount(t);
+    if (!am) return null;
+    const amount = am;
     if (!(amount > 0)) return null;
     let date = null,
       m;
@@ -637,9 +657,14 @@
       if (c.length === 1) card = c[0].card;
     }
     if (!card) return null;
-    const mm = t.match(
-      /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
+    const lm = t.match(
+      /\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i,
     );
+    const mm =
+      lm ||
+      t.match(
+        /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
+      );
     return {
       kind: "card",
       card,
@@ -694,7 +719,18 @@
       /[&<>"]/g,
       (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
     );
+  // Strong bank-SMS signal: money amount + (txn word OR card last-4 OR merchant label). Beats every "question" guess.
+  const isBankSms = (t) =>
+    /(?:\b(?:inr|rs\.?)|₹)\s*[\d,]+/i.test(t) &&
+    (/\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited)\b/i.test(
+      t,
+    ) ||
+      /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(
+        t,
+      ));
+  let forceParse = false;
   const isQuestion = (t) => {
+    if (isBankSms(t)) return false;
     if (
       /\b(inr|rs\.?)\s*[\d,]+/i.test(t) &&
       /\b(spent|debited|purchase|txn|transaction|card)\b/i.test(t)
@@ -1099,7 +1135,7 @@
     qa.dataset.chat = 1;
     const bs =
       "width:34px;height:34px;min-width:34px;border-radius:10px;border:1px solid #ffffff35;background:#ffffff10;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;padding:0";
-    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Ask anything…" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><button id="chGo" type="button" style="padding:10px 18px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">Send</button></div></div>`;
+    qa.innerHTML = `<div style="width:min(640px,100%);height:min(88vh,800px);display:flex;flex-direction:column;background:linear-gradient(160deg,#1a1a2c,#0d0d17);color:var(--text,#eef);border:1px solid #22d3ee44;border-radius:22px;box-shadow:0 24px 70px #000c,0 0 50px #22d3ee22;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #ffffff14"><b>✨ AI Assistant</b><span style="display:flex;gap:8px"><button type="button" class="qaB" data-c="clear" title="New chat" style="${bs}">✎</button><button type="button" class="qaB qaX" data-c="close" title="Close" style="${bs}">✕</button></span></div><div id="chThread" style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px"></div><div style="padding:12px 14px;border-top:1px solid #ffffff14;display:flex;gap:8px;align-items:flex-end"><textarea id="chIn" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Ask anything…" style="flex:1;resize:none;max-height:120px;border-radius:12px;padding:10px;background:transparent;color:inherit;border:1px solid #ffffff30;font:inherit;outline:none"></textarea><div style="display:flex;flex-direction:column;gap:6px"><button id="chParse" type="button" style="padding:8px 14px;border-radius:12px;border:0;font-weight:700;background:#22d3ee;color:#0b0b10;cursor:pointer">➕ Parse</button><button id="chGo" type="button" style="padding:8px 14px;border-radius:12px;border:1px solid #8b5cf6;font-weight:700;background:#8b5cf622;color:#c4b5fd;cursor:pointer">🔍 Ask</button></div></div></div>`;
     qa.addEventListener("click", (e) => {
       const b = e.target.closest("[data-c]");
       if (!b) return;
@@ -1132,7 +1168,8 @@
         );
       }
     });
-    $("chGo").onclick = chatSend;
+    $("chGo").onclick = () => chatSend("ask");
+    $("chParse").onclick = () => chatSend("parse");
     $("chIn").addEventListener("keydown", (e) => {
       if (e.isComposing || e.keyCode === 229) return;
       if (
@@ -1267,18 +1304,25 @@
     return true;
   }
 
-  function chatSend() {
+  function chatSend(mode) {
     const inp = $("chIn"),
       text = inp.value.trim();
     if (!text) return;
-    if (answerFromPrevious(text)) {
+    if (mode !== "parse" && answerFromPrevious(text)) {
       inp.value = "";
       return;
     }
-    if (!isQuestion(text) || localParse(text)) {
+    // Buttons are explicit; Enter auto-detects (bank SMS => parse, else search)
+    if (mode !== "parse" && mode !== "ask")
+      mode =
+        isBankSms(text) || !isQuestion(text) || localParse(text)
+          ? "parse"
+          : "ask";
+    if (mode === "parse") {
       qa.style.display = "none";
       aiText.value = text;
       inp.value = "";
+      forceParse = true;
       $("aiGo").click();
       return;
     }
@@ -1555,8 +1599,18 @@
     openChat();
     return chatAsk(text);
   }
-  $("aiGo").onclick = async () => {
+  $("aiAsk").onclick = () => {
+    const t = $("aiTxt").value.trim();
+    if (!t) {
+      showAiError("Text needed", new Error("Type a question first."));
+      return;
+    }
+    askData(t);
+  };
+  $("aiGo").onclick = async (ev) => {
     clearAiError();
+    const fp = forceParse || !!(ev && ev.isTrusted);
+    forceParse = false;
     const text = $("aiTxt").value.trim();
     if (!text) {
       showAiError(
@@ -1568,11 +1622,9 @@
     const qLike =
       /\b(kitna|kitne|kitni|kharcha|kharch|expenses? (of|on|for)|how (much|many)|total|average|avg|last \d+ (day|week|month|year)s?|pichle|pichhle|is (mahine|saal|month|year)|this (month|year|week)|show|list|compare|sabse|highest|lowest|biggest|smallest|count|batao|btao|bata|dikhao|kya|kab|kaun|which|what)\b/i.test(
         text,
-      ) &&
-      !/\b(inr|rs\.?|₹)\s*[\d,]+.*\b(spent|debited|credited|purchase|txn|transaction|paid)\b/i.test(
-        text,
-      );
-    if (qLike || (isQuestion(text) && !localParse(text))) return askData(text);
+      ) && !isBankSms(text);
+    if (!fp && (qLike || (isQuestion(text) && !localParse(text))))
+      return askData(text);
     const lab = labelHint(text);
     const body0 = lab ? lab.body : text;
     const applyLab = (o) => {
@@ -1703,11 +1755,12 @@
       box.style.display = "none";
       preview(r);
     } catch (e) {
+      box.style.display = "flex";
       showAiError("Couldn’t parse that text", e);
       console.warn("[AI transaction parse]", e);
     } finally {
       b.disabled = false;
-      b.textContent = "Parse";
+      b.textContent = "➕ Parse";
     }
   };
 })();
