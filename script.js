@@ -1367,7 +1367,8 @@ function renderCards() {
     tr.insertCell(2).innerHTML =
       `<span class="table-data-pill table-person-pill person-tone-${getPersonTone(t.usedBy)}">${esc(t.usedBy || "—")}</span>`;
     tr.insertCell(3).innerHTML =
-      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>` +
+      (t.remarks ? `<div class="cc-rem">↳ ${esc(t.remarks)}</div>` : "");
     tr.insertCell(4).innerHTML =
       `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
     tr.insertCell(5).innerHTML =
