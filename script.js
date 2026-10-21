@@ -331,7 +331,50 @@ function lockDatePicker() {
 }
 
 // ─── SHEET WRITE (fire-and-forget, no-cors) ──────────────────────────────────
+// ── Pending writes: a sync that was fetched before the sheet finished saving must NOT wipe/revert local changes ──
+const _pendAdd = new Map(); // id -> ts (added or updated locally, sheet may not show it yet)
+const _pendDel = new Map(); // id -> ts (deleted locally, sheet may still return it)
+const PEND_MS = 45000;
+function _pendTouch(url) {
+  try {
+    const sp = new URL(url, location.href).searchParams;
+    const a = sp.get("action") || "",
+      id = sp.get("id");
+    if (!id) return;
+    if (/^delete/i.test(a)) {
+      _pendDel.set(id, Date.now());
+      _pendAdd.delete(id);
+    } else if (/^(add|update)/i.test(a)) {
+      _pendAdd.set(id, Date.now());
+      _pendDel.delete(id);
+    }
+  } catch (_) {}
+}
+function mergePending(localList, sheetList, idOf) {
+  idOf = idOf || ((x) => x.id);
+  const now = Date.now();
+  [_pendAdd, _pendDel].forEach((m) =>
+    m.forEach((t, k) => {
+      if (now - t > PEND_MS) m.delete(k);
+    }),
+  );
+  if (!_pendAdd.size && !_pendDel.size) return sheetList;
+  const loc = new Map(localList.map((x) => [String(idOf(x)), x]));
+  const out = sheetList
+    .filter((x) => !_pendDel.has(String(idOf(x))))
+    .map((x) => {
+      const id = String(idOf(x));
+      return _pendAdd.has(id) && loc.has(id) ? loc.get(id) : x;
+    });
+  const have = new Set(out.map((x) => String(idOf(x))));
+  _pendAdd.forEach((_, id) => {
+    if (!have.has(id) && loc.has(id) && !_pendDel.has(id))
+      out.push(loc.get(id));
+  });
+  return out;
+}
 function sheetWrite(url) {
+  _pendTouch(url);
   fetch(url, { mode: "no-cors" }).catch((err) => {
     console.warn("Sheet write error (data likely saved):", err);
   });
@@ -971,7 +1014,13 @@ async function syncFromSheet(isManual = false, isInitial = false) {
       return;
     }
 
-    expenses = [...expenses.filter((e) => e.month !== key), ...fromSheet];
+    expenses = [
+      ...expenses.filter((e) => e.month !== key),
+      ...mergePending(
+        expenses.filter((e) => e.month === key),
+        fromSheet,
+      ),
+    ];
 
     if (Array.isArray(salRes) && salRes.length > 1) {
       salRes.slice(1).forEach((row) => {
@@ -1619,7 +1668,7 @@ async function syncCardsFromSheet(isManual = false) {
               ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
             );
           }),
-          ...fromSheet,
+          ...mergePending(cardTxns, fromSheet),
         ];
       }
     }
@@ -3585,8 +3634,9 @@ async function loadGrvBillsMonthData() {
       billingMonth: formatBillingMonth(row[8] || ""),
     }))
     .filter((t) => t.id && t.txnDate);
-  const ids = new Set(fresh.map((t) => t.id));
-  cardTxns = [...cardTxns.filter((t) => !ids.has(t.id)), ...fresh];
+  const merged = mergePending(cardTxns, fresh);
+  const ids = new Set(merged.map((t) => t.id));
+  cardTxns = [...cardTxns.filter((t) => !ids.has(t.id)), ...merged];
   saveLocal();
 }
 
@@ -4366,7 +4416,7 @@ async function syncSweetieFromSheet(isManual = false) {
             4000,
           );
       } else {
-        sweetieTxns = fromSheet;
+        sweetieTxns = mergePending(sweetieTxns, fromSheet);
       }
     }
 
