@@ -157,32 +157,7 @@ function billingMonthKey() {
 }
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
-function markInvalid() {
-  const m = [
-    ...document.querySelectorAll(".grv-card-modal,.grv-bills-modal"),
-  ].find((x) => x.style.display !== "none" && x.offsetParent !== null);
-  const sc =
-    m ||
-    ["expenseSection", "cardSection", "sweetieSection", "grvCCSection"]
-      .map((i) => document.getElementById(i))
-      .find((x) => x && x.offsetParent !== null);
-  if (!sc) return;
-  sc.querySelectorAll(
-    "input:not([type=hidden]):not([type=search]),select",
-  ).forEach((el) => {
-    if (el.value !== "" || el.offsetParent === null) return;
-    const lb = (el.closest("div")?.textContent || "").toLowerCase();
-    if (lb.includes("optional") || /search|filter/i.test(el.id + el.className))
-      return;
-    el.classList.add("field-invalid");
-    el.addEventListener("input", () => el.classList.remove("field-invalid"), {
-      once: true,
-    });
-    setTimeout(() => el.classList.remove("field-invalid"), 4000);
-  });
-}
 function toast(msg, err = false, duration = 3000, action = null) {
-  if (err && /required|enter|select|valid/i.test(msg)) markInvalid();
   const el = document.getElementById("toastMsg");
   if (!el) return;
   el.innerHTML = "";
@@ -201,7 +176,8 @@ function toast(msg, err = false, duration = 3000, action = null) {
     };
     el.appendChild(btn);
   }
-  el.classList.toggle("err", !!err);
+  el.style.background = err ? "#f87171" : "#34d399";
+  el.style.color = err ? "#fff" : "#0b0b10";
   el.classList.add("show");
   clearTimeout(el._timer);
   el._timer = setTimeout(() => el.classList.remove("show"), duration);
@@ -331,50 +307,7 @@ function lockDatePicker() {
 }
 
 // ─── SHEET WRITE (fire-and-forget, no-cors) ──────────────────────────────────
-// ── Pending writes: a sync that was fetched before the sheet finished saving must NOT wipe/revert local changes ──
-const _pendAdd = new Map(); // id -> ts (added or updated locally, sheet may not show it yet)
-const _pendDel = new Map(); // id -> ts (deleted locally, sheet may still return it)
-const PEND_MS = 45000;
-function _pendTouch(url) {
-  try {
-    const sp = new URL(url, location.href).searchParams;
-    const a = sp.get("action") || "",
-      id = sp.get("id");
-    if (!id) return;
-    if (/^delete/i.test(a)) {
-      _pendDel.set(id, Date.now());
-      _pendAdd.delete(id);
-    } else if (/^(add|update)/i.test(a)) {
-      _pendAdd.set(id, Date.now());
-      _pendDel.delete(id);
-    }
-  } catch (_) {}
-}
-function mergePending(localList, sheetList, idOf) {
-  idOf = idOf || ((x) => x.id);
-  const now = Date.now();
-  [_pendAdd, _pendDel].forEach((m) =>
-    m.forEach((t, k) => {
-      if (now - t > PEND_MS) m.delete(k);
-    }),
-  );
-  if (!_pendAdd.size && !_pendDel.size) return sheetList;
-  const loc = new Map(localList.map((x) => [String(idOf(x)), x]));
-  const out = sheetList
-    .filter((x) => !_pendDel.has(String(idOf(x))))
-    .map((x) => {
-      const id = String(idOf(x));
-      return _pendAdd.has(id) && loc.has(id) ? loc.get(id) : x;
-    });
-  const have = new Set(out.map((x) => String(idOf(x))));
-  _pendAdd.forEach((_, id) => {
-    if (!have.has(id) && loc.has(id) && !_pendDel.has(id))
-      out.push(loc.get(id));
-  });
-  return out;
-}
 function sheetWrite(url) {
-  _pendTouch(url);
   fetch(url, { mode: "no-cors" }).catch((err) => {
     console.warn("Sheet write error (data likely saved):", err);
   });
@@ -382,52 +315,6 @@ function sheetWrite(url) {
 
 // ─── TAB SWITCHING ───────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const ids = {
-    expenses: "expenseSection",
-    cards: "cardSection",
-    grvcc: "grvCCSection",
-    sweetie: "sweetieSection",
-  };
-  const old =
-    tab !== activeTab && !matchMedia("(prefers-reduced-motion:reduce)").matches
-      ? document.getElementById(ids[activeTab])
-      : null;
-  const m =
-    old && old.offsetParent
-      ? {
-          t: old.offsetTop,
-          l: old.offsetLeft,
-          w: old.offsetWidth,
-          d: old.style.display,
-        }
-      : null;
-  const dir =
-    ["expenses", "cards", "grvcc", "sweetie"].indexOf(tab) >=
-    ["expenses", "cards", "grvcc", "sweetie"].indexOf(activeTab)
-      ? 1
-      : -1;
-  _switchTabCore(tab);
-  if (!m || old.offsetParent) return;
-  old.style.cssText += `;display:${m.d || "block"};position:absolute;top:${m.t}px;left:${m.l}px;width:${m.w}px;pointer-events:none;animation:none`;
-  old.animate(
-    [
-      { transform: "translateX(0)", opacity: 1 },
-      { transform: `translateX(${-dir * 120}px)`, opacity: 0 },
-    ],
-    { duration: 240, easing: "cubic-bezier(.4,0,.2,1)" },
-  ).onfinish = () => {
-    old.style.display = "none";
-    ["position", "top", "left", "width", "pointer-events", "animation"].forEach(
-      (p) => old.style.removeProperty(p),
-    );
-  };
-}
-function _switchTabCore(tab) {
-  const _o = ["expenses", "cards", "grvcc", "sweetie"];
-  document.documentElement.style.setProperty(
-    "--tabdir",
-    _o.indexOf(tab) >= _o.indexOf(activeTab) ? "120px" : "-120px",
-  );
   activeTab = tab;
   const elExpenses = document.getElementById("tabExpenses");
   const elCards = document.getElementById("tabCards");
@@ -1014,13 +901,7 @@ async function syncFromSheet(isManual = false, isInitial = false) {
       return;
     }
 
-    expenses = [
-      ...expenses.filter((e) => e.month !== key),
-      ...mergePending(
-        expenses.filter((e) => e.month === key),
-        fromSheet,
-      ),
-    ];
+    expenses = [...expenses.filter((e) => e.month !== key), ...fromSheet];
 
     if (Array.isArray(salRes) && salRes.length > 1) {
       salRes.slice(1).forEach((row) => {
@@ -1359,20 +1240,20 @@ function renderCards() {
 
   sorted.forEach((t) => {
     const tr = tbody.insertRow();
+    if (t.status === "UNPAID") tr.classList.add("grv-unpaid-row");
     const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status === "PAID" ? "✓ " : "! "}${t.status}</span>`;
 
     tr.insertCell(0).textContent = formatDisplayDate(t.txnDate);
     tr.insertCell(1).innerHTML =
-      `<span class="table-data-pill table-card-pill">${esc(t.card)}</span>`;
+      `<span class="table-data-pill table-card-pill grv-card-tone-${getCardTone(t.card)}">${esc(t.card)}</span>`;
     tr.insertCell(2).innerHTML =
       `<span class="table-data-pill table-person-pill person-tone-${getPersonTone(t.usedBy)}">${esc(t.usedBy || "—")}</span>`;
     tr.insertCell(3).innerHTML =
-      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>` +
-      (t.remarks ? `<div class="cc-rem">↳ ${esc(t.remarks)}</div>` : "");
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
     tr.insertCell(4).innerHTML =
       `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
     tr.insertCell(5).innerHTML =
-      `<span class="table-data-pill table-amount-pill ${t.amount < 0 ? "table-positive-pill" : "table-negative-pill"}">${money(t.amount)}</span>`;
+      `<span class="table-data-pill table-amount-pill table-negative-pill">${money(t.amount)}</span>`;
 
     const statusCell = tr.insertCell(6);
     const statusBtn = document.createElement("button");
@@ -1418,79 +1299,6 @@ function renderCards() {
     actCell.appendChild(delBtn);
   });
 }
-
-// Refund = a card entry with a NEGATIVE amount (reduces the bill). The user PICKS the original transaction
-// in the "Refund of" dropdown (shown only for negative amounts) - nothing is guessed.
-function linkRefund(r, origId) {
-  const t = cardTxns.find((x) => x.id === origId);
-  const need = -r.amount;
-  if (!t || !(need > 0) || Number(t.amount) < need - 0.001) return null;
-  const note = `REFUND ${money(need)} (${formatDisplayDate(r.txnDate)})`;
-  t.remarks = t.remarks ? `${t.remarks} | ${note}` : note;
-  const back = `REFUND OF ${money(t.amount)} (${formatDisplayDate(t.txnDate)})`;
-  r.remarks = r.remarks ? `${r.remarks} | ${back}` : back;
-  sheetWrite(
-    apiUrl(
-      `action=updateCard&id=${enc(t.id)}&card=${enc(t.card)}&usedBy=${enc(t.usedBy || "")}&description=${enc(t.description || "")}&txnDate=${enc(t.txnDate)}&remarks=${enc(t.remarks)}&amount=${t.amount}&status=${enc(t.status || "UNPAID")}&billingMonth=${enc(t.billingMonth || "")}`,
-    ),
-  );
-  return t;
-}
-// "Refund of" picker: appears under Amount only when the amount is negative (and not editing)
-function refundFieldSync() {
-  const amt = document.getElementById("cardAmount"),
-    box = document.getElementById("refundOfField"),
-    sel = document.getElementById("cardRefundOf");
-  if (!amt || !box || !sel) return;
-  const neg = parseFloat(amt.value) < 0 && !editingCardId;
-  box.style.display = neg ? "" : "none";
-  if (!neg) {
-    sel.value = "";
-    return;
-  }
-  const card = document.getElementById("cardSelect").value,
-    keep = sel.value;
-  const list = cardTxns
-    .filter(
-      (t) =>
-        t.card === card &&
-        Number(t.amount) > 0 &&
-        String(t.status).toUpperCase() === "UNPAID",
-    )
-    .sort(
-      (a, b) =>
-        String(b.txnDate).localeCompare(String(a.txnDate)) ||
-        String(b.id).localeCompare(String(a.id)),
-    )
-    .slice(0, 60);
-  sel.innerHTML =
-    '<option value="">— Not linked —</option>' +
-    list
-      .map(
-        (t) =>
-          `<option value="${esc(t.id)}">${esc(formatDisplayDate(t.txnDate))} · ${esc((t.description || "—").slice(0, 28))} · ${money(t.amount)}</option>`,
-      )
-      .join("");
-  if ([...sel.options].some((o) => o.value === keep)) sel.value = keep;
-}
-function initRefundField() {
-  const amt = document.getElementById("cardAmount");
-  if (!amt || document.getElementById("refundOfField")) return;
-  const f = amt.closest(".field");
-  if (!f) return;
-  const box = document.createElement("div");
-  box.className = "field";
-  box.id = "refundOfField";
-  box.style.display = "none";
-  box.innerHTML =
-    '<label>Refund of (pick the original purchase)</label><select id="cardRefundOf"></select>';
-  f.after(box);
-  amt.addEventListener("input", refundFieldSync);
-  document
-    .getElementById("cardSelect")
-    .addEventListener("change", refundFieldSync);
-}
-document.addEventListener("DOMContentLoaded", initRefundField);
 
 function sortCards(col) {
   if (cardSort.col === col)
@@ -1549,8 +1357,7 @@ function addCardEntry() {
   if (!card || !txnDate || !rawAmt)
     return toast("Card, date & amount required", true);
   const amount = parseFloat(rawAmt);
-  // negative amount = refund / reversal (reduces the card bill)
-  if (isNaN(amount) || amount === 0) return toast("Enter a valid amount", true);
+  if (isNaN(amount) || amount <= 0) return toast("Enter a valid amount", true);
 
   // Duplicate protection: same card + amount + date + description + Used By.
   // During edit, ignore the transaction currently being edited.
@@ -1625,18 +1432,10 @@ function addCardEntry() {
     billingMonth,
   };
 
-  const refId = (document.getElementById("cardRefundOf") || {}).value || "";
-  const linked = entry.amount < 0 && refId ? linkRefund(entry, refId) : null;
-  if (entry.amount < 0 && refId && !linked)
-    toast("Refund is more than the picked purchase — added without link", true);
   cardTxns.push(entry);
   saveLocal();
   renderCards();
-  toast(
-    linked
-      ? `Refund added ✓ — noted on ${linked.description || "original"}`
-      : "Card entry added ✓",
-  );
+  toast("Card entry added ✓");
 
   document.getElementById("cardUsedBy").value = "";
   document.getElementById("cardDesc").value = "";
@@ -1647,7 +1446,6 @@ function addCardEntry() {
   document.getElementById("cancelCardEditBtn").style.display = "none";
   document.getElementById("cancelCardEditBtn").textContent = "✕ Cancel Edit";
   document.getElementById("cardAmount").value = "";
-  refundFieldSync();
 
   sheetWrite(
     apiUrl(
@@ -1752,7 +1550,7 @@ async function syncCardsFromSheet(isManual = false) {
               ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
             );
           }),
-          ...mergePending(cardTxns, fromSheet),
+          ...fromSheet,
         ];
       }
     }
@@ -1796,8 +1594,6 @@ async function syncCardsFromSheet(isManual = false) {
 
 let ccMasterFetchPromise = null;
 
-let ccMasterCache = null;
-setTimeout(() => fetchCCMasterData().catch(() => {}), 1500);
 function fetchCCMasterData() {
   if (ccMasterFetchPromise) return ccMasterFetchPromise;
   ccMasterFetchPromise = fetch(apiUrl("action=getCCMaster"))
@@ -1805,7 +1601,6 @@ function fetchCCMasterData() {
     .then((data) => {
       if (!Array.isArray(data))
         throw new Error(data.error || "Unable to load CC Master");
-      ccMasterCache = data;
       return data;
     })
     .finally(() => {
@@ -1830,17 +1625,6 @@ async function openCCMaster() {
     '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
-    if (ccMasterCache) {
-      const old = JSON.stringify(ccMasterCache);
-      renderCCMaster(ccMasterCache);
-      fetchCCMasterData()
-        .then((d) => {
-          if (JSON.stringify(d) !== old && modal.style.display !== "none")
-            renderCCMaster(d);
-        })
-        .catch(() => {});
-      return;
-    }
     const data = await fetchCCMasterData();
     renderCCMaster(data);
   } catch (err) {
@@ -1946,25 +1730,16 @@ function clearCCMasterSearch() {
 
 async function copyCC(btn) {
   const text = decodeURIComponent(btn.dataset.copy);
-  let ok = false;
   try {
     await navigator.clipboard.writeText(text);
-    ok = true;
   } catch (_) {
     const t = document.createElement("textarea");
     t.value = text;
-    t.style.cssText = "position:fixed;top:0;left:0;opacity:0";
-    (document.getElementById("ccMasterModal") || document.body).appendChild(t);
-    t.focus();
+    document.body.appendChild(t);
     t.select();
-    t.setSelectionRange(0, text.length);
-    try {
-      ok = document.execCommand("copy");
-    } catch (e) {}
+    document.execCommand("copy");
     t.remove();
   }
-  toast(ok ? "✓ Copied" : "Copy failed", !ok, 1500);
-  if (!ok) return;
   btn.textContent = "✓ Copied";
   btn.classList.add("done");
   setTimeout(() => {
@@ -2166,7 +1941,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   lockDatePicker();
   loadLocal();
   render();
-  if (localStorage.getItem("exp_v3")) finishInitialSkeleton();
 
   // Set card date default to today
   const cardTxnDateEl = document.getElementById("cardTxnDate");
@@ -3400,7 +3174,7 @@ function getDueInfo(cfg, statement) {
 }
 function money(v) {
   const n = Number(v) || 0;
-  return `${n < 0 ? "−" : ""}₹${Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 function formatCycleRange(c) {
   return `${c.start.getDate()} ${MONTHS[c.start.getMonth()]} ${c.start.getFullYear()} – ${c.end.getDate()} ${MONTHS[c.end.getMonth()]} ${c.end.getFullYear()}`;
@@ -3678,7 +3452,7 @@ function syncGrvBillsPicker() {
   const ref = grvBillsRef || new Date();
   const d = grvBillsRef
     ? new Date(ref.getFullYear(), ref.getMonth() - 1, 1)
-    : new Date(ref.getFullYear(), ref.getMonth(), 1);
+    : new Date(ref.getFullYear(), ref.getMonth() - 1, 1);
   mSel.value = String(d.getMonth());
   ySel.value = String(d.getFullYear());
 }
@@ -3718,9 +3492,8 @@ async function loadGrvBillsMonthData() {
       billingMonth: formatBillingMonth(row[8] || ""),
     }))
     .filter((t) => t.id && t.txnDate);
-  const merged = mergePending(cardTxns, fresh);
-  const ids = new Set(merged.map((t) => t.id));
-  cardTxns = [...cardTxns.filter((t) => !ids.has(t.id)), ...merged];
+  const ids = new Set(fresh.map((t) => t.id));
+  cardTxns = [...cardTxns.filter((t) => !ids.has(t.id)), ...fresh];
   saveLocal();
 }
 
@@ -3860,18 +3633,12 @@ let editingGrvCardKey = null;
 function openGrvCardConfig(cardKey = null) {
   const modal = document.getElementById("grvCardConfigModal");
   if (!modal) return;
-  if (typeof cardKey !== "string") cardKey = null;
   editingGrvCardKey = cardKey || null;
-  if (cardKey) {
-    window._reopenManage = true;
-    closeGrvManageCards();
-  }
   [
     "newCardBank",
     "newCardName",
     "newCardNumberCvv",
-    "newCardExpMonth",
-    "newCardExpYear",
+    "newCardExpDate",
     "newCardCutoff",
     "newCardLimit",
     "newCardDueDay",
@@ -3893,30 +3660,11 @@ function openGrvCardConfig(cardKey = null) {
       const el = document.getElementById(id);
       if (el) el.value = v ?? "";
     };
-    const _i = cfg.card.indexOf("-");
-    set("newCardBank", _i > 0 ? cfg.card.slice(0, _i) : "");
-    set("newCardName", _i > 0 ? cfg.card.slice(_i + 1) : cfg.card);
+    set("newCardName", cfg.card);
     set("newCardCutoff", +cfg.cutoff || 0);
     set("newCardLimit", +cfg.limit || 0);
-    set("newCardDueDay", +cfg.dueDay || "");
-    set("newCardDueOffset", +cfg.dueDay ? +cfg.dueMonthOffset || 0 : "");
-    fetchCCMasterData()
-      .then((rows) => {
-        if (editingGrvCardKey !== cardKey) return;
-        const r = rows.find(
-          (x) =>
-            String(x[1]).trim() === cardKey ||
-            String(x[0]).trim() + "-" + String(x[1]).trim() === cardKey,
-        );
-        if (!r) return;
-        set("newCardNumberCvv", String(r[3] || r[2] || "").trim());
-        const m = /^([A-Za-z]{3})-(\d{2})$/.exec(formatExpDate(r[4]));
-        if (m) {
-          set("newCardExpMonth", m[1]);
-          set("newCardExpYear", "20" + m[2]);
-        }
-      })
-      .catch(() => {});
+    set("newCardDueDay", +cfg.dueDay || 0);
+    set("newCardDueOffset", +cfg.dueMonthOffset || 0);
     if (title) title.textContent = "✏️ Edit Card";
     if (save) save.textContent = "Update Card";
     if (sub)
@@ -3936,10 +3684,6 @@ function closeGrvCardConfig() {
   const modal = document.getElementById("grvCardConfigModal");
   if (modal) modal.style.display = "none";
   editingGrvCardKey = null;
-  if (window._reopenManage) {
-    window._reopenManage = false;
-    openGrvManageCards();
-  }
 }
 async function saveGrvCardConfig() {
   const bank = String(
@@ -3952,11 +3696,9 @@ async function saveGrvCardConfig() {
   const numberCvv = String(
     document.getElementById("newCardNumberCvv")?.value || "",
   ).trim();
-  const expM = document.getElementById("newCardExpMonth")?.value || "",
-    expY = document.getElementById("newCardExpYear")?.value || "";
-  if (!!expM !== !!expY)
-    return toast("Select both expiry month and year", true);
-  const expDate = expM ? expM + "-" + expY.slice(-2) : "";
+  const expDate = String(
+    document.getElementById("newCardExpDate")?.value || "",
+  ).trim();
   const cutoffRaw = document.getElementById("newCardCutoff")?.value;
   const limitRaw = document.getElementById("newCardLimit")?.value;
   const dueDayRaw = document.getElementById("newCardDueDay")?.value;
@@ -3988,31 +3730,24 @@ async function saveGrvCardConfig() {
     return toast("Enter card number once, optionally followed by / CVV", true);
   if (numberCvv && !/^\d{12,19}$/.test(number))
     return toast("Invalid card number", true);
-  const cardName = bank ? bank + "-" + name : name;
   const existing = oldCardKey
     ? cardConfig.find((c) => c.card === oldCardKey)
-    : cardConfig.find((c) => c.card.toLowerCase() === cardName.toLowerCase());
+    : cardConfig.find((c) => c.card.toLowerCase() === name.toLowerCase());
   if (!existing && oldCardKey) return toast("Card no longer exists", true);
   if (!oldCardKey && existing)
     return toast("A card with this name already exists", true);
   const cfg = {
-    card: cardName,
+    card: existing ? existing.card : name,
     cutoff,
     limit,
     dueDay,
     dueMonthOffset,
   };
   saveLocal();
-  const _sb = document.getElementById("saveGrvCardConfigBtn"),
-    _old = _sb?.textContent;
-  if (_sb) {
-    _sb.disabled = true;
-    _sb.innerHTML = '<span class="spin"></span>Saving…';
-  }
   try {
     const res = await fetch(
       apiUrl(
-        `action=upsertCardConfig&oldCard=${enc(oldCardKey || "")}&card=${enc(cfg.card)}&cutoff=${enc(String(cutoffRaw ?? "").trim())}&limit=${enc(String(limitRaw ?? "").trim())}&dueDay=${enc(String(dueDayRaw ?? "").trim())}&dueMonthOffset=${enc(String(dueOffsetRaw ?? "").trim())}&ccName=${enc(name)}&bank=${enc(bank)}&number=${enc(number)}&numberCvv=${enc(numberCvv)}&expDate=${enc(expDate)}`,
+        `action=upsertCardConfig&oldCard=${enc(oldCardKey || "")}&card=${enc(cfg.card)}&cutoff=${cfg.cutoff}&limit=${cfg.limit}&dueDay=${cfg.dueDay}&dueMonthOffset=${cfg.dueMonthOffset}&bank=${enc(bank)}&number=${enc(number)}&numberCvv=${enc(numberCvv)}&expDate=${enc(expDate)}`,
       ),
     );
     const text = await res.text();
@@ -4036,11 +3771,6 @@ async function saveGrvCardConfig() {
     saveLocal();
     toast("⚠️ Card was not saved to Sheet", true, 5000);
     console.warn("CardConfig save error", err);
-  } finally {
-    if (_sb) {
-      _sb.disabled = false;
-      _sb.textContent = _old;
-    }
   }
 }
 
@@ -4078,7 +3808,6 @@ async function deleteGrvCardConfig(card) {
     )
   )
     return;
-  toast("⏳ Deleting…", false, 20000);
   try {
     const res = await fetch(
       apiUrl(`action=deleteCardConfig&card=${enc(card)}`),
@@ -4500,7 +4229,7 @@ async function syncSweetieFromSheet(isManual = false) {
             4000,
           );
       } else {
-        sweetieTxns = mergePending(sweetieTxns, fromSheet);
+        sweetieTxns = fromSheet;
       }
     }
 
