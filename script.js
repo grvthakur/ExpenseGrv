@@ -776,7 +776,11 @@ function addEntry() {
 
   if (!date || !rawAmt) return toast("Date & amount required", true);
   const amount = parseFloat(rawAmt);
-  if (isNaN(amount) || amount <= 0) return toast("Enter a valid amount", true);
+  if (isNaN(amount) || amount === 0)
+    return toast(
+      "Enter a valid amount (positive purchase or negative refund)",
+      true,
+    );
 
   if (editingExpId) {
     // ── UPDATE MODE: delete old, save new with same id ──
@@ -1246,12 +1250,18 @@ function renderCards() {
     if (t.status === "UNPAID") tr.classList.add("grv-unpaid-row");
     const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status === "PAID" ? "✓ " : "! "}${t.status}</span>`;
 
+    const isRefund =
+      Number(t.amount) < 0 ||
+      /REFUND OF/i.test(String(t.description || "")) ||
+      /REFUND OF/i.test(String(t.remarks || ""));
+
     tr.insertCell(0).textContent = formatDisplayDate(t.txnDate);
     tr.insertCell(1).innerHTML =
       `<span class="table-data-pill table-card-pill grv-card-tone-${getCardTone(t.card)}">${esc(t.card)}</span>`;
     tr.insertCell(2).innerHTML =
       `<span class="table-data-pill table-person-pill person-tone-${getPersonTone(t.usedBy)}">${esc(t.usedBy || "—")}</span>`;
     tr.insertCell(3).innerHTML =
+      (isRefund ? `<span class="refund-badge">↩ REFUND</span>` : "") +
       `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>` +
       (t.remarks ? `<div class="cc-rem">${esc(t.remarks)}</div>` : "");
     tr.insertCell(4).innerHTML =
@@ -1303,6 +1313,121 @@ function renderCards() {
     actCell.appendChild(delBtn);
   });
 }
+
+// Refund entries use a negative amount and link to an explicitly selected UNPAID purchase.
+function linkRefund(refund, originalId) {
+  const original = cardTxns.find((t) => String(t.id) === String(originalId));
+  const refundAmount = Math.abs(Number(refund.amount) || 0);
+  if (
+    !original ||
+    original.status !== "UNPAID" ||
+    original.card !== refund.card ||
+    !(refundAmount > 0) ||
+    Number(original.amount) < refundAmount - 0.001
+  )
+    return null;
+
+  const refundNote = `REFUND ${money(refundAmount)} (${formatDisplayDate(refund.txnDate)})`;
+  original.remarks = original.remarks
+    ? `${original.remarks} | ${refundNote}`
+    : refundNote;
+  const originalNote = `REFUND OF ${money(refundAmount)} (${formatDisplayDate(original.txnDate)})`;
+  refund.remarks = refund.remarks
+    ? `${refund.remarks} | ${originalNote}`
+    : originalNote;
+
+  sheetWrite(
+    apiUrl(
+      `action=updateCard&id=${enc(original.id)}&card=${enc(original.card)}&usedBy=${enc(original.usedBy || "")}&description=${enc(original.description || "")}&txnDate=${enc(original.txnDate)}&remarks=${enc(original.remarks)}&amount=${original.amount}&status=${enc(original.status || "UNPAID")}&billingMonth=${enc(original.billingMonth || "")}`,
+    ),
+  );
+  return original;
+}
+
+function refundFieldSync() {
+  const amountInput = document.getElementById("cardAmount");
+  const field = document.getElementById("refundOfField");
+  const select = document.getElementById("cardRefundOf");
+  const cardSelect = document.getElementById("cardSelect");
+  if (!amountInput || !field || !select || !cardSelect) return;
+
+  const isRefund = Number.parseFloat(amountInput.value) < 0 && !editingCardId;
+  field.style.display = isRefund ? "" : "none";
+  if (!isRefund) {
+    select.value = "";
+    return;
+  }
+
+  const normalize = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const selectedCard = normalize(cardSelect.value);
+  const keep = select.value;
+  // Only show positive, unpaid purchases for the selected card. Normalize card/status
+  // strings because sheet values can contain case, spacing, or hyphen differences.
+  const eligible = cardTxns
+    .filter(
+      (t) =>
+        normalize(t.card) === selectedCard &&
+        String(t.status || "")
+          .trim()
+          .toUpperCase() === "UNPAID" &&
+        Number(t.amount) > 0,
+    )
+    .sort((a, b) =>
+      String(b.txnDate || "").localeCompare(String(a.txnDate || "")),
+    );
+
+  select.innerHTML =
+    '<option value="">— Select unpaid purchase —</option>' +
+    eligible
+      .map((t) => {
+        const who = String(t.usedBy || "—").trim();
+        const desc = String(t.description || "—").trim();
+        const remarks = String(t.remarks || "").trim();
+        const label = `${formatDisplayDate(t.txnDate)} · ${who} · ${desc}${remarks ? ` · ${remarks}` : ""} · ${money(t.amount)}`;
+        return `<option value="${esc(t.id)}">${esc(label)}</option>`;
+      })
+      .join("");
+  if ([...select.options].some((o) => o.value === keep)) select.value = keep;
+}
+
+function initRefundField() {
+  const amountInput = document.getElementById("cardAmount");
+  const cardSelect = document.getElementById("cardSelect");
+  if (!amountInput || !cardSelect || document.getElementById("refundOfField"))
+    return;
+  const amountField = amountInput.closest(".field");
+  if (!amountField) return;
+
+  const field = document.createElement("div");
+  field.className = "field";
+  field.id = "refundOfField";
+  field.style.display = "none";
+  field.innerHTML =
+    '<label for="cardRefundOf">Refund of (unpaid purchase only)</label><select id="cardRefundOf"></select>';
+  amountField.after(field);
+  amountInput.addEventListener("input", refundFieldSync);
+  cardSelect.addEventListener("change", refundFieldSync);
+  field.querySelector("#cardRefundOf").addEventListener("change", () => {
+    const chosen = cardTxns.find(
+      (t) =>
+        String(t.id) === String(field.querySelector("#cardRefundOf").value),
+    );
+    if (!chosen) return;
+    const usedByInput = document.getElementById("cardUsedBy");
+    const descInput = document.getElementById("cardDesc");
+    // Populate from the linked purchase only when blank, so existing form input is preserved.
+    if (usedByInput && !usedByInput.value.trim())
+      usedByInput.value = chosen.usedBy || "";
+    if (descInput && !descInput.value.trim())
+      descInput.value = chosen.description || "Refund";
+  });
+  refundFieldSync();
+}
+document.addEventListener("DOMContentLoaded", initRefundField);
 
 function sortCards(col) {
   if (cardSort.col === col)
@@ -1363,8 +1488,19 @@ function addCardEntry() {
 
   if (!card || !txnDate || !rawAmt)
     return toast("Card, date & amount required", true);
-  const amount = parseFloat(rawAmt);
-  if (isNaN(amount) || amount <= 0) return toast("Enter a valid amount", true);
+  const amount = Number(rawAmt);
+  const refundSelect = document.getElementById("cardRefundOf");
+  const refundOriginalId = refundSelect ? refundSelect.value : "";
+  const isRefund = amount < 0 && !editingCardId && Boolean(refundOriginalId);
+
+  // Purchases must be positive. Negative amounts are allowed only when the
+  // user explicitly selects an eligible unpaid purchase in the refund field.
+  if (!Number.isFinite(amount) || amount === 0 || (amount < 0 && !isRefund)) {
+    return toast(
+      "Enter a valid amount. For a refund, select an unpaid purchase first.",
+      true,
+    );
+  }
 
   // Duplicate protection: same card + amount + date + description + Used By.
   // During edit, ignore the transaction currently being edited.
@@ -1439,10 +1575,25 @@ function addCardEntry() {
     billingMonth,
   };
 
+  const linkedOriginal =
+    entry.amount < 0 && refundOriginalId
+      ? linkRefund(entry, refundOriginalId)
+      : null;
+  if (entry.amount < 0 && refundOriginalId && !linkedOriginal) {
+    toast(
+      "Refund is greater than the selected unpaid purchase; refund added without linking",
+      true,
+    );
+  }
+
   cardTxns.push(entry);
   saveLocal();
   renderCards();
-  toast("Card entry added ✓");
+  toast(
+    linkedOriginal
+      ? `Refund added ✓ — linked to ${linkedOriginal.description || "original purchase"}`
+      : "Card entry added ✓",
+  );
 
   document.getElementById("cardUsedBy").value = "";
   document.getElementById("cardDesc").value = "";
@@ -1453,6 +1604,7 @@ function addCardEntry() {
   document.getElementById("cancelCardEditBtn").style.display = "none";
   document.getElementById("cancelCardEditBtn").textContent = "✕ Cancel Edit";
   document.getElementById("cardAmount").value = "";
+  refundFieldSync();
 
   sheetWrite(
     apiUrl(
@@ -1627,13 +1779,38 @@ async function openCCMaster() {
   const container = document.getElementById("ccMasterBody");
   if (!modal || !container) return;
 
+  // Modal ko click par turant show karo
   modal.style.display = "flex";
+
+  // Cache available hai to loading ka wait kiye bina render karo
+  if (Array.isArray(ccMasterCache)) {
+    const cachedData = ccMasterCache;
+    renderCCMaster(cachedData);
+
+    // Background refresh; updated data mile to list refresh kar do
+    fetchCCMasterData()
+      .then((freshData) => {
+        if (
+          modal.style.display !== "none" &&
+          JSON.stringify(freshData) !== JSON.stringify(cachedData)
+        ) {
+          renderCCMaster(freshData);
+        }
+      })
+      .catch(() => {});
+
+    return;
+  }
+
+  // Cache nahi hai to hi loading dikhao
   container.innerHTML =
     '<p style="text-align:center;color:var(--muted);padding:30px;">Loading…</p>';
 
   try {
     const data = await fetchCCMasterData();
-    renderCCMaster(data);
+    if (modal.style.display !== "none") {
+      renderCCMaster(data);
+    }
   } catch (err) {
     container.innerHTML = `<div style="text-align:center;color:var(--danger);padding:30px;">⚠️ ${esc(err.message || "Could not load CC Master")}</div>`;
   }
@@ -1667,48 +1844,309 @@ const CC_BANK_COLORS = {
 
 function renderCCMaster(rows) {
   const container = document.getElementById("ccMasterBody");
+
+  if (!container) return;
+
   if (!rows || !rows.length) {
-    container.innerHTML = `<p style="text-align:center;color:var(--muted);padding:30px;">No entries in CC sheet</p>`;
+    container.innerHTML =
+      '<p style="text-align:center;color:var(--muted);padding:30px;">No entries in CC sheet</p>';
     return;
   }
+
+  // Same month range used by the existing Credit Cards page.
+  const selMonth = parseInt(document.getElementById("monthSelect")?.value);
+  const selYear = parseInt(document.getElementById("yearSelect")?.value);
+  const monthCount = cardMonthFilter === "1" ? 1 : 3;
+  const months = [];
+
+  for (let i = 0; i < monthCount; i++) {
+    let m = selMonth - i;
+    let y = selYear;
+
+    if (m < 0) {
+      m += 12;
+      y -= 1;
+    }
+
+    months.push({ m, y });
+  }
+
+  // Match CC Master name to the configured card name.
+  function normalizeCardName(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  function getLimitInfo(masterName, masterBank) {
+    const target = normalizeCardName(masterName);
+    const bankTarget = normalizeCardName(masterBank);
+
+    // CC Master often stores only the product name (e.g. "CORAL"),
+    // while Manage Cards stores "ICICI CORAL". Match exact names first,
+    // then allow a unique bank-prefixed/suffix match. Never guess if ambiguous.
+    const exactMatches = cardConfig.filter(
+      (c) => normalizeCardName(c.card) === target,
+    );
+    let candidates = exactMatches;
+    if (!candidates.length) {
+      candidates = cardConfig.filter((c) => {
+        const configured = normalizeCardName(c.card);
+        const sameProduct =
+          configured.length >= 4 &&
+          target.length >= 4 &&
+          (configured.endsWith(target) || target.endsWith(configured));
+        const sameBank =
+          !bankTarget ||
+          configured.startsWith(bankTarget) ||
+          normalizeCardName(c.bank || "").startsWith(bankTarget);
+        return sameProduct && sameBank;
+      });
+      // If bank prefix isn't present in config name, allow a unique product suffix.
+      if (!candidates.length) {
+        candidates = cardConfig.filter((c) => {
+          const configured = normalizeCardName(c.card);
+          return (
+            configured.length >= 4 &&
+            target.length >= 4 &&
+            (configured.endsWith(target) || target.endsWith(configured))
+          );
+        });
+      }
+    }
+    const cfg = candidates.length === 1 ? candidates[0] : null;
+
+    // Don't pretend an unmatched/ambiguous card has a zero limit.
+    if (!cfg) {
+      return {
+        matched: false,
+        limit: 0,
+        used: 0,
+        available: 0,
+        pct: 0,
+      };
+    }
+
+    const configuredName = normalizeCardName(cfg.card);
+
+    // Transaction rows use the Manage Cards name, not the shorter CC Master label.
+    const used = cardTxns
+      .filter((t) => {
+        if (normalizeCardName(t.card) !== configuredName || !t.txnDate) {
+          return false;
+        }
+
+        const d = new Date(t.txnDate);
+        return months.some(
+          ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
+        );
+      })
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const limit = Number(cfg.limit) || 0;
+    const available = limit - used;
+    const pct =
+      limit > 0 ? Math.min(100, Math.max(0, (used / limit) * 100)) : 0;
+
+    return { matched: true, limit, used, available, pct };
+  }
+
+  function formatLimit(value) {
+    return Number(value).toLocaleString("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 2,
+    });
+  }
+
   container.innerHTML = `
     <div class="cc-master-toolbar">
       <div class="cc-master-search-wrap">
         <span class="cc-master-search-icon">⌕</span>
-        <input id="ccMasterSearch" class="cc-master-search" type="search"
-          placeholder="Search bank, card name, number, expiry…" autocomplete="off"
+        <input id="ccMasterSearch"
+          class="cc-master-search"
+          type="search"
+          placeholder="Search bank, card name, number, expiry…"
+          autocomplete="off"
           oninput="filterCCMaster(this.value)" />
-        <button type="button" class="cc-master-search-clear" onclick="clearCCMasterSearch()" title="Clear search" aria-label="Clear search">×</button>
+        <button type="button"
+          class="cc-master-search-clear"
+          onclick="clearCCMasterSearch()"
+          title="Clear search"
+          aria-label="Clear search">×</button>
       </div>
-      <div id="ccMasterSearchCount" class="cc-master-search-count">${rows.length} card${rows.length === 1 ? "" : "s"}</div>
+      <div id="ccMasterSearchCount" class="cc-master-search-count">
+        ${rows.length} card${rows.length === 1 ? "" : "s"}
+      </div>
     </div>
-    <div class="cc-card-grid">${rows
-      .map((row) => {
-        const bank = String(row[0] || "").trim(),
-          name = row[1] || "—";
-        const numRaw = String(row[2] || "").replace(/\s+/g, "");
-        const numFmt = (numRaw.match(/.{1,4}/g) || []).join(" ");
-        const numCvv = String(row[3] || "");
-        const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
-        const exp = formatExpDate(row[4]);
-        const bc = CC_BANK_COLORS[bank.toUpperCase()] || "34,211,238";
-        const copy = `${bank} ${name}\nCard: ${numFmt}\nExp: ${exp}\nCVV: ${cvv || "—"}`;
-        const searchText =
-          `${bank} ${name} ${numRaw} ${numFmt} ${exp} ${cvv}`.toLowerCase();
-        return `<div class="cc-card-item" data-cc-search="${esc(searchText)}" style="--bc:${bc}">
-        <div class="cc-card-top">
-          <div>${bank ? `<span class="cc-bank-badge">${esc(bank)}</span>` : ""}
-            <div class="cc-card-name" style="margin-top:8px">${esc(name)}</div></div>
-          <button type="button" class="cc-copy-btn" data-copy="${encodeURIComponent(copy)}" onclick="copyCC(this)" title="Copy all details">⧉ Copy</button>
-        </div>
-        <div class="cc-chip"></div>
-        <div class="cc-num">${esc(numFmt)}</div>
-        <div class="cc-card-bottom">
-          <div><div class="cc-cvv-label">CVV</div><div class="cc-cvv">${esc(cvv || "—")}</div></div>
-          <div style="text-align:right"><div class="cc-cvv-label">Valid Thru</div><div class="cc-exp">${esc(exp)}</div></div>
-        </div></div>`;
-      })
-      .join("")}</div>`;
+
+    <div class="cc-card-grid">
+      ${rows
+        .map((row, index) => {
+          const bank = String(row[0] || "").trim();
+          const name = String(row[1] || "—").trim();
+          const numRaw = String(row[2] || "").replace(/\s+/g, "");
+          const numFmt = (numRaw.match(/.{1,4}/g) || []).join(" ");
+          const numCvv = String(row[3] || "");
+          const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
+          const exp = formatExpDate(row[4]);
+          const bc = CC_BANK_COLORS[bank.toUpperCase()] || "34,211,238";
+          const copy = `${bank} ${name}\nCard: ${numFmt}\nExp: ${exp}\nCVV: ${cvv || "—"}`;
+
+          const searchText =
+            `${bank} ${name} ${numRaw} ${numFmt} ${exp} ${cvv}`.toLowerCase();
+
+          const info = getLimitInfo(name, bank);
+          const cardId = `cc-flip-${index}`;
+
+          const limitRows = info.matched
+            ? `
+            <div class="cc-limit-row">
+              <span>Total Limit</span>
+              <strong>${formatLimit(info.limit)}</strong>
+            </div>
+            <div class="cc-limit-row">
+              <span>Used Limit</span>
+              <strong>${formatLimit(info.used)}</strong>
+            </div>
+            <div class="cc-limit-row">
+              <span>Available Limit</span>
+              <strong>${formatLimit(info.available)}</strong>
+            </div>
+            <div class="cc-limit-progress">
+              <div style="width:${info.pct}%"></div>
+            </div>
+            <div class="cc-limit-footnote">
+              Usage: ${info.pct.toFixed(1)}% · Based on the selected Credit Cards month range
+            </div>
+          `
+            : `
+            <div class="cc-limit-row">
+              <span>Limit details</span>
+              <strong>Card name not matched</strong>
+            </div>
+            <div class="cc-limit-footnote">
+              Add this card to Manage Cards using the same card name to show limits.
+            </div>
+          `;
+
+          return `
+          <div id="${cardId}"
+            class="cc-card-item"
+            data-cc-search="${esc(searchText)}"
+            style="--bc:${bc}">
+
+            <div class="cc-flip-inner">
+
+              <div class="cc-flip-face cc-flip-front">
+                <div class="cc-card-top">
+                  <div>
+                    ${
+                      bank
+                        ? `<span class="cc-bank-badge">${esc(bank)}</span>`
+                        : ""
+                    }
+                    <div class="cc-card-name" style="margin-top:8px">
+                      ${esc(name)}
+                    </div>
+                  </div>
+                  <button type="button"
+                    class="cc-copy-btn"
+                    data-copy="${encodeURIComponent(copy)}"
+                    onclick="copyCC(this)"
+                    title="Copy all details">⧉ Copy</button>
+                </div>
+
+                <div class="cc-chip"></div>
+                <div class="cc-num">${esc(numFmt)}</div>
+
+                <div class="cc-card-bottom">
+                  <div>
+                    <div class="cc-cvv-label">CVV</div>
+                    <div class="cc-cvv">${esc(cvv || "—")}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="cc-cvv-label">Valid Thru</div>
+                    <div class="cc-exp">${esc(exp)}</div>
+                  </div>
+                </div>
+
+                <div class="cc-flip-actions">
+                  <button type="button"
+                    class="cc-flip-btn"
+                    onclick="toggleCCMasterFlip(this)">↻ View Limits</button>
+                </div>
+              </div>
+
+              <div class="cc-flip-face cc-flip-back">
+                <div class="cc-flip-title">💳 ${esc(name)} — Limits</div>
+                ${limitRows}
+
+                <div class="cc-flip-actions">
+                  <button type="button"
+                    class="cc-flip-btn"
+                    onclick="toggleCCMasterFlip(this)">↩ Back to Card</button>
+                </div>
+              </div>
+
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>`;
+
+  enableCCMasterSwipe(container);
+}
+
+// Flip one card from button click.
+function toggleCCMasterFlip(button) {
+  const card = button.closest(".cc-card-item");
+  if (!card) return;
+
+  card.classList.toggle("is-flipped");
+}
+
+// Enable horizontal swipe on mobile. Register only once per container.
+function enableCCMasterSwipe(container) {
+  if (container.dataset.flipSwipeReady === "1") return;
+  container.dataset.flipSwipeReady = "1";
+
+  let startX = 0;
+  let startY = 0;
+  let startCard = null;
+
+  container.addEventListener(
+    "touchstart",
+    (event) => {
+      const card = event.target.closest(".cc-card-item");
+      if (!card) return;
+
+      startCard = card;
+      startX = event.changedTouches[0].clientX;
+      startY = event.changedTouches[0].clientY;
+    },
+    { passive: true },
+  );
+
+  container.addEventListener(
+    "touchend",
+    (event) => {
+      if (!startCard) return;
+
+      const endX = event.changedTouches[0].clientX;
+      const endY = event.changedTouches[0].clientY;
+      const dx = endX - startX;
+      const dy = endY - startY;
+
+      if (Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        startCard.classList.toggle("is-flipped");
+      }
+
+      startCard = null;
+    },
+    { passive: true },
+  );
 }
 
 function filterCCMaster(query) {
