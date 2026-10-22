@@ -403,6 +403,17 @@ function doGet(e) {
       const amount = parseFloat(e.parameter.amount || "0");
       if (!date || !month || !category || isNaN(amount))
         return textOut("ERROR: missing fields");
+
+      // Prevent duplicate expense IDs before inserting.
+      const existingExpenseIds = expSheet.getDataRange().getValues();
+      if (
+        existingExpenseIds
+          .slice(1)
+          .some((row) => String(row[0] || "").trim() === id)
+      ) {
+        return textOut("Duplicate");
+      }
+
       expSheet.appendRow([id, date, month, category, description, amount]);
       forceText(expSheet, expSheet.getLastRow(), 3);
       recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
@@ -486,6 +497,16 @@ function doGet(e) {
       const cutoff = getCardCutoff(ss, card);
       const billingMonth = calcBillingMonth(txnDate, cutoff);
       if (!billingMonth) return textOut("ERROR: invalid transaction date");
+
+      // Prevent duplicate credit-card transaction IDs before inserting.
+      const existingCardIds = cardSheet.getDataRange().getValues();
+      if (
+        existingCardIds
+          .slice(1)
+          .some((row) => String(row[0] || "").trim() === id)
+      ) {
+        return textOut("Duplicate");
+      }
 
       cardSheet.appendRow([
         id,
@@ -877,6 +898,17 @@ function doGet(e) {
       const description = String(e.parameter.description || "").trim();
       if (!type || !date || isNaN(amount))
         return textOut("ERROR: missing fields");
+
+      // Prevent duplicate Sweetie transaction IDs before inserting.
+      const existingSweetieIds = sweetieSheet.getDataRange().getValues();
+      if (
+        existingSweetieIds
+          .slice(1)
+          .some((row) => String(row[0] || "").trim() === id)
+      ) {
+        return textOut("Duplicate");
+      }
+
       // Remaining Amount column written as 0 here — recalcSweetieBalances() fixes it below
       sweetieSheet.appendRow([id, type, amount, 0, date, description]);
       recalcSweetieBalances(sweetieSheet);

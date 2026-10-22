@@ -766,6 +766,9 @@ function cancelEditExpense() {
 }
 
 function addEntry() {
+  if (window.__addBusy) return;
+  window.__addBusy = true;
+  setTimeout(() => (window.__addBusy = false), 1500);
   const date = document.getElementById("expenseDate").value;
   const cat = document.getElementById("expenseCategory").value;
   const desc = document.getElementById("expenseDesc").value.trim();
@@ -1249,7 +1252,8 @@ function renderCards() {
     tr.insertCell(2).innerHTML =
       `<span class="table-data-pill table-person-pill person-tone-${getPersonTone(t.usedBy)}">${esc(t.usedBy || "—")}</span>`;
     tr.insertCell(3).innerHTML =
-      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>` +
+      (t.remarks ? `<div class="cc-rem">${esc(t.remarks)}</div>` : "");
     tr.insertCell(4).innerHTML =
       `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
     tr.insertCell(5).innerHTML =
@@ -1346,6 +1350,9 @@ function cancelEditCard() {
 }
 
 function addCardEntry() {
+  if (window.__addBusy) return;
+  window.__addBusy = true;
+  setTimeout(() => (window.__addBusy = false), 1500);
   const card = document.getElementById("cardSelect").value;
   const usedBy = document.getElementById("cardUsedBy").value.trim();
   const desc = document.getElementById("cardDesc").value.trim();
@@ -1941,7 +1948,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   lockDatePicker();
   loadLocal();
   render();
-
+  finishInitialSkeleton();
+  renderCards();
+  renderSweetie();
+  renderGrvCC();
   // Set card date default to today
   const cardTxnDateEl = document.getElementById("cardTxnDate");
   if (cardTxnDateEl) cardTxnDateEl.value = localDateStr(new Date());
@@ -2837,7 +2847,8 @@ function renderGrvCC() {
     const cardCell = tr.insertCell(2);
     cardCell.innerHTML = `<span class="table-data-pill table-card-pill grv-card-tone-${getCardTone(t.card)}">${esc(t.card)}</span>`;
     tr.insertCell(3).innerHTML =
-      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>`;
+      `<span class="table-data-pill table-text-pill">${esc(t.description || "—")}</span>` +
+      (t.remarks ? `<div class="cc-rem">${esc(t.remarks)}</div>` : "");
     tr.insertCell(4).innerHTML =
       `<span class="table-data-pill table-text-pill">${esc(t.remarks || "—")}</span>`;
     tr.insertCell(5).innerHTML =
@@ -4128,6 +4139,9 @@ function cloneSweetie(id) {
 }
 
 function addSweetieEntry() {
+  if (window.__addBusy) return;
+  window.__addBusy = true;
+  setTimeout(() => (window.__addBusy = false), 1500);
   const type = document.getElementById("sweetieType").value;
   const rawAmt = document.getElementById("sweetieAmount").value;
   const date = document.getElementById("sweetieDate").value;
