@@ -3,6 +3,7 @@
   "use strict";
   const st = document.createElement("style");
   st.textContent = `
+#grvCardConfigModal{z-index:10002!important}
 .grv-manage-edit,.grv-manage-delete{cursor:pointer!important;pointer-events:auto!important;position:relative;z-index:2;transition:transform .15s,filter .15s,box-shadow .15s,background .15s!important}
 .grv-manage-edit:hover{filter:brightness(1.25);transform:translateY(-1px);box-shadow:0 4px 14px rgba(34,211,238,.35)}
 .grv-manage-delete:hover{filter:brightness(1.2);transform:translateY(-1px);background:rgba(248,113,113,.28)!important;box-shadow:0 4px 14px rgba(248,113,113,.4)}
@@ -55,19 +56,33 @@
   openGrvCardConfig = function (key) {
     _open(key);
     if (typeof key !== "string" || !key) return;
+    const sv = document.getElementById("saveGrvCardConfigBtn");
+    const busy = (on) => {
+      if (!sv) return;
+      sv.disabled = on;
+      sv.classList.toggle("btn-loading", on);
+    };
     if (ccMasterCache) fillFromCC(ccMasterCache, key);
+    else {
+      toast("⏳ Card details load ho rahe hain…", false, 20000);
+      busy(true);
+    }
     fetchCCMasterData()
       .then((rows) => {
+        busy(false);
         if (!fillFromCC(rows, key) && editingGrvCardKey === key)
           toast("ℹ️ No CC Master row found for this card", true, 4000);
+        else if (editingGrvCardKey === key)
+          toast("✓ Details loaded", false, 1200);
       })
-      .catch((e) =>
+      .catch((e) => {
+        busy(false);
         toast(
           "⚠️ Could not load card details: " + (e.message || e),
           true,
           4000,
-        ),
-      );
+        );
+      });
   };
 
   // Apps Script saves OK but the browser often can't read the reply ("Failed to fetch").
@@ -102,6 +117,14 @@
   const _save = saveGrvCardConfig;
   saveGrvCardConfig = async function () {
     const before = cardConfig.map((c) => ({ ...c }));
+    const sv = document.getElementById("saveGrvCardConfigBtn");
+    const label = sv ? sv.textContent : "";
+    if (sv) {
+      sv.disabled = true;
+      sv.classList.add("btn-loading");
+      sv.textContent = "Saving…";
+    }
+    toast("⏳ Saving card… thoda wait karo", false, 30000);
     const f = window.fetch;
     let txt = null;
     window.fetch = function (u, ...a) {
@@ -126,6 +149,11 @@
       await _save();
     } finally {
       window.fetch = f;
+      if (sv) {
+        sv.disabled = false;
+        sv.classList.remove("btn-loading");
+        sv.textContent = label;
+      }
     }
     if (txt === null) return;
     cardConfig = before;
@@ -190,15 +218,10 @@
     );
   });
 
-  // "⧉ Copy" button: copies full details, number in BOTH formats:
-  //   ROARBANK ROARBANK-RUPAY
-  //   Card: 6529 7401 0084 8829 / 6529740100848829
-  //   Exp: Oct-26
-  //   CVV: 447
+  // "⧉ Copy" button: copies full details, number in BOTH formats.
   // WhatsApp only turns a number green (tap -> Copy) if it parses as a phone number.
-  // A group starting with "00" can be read as an international prefix and splits the number
-  // (e.g. 6529 7401 0084 8829 turned green only partly). For such numbers use hyphens,
-  // otherwise normal 4-4-4-4 spacing.
+  // A group starting with "00" can be read as an international prefix and splits the number,
+  // so for such numbers use hyphens, otherwise normal 4-4-4-4 spacing.
   const waNumber = (digits) => {
     const g = digits.match(/.{1,4}/g) || [];
     if (g.length < 2) return digits;

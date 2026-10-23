@@ -7131,6 +7131,7 @@
     <script src="animation.js"></script>
     <script src="dropdown.js"></script>
     <script src="summary-plus.js"></script>
+    <script src="mobile-fix.js"></script>
 
     <style id="mobile-card-summary-compact">
         @media (max-width: 600px) {
@@ -7840,6 +7841,10 @@
             html body #aiEntryBtn {
                 margin: 0 12px 0 8px !important
             }
+        }
+
+        #grvCardConfigModal {
+            z-index: 10002 !important
         }
     </style>
     <script>(function () { var m = function () { var b = document.getElementById("aiEntryBtn"); if (b && innerWidth <= 600 && b.parentNode !== document.body) document.body.appendChild(b) }; m(); document.addEventListener("DOMContentLoaded", m); window.addEventListener("load", function () { m(); setTimeout(m, 500) }) })()</script>
