@@ -142,6 +142,19 @@ let editingSweetieId = null;
 let sweetieSearch = "";
 let sweetieMonthFilter = "ALL";
 
+// Sweetie expense exclusions — saved in this browser
+const SWEETIE_EXPENSE_EXCLUSIONS_KEY = "sweetie_expense_exclusions_v1";
+let sweetieExpenseExclusions = new Set();
+
+try {
+  const savedSweetieExclusions = JSON.parse(
+    localStorage.getItem(SWEETIE_EXPENSE_EXCLUSIONS_KEY) || "[]",
+  );
+  sweetieExpenseExclusions = new Set(savedSweetieExclusions.map(String));
+} catch (e) {
+  sweetieExpenseExclusions = new Set();
+}
+
 // ─── MONTH KEYS ──────────────────────────────────────────────────────────────
 function monthKey() {
   const m = parseInt(document.getElementById("monthSelect").value);
@@ -574,30 +587,179 @@ function populateCCCardFilter() {
 // ─── EXPENSES SECTION ────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function isSweetieExpenseExcluded(id) {
+  return sweetieExpenseExclusions.has(String(id));
+}
+
+function saveSweetieExpenseExclusions() {
+  try {
+    localStorage.setItem(
+      SWEETIE_EXPENSE_EXCLUSIONS_KEY,
+      JSON.stringify([...sweetieExpenseExclusions]),
+    );
+    return true;
+  } catch (e) {
+    console.warn("Could not save Sweetie expense exclusions:", e);
+    toast("Could not save exclusion. Check browser storage.", true);
+    return false;
+  }
+}
+
+function toggleSweetieExpenseExclusion(id, shouldExclude) {
+  const key = String(id);
+  const wasExcluded = sweetieExpenseExclusions.has(key);
+
+  if (shouldExclude) sweetieExpenseExclusions.add(key);
+  else sweetieExpenseExclusions.delete(key);
+
+  if (!saveSweetieExpenseExclusions()) {
+    if (wasExcluded) sweetieExpenseExclusions.add(key);
+    else sweetieExpenseExclusions.delete(key);
+    return;
+  }
+
+  render();
+  toast(
+    shouldExclude
+      ? "Sweetie entry excluded from Expenses"
+      : "Sweetie entry included in Expenses",
+  );
+}
+
+function renderExcludedSweetieList(excludedTransactions) {
+  const scroll = document.querySelector(".expense-table-scroll");
+  if (!scroll) return;
+
+  let wrap = document.getElementById("excludedSweetieWrap");
+
+  if (!wrap) {
+    wrap = document.createElement("section");
+    wrap.id = "excludedSweetieWrap";
+    wrap.style.cssText =
+      "display:none;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--s1);";
+    scroll.insertAdjacentElement("afterend", wrap);
+  }
+
+  wrap.innerHTML = "";
+
+  if (!excludedTransactions.length) {
+    wrap.style.display = "none";
+    return;
+  }
+
+  wrap.style.display = "block";
+
+  const heading = document.createElement("div");
+  heading.textContent = `Excluded Sweetie Transactions (${excludedTransactions.length})`;
+  heading.style.cssText =
+    "font-weight:700;margin-bottom:8px;color:var(--text);font-size:.85rem;";
+  wrap.appendChild(heading);
+
+  excludedTransactions.forEach((t) => {
+    const row = document.createElement("div");
+    row.style.cssText =
+      "display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);flex-wrap:wrap;font-size:.8rem;";
+
+    const details = document.createElement("div");
+    details.style.cssText = "min-width:0;flex:1;";
+
+    const description = document.createElement("div");
+    description.textContent = String(t.description || "Sweetie DEBIT");
+    description.style.cssText = "font-weight:600;overflow-wrap:anywhere;";
+
+    const meta = document.createElement("div");
+    meta.textContent = `${formatDisplayDate(String(t.date))} · ${money(Math.abs(Number(t.amount) || 0))}`;
+    meta.style.cssText = "color:var(--muted);font-size:.72rem;margin-top:2px;";
+
+    details.append(description, meta);
+
+    const includeBtn = document.createElement("button");
+    includeBtn.type = "button";
+    includeBtn.textContent = "↩ Include Again";
+    includeBtn.title = "Include this Sweetie transaction in Expenses again";
+    includeBtn.style.cssText =
+      "border:1px solid var(--border);border-radius:8px;background:var(--s2);color:var(--text);padding:6px 9px;cursor:pointer;white-space:nowrap;";
+    includeBtn.onclick = () => toggleSweetieExpenseExclusion(t.id, false);
+
+    row.append(details, includeBtn);
+    wrap.appendChild(row);
+  });
+}
+
 function render() {
   const key = monthKey();
-  const rows = expenses.filter((e) => e.month === key);
+
+  // Existing Expenses entries
+  const normalRows = expenses.filter((e) => e.month === key);
+
+  // Sweetie DEBIT entries are virtual; exclusions never alter the Sweetie ledger.
+  const sweetieForMonth = (
+    typeof sweetieTxns !== "undefined" && Array.isArray(sweetieTxns)
+      ? sweetieTxns
+      : []
+  )
+    .filter((t) => String(t.type).toUpperCase() === "DEBIT" && t.date)
+    .filter((t) => {
+      const [y, m] = String(t.date).split("-").map(Number);
+      return (
+        y &&
+        m >= 1 &&
+        m <= 12 &&
+        `${MONTHS[m - 1]}-${String(y).slice(-2)}` === key
+      );
+    });
+
+  const excludedSweetieForMonth = sweetieForMonth.filter((t) =>
+    isSweetieExpenseExcluded(t.id),
+  );
+
+  renderExcludedSweetieList(excludedSweetieForMonth);
+
+  const sweetieRows = sweetieForMonth
+    .filter((t) => !isSweetieExpenseExcluded(t.id))
+    .map((t) => ({
+      id: `sweetie-debit-${t.id}`,
+      sweetieTxnId: String(t.id),
+      date: String(t.date),
+      month: key,
+      category: "Sweetie Borrow",
+      description: String(t.description || ""),
+      amount: Math.abs(Number(t.amount) || 0),
+      isSweetieAuto: true,
+    }));
+
+  // Display both lists; Sweetie entries are not saved again
+  const rows = [...normalRows, ...sweetieRows];
 
   let totalExp = 0,
     sweetSave = 0,
     sweetBorrow = 0,
+    sweetBorrowAll = 0,
     totalReceived = 0;
+
   rows.forEach(({ category: cat, amount: amt }) => {
     if (cat === "Received") {
-      totalReceived += amt; // loan returned — adds to remaining
+      totalReceived += amt;
     } else if (cat === "Sweetie Saving") {
       sweetSave += amt;
       totalExp += amt;
     } else if (cat === "Sweetie Borrow") {
       sweetBorrow += amt;
+      sweetBorrowAll += amt;
+      totalExp += amt;
     } else {
       totalExp += amt;
     }
   });
 
+  // Excluded entries remain part of the Sweetie ledger balance.
+  excludedSweetieForMonth.forEach((t) => {
+    sweetBorrowAll += Math.abs(Number(t.amount) || 0);
+  });
+
   const salary = salaries[key] || 0;
-  const remaining = salary + totalReceived - totalExp;
-  const sweetBal = sweetSave - sweetBorrow;
+  const remaining = salary + totalReceived - (totalExp - sweetBorrow);
+  const sweetBal = sweetSave - sweetBorrowAll;
 
   document.getElementById("statTotalExpenses").textContent = money(totalExp);
   document.getElementById("statSalary").textContent = salary
@@ -703,26 +865,60 @@ function render() {
       : "txn-amount txn-amount-out";
     const actCell = tr.insertCell(4);
     actCell.style.whiteSpace = "nowrap";
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "✏️";
-    editBtn.className = "edit-btn";
-    editBtn.title = "Edit";
-    editBtn.style.marginRight = "4px";
-    editBtn.onclick = () => startEditExpense(exp.id);
-    const cloneExpBtn = document.createElement("button");
-    cloneExpBtn.textContent = "⧉";
-    cloneExpBtn.className = "clone-btn";
-    cloneExpBtn.title = "Clone";
-    cloneExpBtn.style.marginRight = "4px";
-    cloneExpBtn.onclick = () => cloneExpense(exp.id);
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "✕";
-    delBtn.className = "delete-btn";
-    delBtn.title = "Delete";
-    delBtn.onclick = () => deleteEntry(exp.id);
-    actCell.appendChild(editBtn);
-    actCell.appendChild(cloneExpBtn);
-    actCell.appendChild(delBtn);
+
+    if (exp.isSweetieAuto) {
+      const sweetieLabel = document.createElement("span");
+      sweetieLabel.textContent = "↳ Sweetie";
+      sweetieLabel.title = "Original transaction Sweetie tab mein safe rahega";
+      sweetieLabel.style.marginRight = "6px";
+      actCell.appendChild(sweetieLabel);
+
+      const excludeBtn = document.createElement("button");
+      excludeBtn.type = "button";
+      excludeBtn.textContent = "⊖";
+      excludeBtn.className = "delete-btn";
+      excludeBtn.title = "Exclude from Expenses (Sweetie original safe rahega)";
+      excludeBtn.setAttribute(
+        "aria-label",
+        "Exclude Sweetie transaction from Expenses",
+      );
+
+      excludeBtn.onclick = () => {
+        if (
+          confirm(
+            "Exclude this virtual entry from Expenses and Summary? The original Sweetie transaction will remain unchanged.",
+          )
+        ) {
+          toggleSweetieExpenseExclusion(exp.sweetieTxnId, true);
+        }
+      };
+
+      actCell.appendChild(excludeBtn);
+    } else {
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "✏️";
+      editBtn.className = "edit-btn";
+      editBtn.title = "Edit";
+      editBtn.style.marginRight = "4px";
+      editBtn.onclick = () => startEditExpense(exp.id);
+
+      const cloneExpBtn = document.createElement("button");
+      cloneExpBtn.textContent = "⧉";
+      cloneExpBtn.className = "clone-btn";
+      cloneExpBtn.title = "Clone";
+      cloneExpBtn.style.marginRight = "4px";
+      cloneExpBtn.onclick = () => cloneExpense(exp.id);
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "✕";
+      delBtn.className = "delete-btn";
+      delBtn.title = "Delete";
+      delBtn.onclick = () => deleteEntry(exp.id);
+
+      actCell.appendChild(editBtn);
+      actCell.appendChild(cloneExpBtn);
+      actCell.appendChild(delBtn);
+    }
   });
 }
 

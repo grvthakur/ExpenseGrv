@@ -47,43 +47,71 @@
       count = 0,
       top = null,
       sw = 0;
-    const bump = (c, a, d) => {
-      spent += a;
+
+    const bump = (category, amount, description) => {
+      spent += amount;
       count++;
-      cats.set(c, (cats.get(c) || 0) + a);
-      if (!top || a > top.amount) top = { amount: a, c, d };
+      cats.set(category, (cats.get(category) || 0) + amount);
+
+      if (!top || amount > top.amount) {
+        top = { amount, c: category, d: description };
+      }
     };
+
+    // Existing Expenses entries
     expenses
       .filter((e) => e.month === key)
       .forEach((e) => {
-        const a = Number(e.amount) || 0,
-          c = e.category;
-        if (c === "Received") {
-          spent -= a;
+        const amount = Number(e.amount) || 0;
+        const category = e.category;
+
+        if (category === "Received") {
+          spent -= amount;
           return;
         }
-        if (c === "Sweetie Borrow") return;
-        bump(c, a, String(e.description || c));
+
+        if (category === "Sweetie Borrow") {
+          sw += amount;
+          bump(category, amount, String(e.description || category));
+          return;
+        }
+
+        bump(category, amount, String(e.description || category));
       });
 
-    // Sweetie DEBIT entries -> counted by category parsed from description
-    const known = new Map();
-    [...document.querySelectorAll("#expenseCategory option")].forEach((o) =>
-      known.set(o.value.toLowerCase(), o.value),
-    );
-    (typeof sweetieTxns !== "undefined" ? sweetieTxns : []).forEach((t) => {
+    // Sweetie DEBIT entries
+    const txns =
+      typeof sweetieTxns !== "undefined" && Array.isArray(sweetieTxns)
+        ? sweetieTxns
+        : [];
+
+    txns.forEach((t) => {
       if (String(t.type).toUpperCase() !== "DEBIT" || !t.date) return;
-      const [y, m] = t.date.split("-").map(Number);
-      if (`${MONTHS[m - 1]}-${String(y).slice(-2)}` !== key) return;
-      const a = Math.abs(Number(t.amount) || 0);
-      const first = String(t.description || "")
-        .split(" - ")[0]
-        .trim()
-        .toLowerCase();
-      const cat = known.get(first) || "Sweetie Spend";
-      sw += a;
-      bump(cat, a, String(t.description || cat));
+
+      if (
+        typeof isSweetieExpenseExcluded === "function" &&
+        isSweetieExpenseExcluded(t.id)
+      )
+        return;
+
+      const [year, month] = String(t.date).split("-").map(Number);
+
+      if (
+        !year ||
+        month < 1 ||
+        month > 12 ||
+        `${MONTHS[month - 1]}-${String(year).slice(-2)}` !== key
+      ) {
+        return;
+      }
+
+      const amount = Math.abs(Number(t.amount) || 0);
+      if (!amount) return;
+
+      sw += amount;
+      bump("Sweetie Borrow", amount, String(t.description || "Sweetie DEBIT"));
     });
+
     return { spent, cats, count, top, sw };
   }
 
