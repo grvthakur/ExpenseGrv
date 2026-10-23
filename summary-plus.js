@@ -45,7 +45,14 @@
     const cats = new Map();
     let spent = 0,
       count = 0,
-      top = null;
+      top = null,
+      sw = 0;
+    const bump = (c, a, d) => {
+      spent += a;
+      count++;
+      cats.set(c, (cats.get(c) || 0) + a);
+      if (!top || a > top.amount) top = { amount: a, c, d };
+    };
     expenses
       .filter((e) => e.month === key)
       .forEach((e) => {
@@ -56,14 +63,30 @@
           return;
         }
         if (c === "Sweetie Borrow") return;
-        spent += a;
-        count++;
-        cats.set(c, (cats.get(c) || 0) + a);
-        if (!top || a > top.amount)
-          top = { amount: a, c, d: String(e.description || c) };
+        bump(c, a, String(e.description || c));
       });
-    return { spent, cats, count, top };
+
+    // Sweetie DEBIT entries -> counted by category parsed from description
+    const known = new Map();
+    [...document.querySelectorAll("#expenseCategory option")].forEach((o) =>
+      known.set(o.value.toLowerCase(), o.value),
+    );
+    (typeof sweetieTxns !== "undefined" ? sweetieTxns : []).forEach((t) => {
+      if (String(t.type).toUpperCase() !== "DEBIT" || !t.date) return;
+      const [y, m] = t.date.split("-").map(Number);
+      if (`${MONTHS[m - 1]}-${String(y).slice(-2)}` !== key) return;
+      const a = Math.abs(Number(t.amount) || 0);
+      const first = String(t.description || "")
+        .split(" - ")[0]
+        .trim()
+        .toLowerCase();
+      const cat = known.get(first) || "Sweetie Spend";
+      sw += a;
+      bump(cat, a, String(t.description || cat));
+    });
+    return { spent, cats, count, top, sw };
   }
+
   function keyAt(off) {
     let m = parseInt(document.getElementById("monthSelect").value) - off,
       y = parseInt(document.getElementById("yearSelect").value);
@@ -200,8 +223,8 @@
       cur = calc(key),
       prev = calc(keyAt(1).k),
       salary = salaries[key] || 0;
-    const remaining = salary - cur.spent,
-      usedPct = salary ? Math.min(100, (cur.spent / salary) * 100) : 0;
+    const remaining = salary - (cur.spent - cur.sw);
+    usedPct = salary ? Math.min(100, ((cur.spent - cur.sw) / salary) * 100) : 0;
     const m = parseInt(document.getElementById("monthSelect").value),
       y = parseInt(document.getElementById("yearSelect").value);
     const dim = new Date(y, m + 1, 0).getDate(),
