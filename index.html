@@ -191,107 +191,37 @@
             gap: 16px;
         }
 
+        /* ── DIVINE LAKSHMI BRAND ── */
         .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 9px;
+            position: relative;
+            isolation: isolate;
+            overflow: visible;
         }
 
         .brand-icon {
             font-size: 1.6rem;
         }
 
-
         .brand-lakshmi {
+            position: relative;
+            z-index: 1;
             width: 29px;
             height: 29px;
             object-fit: contain;
             display: block;
             flex-shrink: 0;
-            filter: drop-shadow(0 0 5px rgba(231, 200, 121, 0.22));
-        }
-
-        .brand {
-            gap: 9px;
-        }
-
-        /* ✨ Premium Lakshmi brand shimmer */
-        .brand {
-            position: relative;
-            isolation: isolate;
-            overflow: hidden;
-            border-radius: 8px;
-        }
-
-
-        /* Premium gold sparkle sweep */
-        .brand {
-            position: relative;
-            isolation: isolate;
-            overflow: hidden;
-            border-radius: 8px;
-        }
-
-        .brand::after {
-            content: "";
-            position: absolute;
-            top: -25%;
-            bottom: -25%;
-            left: -70%;
-            width: 42%;
-            pointer-events: none;
-            z-index: 3;
-
-            background: linear-gradient(105deg,
-                    transparent 0%,
-                    rgba(255, 222, 130, 0.08) 25%,
-                    rgba(255, 232, 170, 0.65) 45%,
-                    rgba(255, 255, 245, 0.95) 50%,
-                    rgba(255, 215, 100, 0.35) 62%,
-                    transparent 100%);
-
-            transform: skewX(-20deg);
-            animation: lakshmiBrandShimmer 4.5s ease-in-out infinite;
-            mix-blend-mode: screen;
-        }
-
-        .brand-lakshmi {
+            animation: lakshmiAura 4s ease-in-out infinite;
             filter:
-                drop-shadow(0 0 5px rgba(255, 215, 120, 0.45)) drop-shadow(0 0 12px rgba(255, 195, 70, 0.20));
+                drop-shadow(0 0 4px rgba(231, 200, 121, 0.35))
+                drop-shadow(0 0 8px rgba(231, 200, 121, 0.12));
         }
-
-        @keyframes lakshmiBrandShimmer {
-
-            0%,
-            58% {
-                left: -70%;
-                opacity: 0;
-            }
-
-            65% {
-                opacity: 1;
-            }
-
-            88% {
-                left: 130%;
-                opacity: 0.8;
-            }
-
-            100% {
-                left: 130%;
-                opacity: 0;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .brand::after {
-                animation: none;
-                display: none;
-            }
-        }
-
 
         .brand-name {
+            position: relative;
+            z-index: 1;
             font-family: 'DM Serif Display', serif;
             font-size: 1.4rem;
             font-weight: 400;
@@ -302,16 +232,77 @@
             color: #e7c879;
         }
 
-
-
-
-        .brand-name {
-            font-family: 'DM Serif Display', serif;
-            font-size: 1.4rem;
+        /* Tiny, softly floating gold particles */
+        .brand-particle {
+            position: absolute;
+            z-index: 2;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: #ffe8a3;
+            box-shadow: 0 0 6px rgba(255, 220, 135, 0.75);
+            pointer-events: none;
+            opacity: 0;
+            animation: brandParticleFloat 2.8s ease-out infinite;
         }
 
-        .brand-name span {
-            color: var(--accent);
+        .brand-particle:nth-of-type(1) {
+            left: 12px;
+            top: 3px;
+            animation-delay: 0.4s;
+        }
+
+        .brand-particle:nth-of-type(2) {
+            left: 31px;
+            top: 24px;
+            animation-delay: 1.5s;
+        }
+
+        .brand-particle:nth-of-type(3) {
+            left: 58px;
+            top: 8px;
+            animation-delay: 2.1s;
+        }
+
+        @keyframes lakshmiAura {
+            0%, 100% {
+                filter:
+                    drop-shadow(0 0 4px rgba(231, 200, 121, 0.35))
+                    drop-shadow(0 0 8px rgba(231, 200, 121, 0.12));
+            }
+            50% {
+                filter:
+                    drop-shadow(0 0 6px rgba(255, 220, 135, 0.58))
+                    drop-shadow(0 0 12px rgba(231, 200, 121, 0.2));
+            }
+        }
+
+        @keyframes brandParticleFloat {
+            0% {
+                transform: translate(0, 5px) scale(0.5);
+                opacity: 0;
+            }
+            25% {
+                opacity: 0.65;
+            }
+            75% {
+                opacity: 0.35;
+            }
+            100% {
+                transform: translate(8px, -13px) scale(0.15);
+                opacity: 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .brand-lakshmi,
+            .brand-particle {
+                animation: none;
+            }
+
+            .brand-particle {
+                display: none;
+            }
         }
 
         .controls {
@@ -6396,6 +6387,9 @@
 
         <div class="brand">
             <img class="brand-lakshmi" src="icons/maa-lakshmi-gold.png" alt="Maa Lakshmi" />
+            <span class="brand-particle" aria-hidden="true"></span>
+            <span class="brand-particle" aria-hidden="true"></span>
+            <span class="brand-particle" aria-hidden="true"></span>
             <div class="brand-name">
                 <span>Expense</span>Tracker
             </div>
