@@ -46,7 +46,8 @@
     let spent = 0,
       count = 0,
       top = null,
-      sw = 0;
+      sw = 0,
+      received = 0;
 
     const bump = (category, amount, description) => {
       spent += amount;
@@ -66,7 +67,7 @@
         const category = e.category;
 
         if (category === "Received") {
-          spent -= amount;
+          received += amount;
           return;
         }
 
@@ -112,7 +113,7 @@
       bump("Sweetie Borrow", amount, String(t.description || "Sweetie DEBIT"));
     });
 
-    return { spent, cats, count, top, sw };
+    return { spent, cats, count, top, sw, received };
   }
 
   function keyAt(off) {
@@ -251,7 +252,7 @@
       cur = calc(key),
       prev = calc(keyAt(1).k),
       salary = salaries[key] || 0;
-    const remaining = salary - (cur.spent - cur.sw);
+    const remaining = salary + cur.received - (cur.spent - cur.sw);
     usedPct = salary ? Math.min(100, ((cur.spent - cur.sw) / salary) * 100) : 0;
     const m = parseInt(document.getElementById("monthSelect").value),
       y = parseInt(document.getElementById("yearSelect").value);
