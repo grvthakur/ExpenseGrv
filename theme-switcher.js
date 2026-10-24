@@ -35,7 +35,7 @@
 @media(max-width:600px){#grv-visual-theme-widget{right:10px;bottom:10px}#grv-visual-theme-toggle{min-height:44px}}
 
 @media(max-width:600px){
-  /* Place the appearance control beside the existing info button, not over the bottom tab bar. */
+  /* JavaScript aligns this control to the real info button; these are safe fallbacks. */
   #grv-visual-theme-widget{
     right:calc(31px + 70px);
     top:calc(env(safe-area-inset-top, 0px) + 145px);
@@ -289,6 +289,27 @@ body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{co
     });
     var status=document.createElement('div');status.id='grv-visual-theme-status';status.setAttribute('aria-live','polite');
     panel.appendChild(label);panel.appendChild(list);panel.appendChild(status);widget.appendChild(panel);widget.appendChild(toggle);document.body.appendChild(widget);
+
+    // Keep the appearance button aligned immediately to the left of the app's info button.
+    // Measure the real button position so this remains correct across mobile screen sizes.
+    function positionAppearanceButton(){
+      if(!window.matchMedia || !window.matchMedia('(max-width: 600px)').matches)return;
+      var infoButton=document.getElementById('versionBtn');
+      if(!infoButton)return;
+      var rect=infoButton.getBoundingClientRect();
+      var buttonSize=48;
+      var gap=8;
+      var left=Math.max(8,rect.left-buttonSize-gap);
+      var top=rect.top+(rect.height-buttonSize)/2;
+      widget.style.left=left+'px';
+      widget.style.right='auto';
+      widget.style.top=Math.max(8,top)+'px';
+      widget.style.bottom='auto';
+    }
+    positionAppearanceButton();
+    window.addEventListener('resize',positionAppearanceButton,{passive:true});
+    window.addEventListener('orientationchange',positionAppearanceButton,{passive:true});
+
     toggle.addEventListener('click',function(){var open=panel.classList.toggle('is-open');toggle.setAttribute('aria-expanded',String(open));});
     document.addEventListener('keydown',function(e){if(e.key==='Escape'&&panel.classList.contains('is-open')){panel.classList.remove('is-open');toggle.setAttribute('aria-expanded','false');toggle.focus();}});
     document.addEventListener('pointerdown',function(e){if(!widget.contains(e.target)){panel.classList.remove('is-open');toggle.setAttribute('aria-expanded','false');}});

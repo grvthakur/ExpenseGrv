@@ -990,7 +990,8 @@
     // Fast local card resolution: merchant + issuer + last-four hint; no server call.
     if (!card) {
       const merchantText = String((mm && mm[1]) || t).toLowerCase();
-      const bankName = /\baxis\b/i.test(t) ? "axis" : /\bhdfc\b/i.test(t) ? "hdfc" : /\bicici\b/i.test(t) ? "icici" : /\bsbi\b/i.test(t) ? "sbi" : /\bkotak\b/i.test(t) ? "kotak" : "";
+      const bankMatch = t.match(/\b(axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank\s+of\s+baroda)\b/i);
+      const bankName = bankMatch ? (/^bank\s+of\s+baroda$/i.test(bankMatch[1]) ? "bob" : bankMatch[1].toLowerCase()) : "";
       const candidates = cardConfig.filter((c) => {
         const name = String(c.card || "").toLowerCase();
         const issuerOk = !bankName || name.startsWith(bankName + "-");
