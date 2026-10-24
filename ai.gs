@@ -424,46 +424,26 @@ function aiBankFields_(text) {
   const out = { sms: false, amount: 0, desc: "", date: "" };
   const money = /(?:\b(?:inr|rs\.?)|₹)\s*[\d,]+/i.test(t);
   const sig =
-    /\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited)\b/i.test(
-      t,
-    ) ||
-    /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(
-      t,
-    );
+    /\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited)\b/i.test(t) ||
+    /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(t);
   out.sms = money && sig;
   if (!out.sms) return out;
   const re = /(?:\b(?:inr|rs\.?)|₹)\s*([\d,]+(?:\.\d+)?)/gi;
-  let m,
-    first = 0;
+  let m, first = 0;
   while ((m = re.exec(t))) {
     const v = parseFloat(m[1].replace(/,/g, ""));
     if (!(v > 0)) continue;
     const before = t.slice(Math.max(0, m.index - 34), m.index).toLowerCase();
-    if (
-      /(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(
-        before,
-      )
-    )
-      continue;
+    if (/(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(before)) continue;
     if (!first) first = v;
-    if (
-      /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(
-        before,
-      )
-    ) {
-      first = v;
-      break;
-    }
+    if (/(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(before)) { first = v; break; }
   }
   out.amount = first;
-  const lm = t.match(
-    /\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i,
-  );
+  const lm = t.match(/\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i);
   if (lm) out.desc = lm[1].trim();
   const d = t.match(/\b(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})\b/);
   if (d) {
-    const dd = +d[1],
-      mo = +d[2];
+    const dd = +d[1], mo = +d[2];
     if (mo >= 1 && mo <= 12 && dd >= 1 && dd <= 31)
       out.date = d[3] + "-" + ("0" + mo).slice(-2) + "-" + ("0" + dd).slice(-2);
   }
@@ -482,9 +462,10 @@ function aiParse_(e) {
       today +
       ". Extract ONE transaction from the user's text. The text may be a bank SMS/email, or casual Hinglish typing, or voice-typed (spelling errors like 'Roarbank' for a bank name).",
     'Reply ONLY JSON: {"kind":"card|expense|sweetie","card":"","usedBy":"","desc":"","remarks":"","amount":0,"date":"YYYY-MM-DD","category":"","type":"SAVING|CREDIT|DEBIT"}',
-    "READ THE WHOLE MESSAGE. It can mix a bank SMS/email with the user's own lines (names, notes). Explicit labels win: 'Used by: X' => usedBy X; 'Desc: Y' => desc; 'Remarks/Note: Z' => remarks.",
+    "READ THE WHOLE MESSAGE. It can mix a bank SMS/email with the user's own lines (names, notes). Explicit labels win: 'Used by: X' => usedBy X; 'Desc: Y' => desc; 'Remarks/Note: Z' => remarks. Natural shorthand like 'Grv, flpkrt axs, meethae from swiggy' means Used by GRV, card=the configured Flipkart Axis card, Description='SWIGGY - MEETHAE', Remarks empty. 'Grv, swiggy, meethae, already paid in kotak' means Description='SWIGGY - MEETHAE', Remarks='ALREADY PAID IN KOTAK'.",
     "BANK SMS: amount = the transaction amount only (INR/Rs/₹ value next to 'spent'/'debited'/'transaction'/'towards'), NOT the OTP, NOT the available limit/balance, NOT the card last-4. desc = the MERCHANT (text after 'towards', 'at', 'on', 'to', e.g. 'towards Flipkart' => FLIPKART; 'IIL*Indian Rail' => IRCTC; 'PNB*IRCTC' => IRCTC; 'AMAZON PAY IN G' => AMAZON). Date from the SMS if present. The bank + 'Credit Card'/'Card XXnnnn' tells the card.",
-    "REMARKS: any extra note the user wrote (e.g. 'already paid in kotak', 'will get refund', 'split with Anukaran', 'for mummy'), UPPERCASE; empty if none. Never put the merchant or person in remarks twice.",
+    "DESCRIPTION FORMAT (critical): Description is ALWAYS payment source/merchant + item or purpose, formatted 'SOURCE - ITEM' (e.g. 'SWIGGY - MEETHAE', 'FLIPKART - SHOES', 'UBER - AIRPORT'). If SMS supplies merchant/source and user's own line supplies item, combine them. If user says 'meethae from swiggy', interpret source=SWIGGY and item=MEETHAE => 'SWIGGY - MEETHAE'. Keep merchant/source alone only when no item/purpose is supplied. Do not put card issuer in Description.",
+    "REMARKS: ONLY a separate personal note explicitly supplied by the user (e.g. 'already paid in kotak', 'will get refund', 'split with Anukaran', 'for mummy'), UPPERCASE; empty if none. Do not put item/purpose in remarks. Never append remarks to description.",
     "AMOUNT: a plain number. If the text has sums like '214+163' add them (=377). Ignore OTPs, card last-4, available limit, balances, reference numbers.",
     "KIND: 'card' if the text mentions cc / credit card / card / a bank-card name or a card SMS. 'sweetie' if it mentions Sweetie saving/credit/debit/borrow. Otherwise 'expense'.",
     "CARD (kind=card): pick EXACTLY one string from this list by fuzzy/phonetic match on bank/card words, ignoring spelling mistakes (e.g. 'first bank', 'idfc', 'roar bank' ~ a similar-sounding bank in the list; 'amazon pay'=ICICI-AMAZON PAY; 'flipkart'=AXIS-FLIPKART). If two cards fit equally, pick the first listed. If nothing is even remotely similar, leave card empty.",
@@ -508,21 +489,8 @@ function aiParse_(e) {
   }
   if (!plan || plan.error) {
     // AI down/limited: a bank SMS is still parsed deterministically
-    if (!bf.sms)
-      return jsonOut({
-        error: (plan && plan.error) || "AI could not parse this text",
-      });
-    plan = {
-      kind: "card",
-      card: "",
-      usedBy: "",
-      desc: "",
-      remarks: "",
-      amount: 0,
-      date: "",
-      category: "",
-      type: "",
-    };
+    if (!bf.sms) return jsonOut({ error: (plan && plan.error) || "AI could not parse this text" });
+    plan = { kind: "card", card: "", usedBy: "", desc: "", remarks: "", amount: 0, date: "", category: "", type: "" };
   }
   if (bf.sms) {
     // hard overrides: these fields are exact in a bank SMS, never trust the model over them
