@@ -668,6 +668,34 @@
       }
     }
 
+    // Explicit shorthand: "Grv Chaypatti and Pyaj" means person=GRV,
+    // remarks="CHAYPATTI - PYAJ". Never infer the person's name from the whole phrase.
+    const hintParts = line.match(/^([A-Za-z][A-Za-z'-]*)\s+(.+)$/);
+    if (hintParts) {
+      const whoToken = hintParts[1].trim();
+      const knownPeople = peopleSet();
+      const isPerson =
+        knownPeople.has(whoToken.toLowerCase()) ||
+        /^(grv|gaurav|sweetie|tanya|me|self)$/i.test(whoToken);
+      if (isPerson) {
+        const remark = hintParts[2]
+          .replace(/\s+(?:and|&)\s+/gi, " - ")
+          .replace(/\s*[,;|]\s*/g, " - ")
+          .replace(/\s*[-–—]\s*/g, " - ")
+          .replace(/(?:\s*-\s*)+/g, " - ")
+          .trim()
+          .replace(/^(?:-\s*)|(?:\s*-)$/g, "");
+        return {
+          card: "",
+          who: cap(whoToken),
+          rem: remark.toUpperCase(),
+          date: "",
+          sure: true,
+          line,
+        };
+      }
+    }
+
     let t = " " + line.toLowerCase().replace(/[₹,]/g, " ") + " ";
     let date = "",
       m;
@@ -839,9 +867,9 @@
       [])[1];
     if (d4) {
       try {
+        // Never block Smart Entry on a network lookup. Use only an already-warm cache.
         const rows =
-          (typeof ccMasterCache !== "undefined" && ccMasterCache) ||
-          (await fetchCCMasterData());
+          (typeof ccMasterCache !== "undefined" && ccMasterCache) || [];
         const row = rows.find(
           (x) =>
             String(x[2] || "")
@@ -885,7 +913,6 @@
         : [];
       if (c.length === 1) card = c[0].card;
     }
-    if (!card) return null;
     const lm = t.match(
       /\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i,
     );
@@ -898,16 +925,34 @@
       t.match(
         /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
       );
+    // Fast local card resolution: merchant + issuer + last-four hint; no server call.
+    if (!card) {
+      const merchantText = String((mm && mm[1]) || t).toLowerCase();
+      const bankName = /\baxis\b/i.test(t) ? "axis" : /\bhdfc\b/i.test(t) ? "hdfc" : /\bicici\b/i.test(t) ? "icici" : /\bsbi\b/i.test(t) ? "sbi" : /\bkotak\b/i.test(t) ? "kotak" : "";
+      const candidates = cardConfig.filter((c) => {
+        const name = String(c.card || "").toLowerCase();
+        const issuerOk = !bankName || name.startsWith(bankName + "-");
+        const tokens = name.split(/[^a-z0-9]+/).filter((x) => x.length > 2 && !["axis", "hdfc", "icici", "kotak", "sbi", "card"].includes(x));
+        const merchantOk = tokens.some((x) => merchantText.includes(x) || (x === "flipkart" && /flipkar/i.test(t)));
+        return issuerOk && merchantOk;
+      });
+      if (candidates.length === 1) card = candidates[0].card;
+    }
+    if (!card) return null;
     return {
       kind: "card",
       card,
       usedBy: "",
-      desc: cleanM(
-        mm
-          ? mm[1]
-          : (t.match(/\binfo:\s*([^\n]+?)\.?(?:\n|$)/i) || [])[1] ||
-              standalone(t),
-      ),
+      desc: (() => {
+        const raw = cleanM(
+          mm
+            ? mm[1]
+            : (t.match(/\binfo:\s*([^\n]+?)\.?(?:\n|$)/i) || [])[1] ||
+                standalone(t),
+        );
+        // Issuer descriptors commonly truncate/mangle Flipkart (e.g. PYU*Flipkar).
+        return /flipkar/i.test(raw) ? "FLIPKART" : raw;
+      })(),
       amount,
       date: iso(date),
     };
