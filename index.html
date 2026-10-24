@@ -7492,127 +7492,6 @@
         }
 
 
-        /* FINAL EXPENSES MOBILE TABLE FIX — keep real table geometry and wrap descriptions by words. */
-        @media (max-width: 600px) {
-
-            #expenseSection .table-wrapper,
-            #expenseSection .expense-table-scroll {
-                display: block !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                overflow-x: auto !important;
-                overflow-y: hidden !important;
-                -webkit-overflow-scrolling: touch !important;
-            }
-
-            #expenseTable {
-                display: table !important;
-                width: 650px !important;
-                min-width: 650px !important;
-                max-width: none !important;
-                table-layout: fixed !important;
-                border-collapse: collapse !important;
-            }
-
-            #expenseTable thead {
-                display: table-header-group !important;
-            }
-
-            #expenseTable tbody {
-                display: table-row-group !important;
-            }
-
-            #expenseTable tr {
-                display: table-row !important;
-            }
-
-            #expenseTable th,
-            #expenseTable td {
-                display: table-cell !important;
-                box-sizing: border-box !important;
-                vertical-align: top !important;
-                padding: 8px 6px !important;
-                font-size: 11px !important;
-                line-height: 1.35 !important;
-                white-space: normal;
-                overflow: visible !important;
-                -webkit-line-clamp: unset !important;
-                -webkit-box-orient: unset !important;
-            }
-
-            /* Date */
-            #expenseTable th:nth-child(1),
-            #expenseTable td:nth-child(1) {
-                width: 82px !important;
-                min-width: 82px !important;
-                white-space: nowrap !important;
-            }
-
-            /* Category: break at spaces, never into individual letters. */
-            #expenseTable th:nth-child(2),
-            #expenseTable td:nth-child(2) {
-                width: 112px !important;
-                min-width: 112px !important;
-                overflow-wrap: break-word !important;
-                word-break: normal !important;
-            }
-
-            /* Description: fixed readable column; natural word wrapping. */
-            #expenseTable th:nth-child(3),
-            #expenseTable td:nth-child(3) {
-                width: 236px !important;
-                min-width: 236px !important;
-                max-width: 236px !important;
-                white-space: normal !important;
-                word-break: normal !important;
-                overflow-wrap: break-word !important;
-                line-break: auto !important;
-            }
-
-            #expenseTable td:nth-child(3) .table-data-pill,
-            #expenseTable td:nth-child(3) span {
-                display: block !important;
-                box-sizing: border-box !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                white-space: normal !important;
-                word-break: normal !important;
-                overflow-wrap: break-word !important;
-            }
-
-            /* Amount and row actions each keep their own space. */
-            #expenseTable th:nth-child(4),
-            #expenseTable td:nth-child(4) {
-                width: 110px !important;
-                min-width: 110px !important;
-                white-space: nowrap !important;
-            }
-
-            #expenseTable th:nth-child(5),
-            #expenseTable td:nth-child(5) {
-                width: 110px !important;
-                min-width: 110px !important;
-                white-space: nowrap !important;
-            }
-
-
-
-            #expenseTable td:nth-child(5) {
-                vertical-align: middle !important;
-                padding-left: 10px !important;
-                padding-right: 10px !important;
-            }
-
-            #expenseTable td:nth-child(5) .delete-btn {
-                vertical-align: middle !important;
-                flex-shrink: 0 !important;
-            }
-
-
-
-
-        }
-
         @media (max-width: 600px) {
 
             /* Long text ko mobile par table ke andar rakho */
@@ -7633,7 +7512,6 @@
 
             #cardTable,
             #grvCardTable,
-            #expenseTable,
             #sweetieTable {
                 min-width: 100% !important;
             }
@@ -7688,38 +7566,8 @@
             }
         }
     </style>
-    <style id="mobile-table-align-v2">
-        @media (max-width:600px) {
 
-            html body #cardTable th:nth-child(n),
-            html body #cardTable td:nth-child(n),
-            html body #grvCardTable th:nth-child(n),
-            html body #grvCardTable td:nth-child(n),
-            html body #expenseTable th:nth-child(n),
-            html body #expenseTable td:nth-child(n) {
-                vertical-align: middle !important
-            }
 
-            html body #expenseTable th:nth-child(2),
-            html body #expenseTable td:nth-child(2) {
-                min-width: 150px !important;
-                width: 150px !important;
-                padding-right: 14px !important
-            }
-
-            html body #expenseTable td:nth-child(2) * {
-                white-space: normal !important;
-                max-width: 100% !important;
-                word-break: normal !important;
-                overflow-wrap: break-word !important
-            }
-
-            html body #expenseTable th:nth-child(3),
-            html body #expenseTable td:nth-child(3) {
-                min-width: 170px !important
-            }
-        }
-    </style>
     <style id="mobile-topbar-final">
         html body #aiEntryBtn {
             position: fixed !important;
@@ -7982,6 +7830,114 @@
         }
     </style>
     <script>(function () { var m = function () { var b = document.getElementById("aiEntryBtn"); if (b && innerWidth <= 600 && b.parentNode !== document.body) document.body.appendChild(b) }; m(); document.addEventListener("DOMContentLoaded", m); window.addEventListener("load", function () { m(); setTimeout(m, 500) }) })()</script>
+    <style id="expenses-mobile-table">
+        @media (max-width:600px) {
+            #expenseSection .expense-table-scroll {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch
+            }
+
+            #expenseSection #expenseTable {
+                display: table !important;
+                width: 100% !important;
+                min-width: 420px !important;
+                max-width: none !important;
+                table-layout: fixed !important;
+                margin: 0 !important
+            }
+
+            #expenseSection #expenseTable th,
+            #expenseSection #expenseTable td {
+                padding: 8px 5px !important;
+                font-size: 11px !important;
+                line-height: 1.35 !important;
+                vertical-align: middle !important;
+                overflow: visible !important;
+                box-sizing: border-box !important
+            }
+
+            #expenseSection #expenseTable th:nth-child(1),
+            #expenseSection #expenseTable td:nth-child(1) {
+                width: 56px !important;
+                min-width: 0 !important;
+                white-space: nowrap !important
+            }
+
+            #expenseSection #expenseTable th:nth-child(2),
+            #expenseSection #expenseTable td:nth-child(2) {
+                width: 80px !important;
+                min-width: 0 !important;
+                white-space: normal !important;
+                overflow-wrap: break-word !important;
+                border: 0 !important
+            }
+
+            #expenseSection #expenseTable th:nth-child(3),
+            #expenseSection #expenseTable td:nth-child(3) {
+                width: auto !important;
+                min-width: 0 !important;
+                max-width: none !important;
+                white-space: normal !important;
+                overflow-wrap: break-word !important
+            }
+
+            #expenseSection #expenseTable td:nth-child(3) .table-data-pill,
+            #expenseSection #expenseTable td:nth-child(2) .table-data-pill {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                overflow-wrap: break-word !important
+            }
+
+            #expenseSection #expenseTable th:nth-child(4),
+            #expenseSection #expenseTable td:nth-child(4) {
+                width: 84px !important;
+                min-width: 0 !important;
+                white-space: nowrap !important
+            }
+
+            #expenseSection #expenseTable th:nth-child(5),
+            #expenseSection #expenseTable td:nth-child(5) {
+                width: 116px !important;
+                min-width: 0 !important;
+                white-space: nowrap !important;
+                text-align: left !important
+            }
+
+            #expenseSection #expenseTable td:nth-child(5) .edit-btn,
+            #expenseSection #expenseTable td:nth-child(5) .clone-btn,
+            #expenseSection #expenseTable td:nth-child(5) .delete-btn {
+                width: 32px !important;
+                height: 32px !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                margin: 0 2px 0 0 !important;
+                padding: 0 !important;
+                font-size: .8rem !important;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+                vertical-align: middle !important
+            }
+
+            #expenseSection #expenseTable td:nth-child(5)>span {
+                display: inline-block !important;
+                width: 66px !important;
+                box-sizing: border-box;
+                vertical-align: middle;
+                font-size: 10px;
+                line-height: 32px !important;
+                margin: 0 2px 0 0 !important;
+                white-space: nowrap
+            }
+
+            #expenseSection #expenseTable td:nth-child(5)>span+button {
+                float: none !important;
+                margin: 0 2px 0 0 !important
+            }
+        }
+    </style>
 </body>
 
 </html>
