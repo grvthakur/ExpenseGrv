@@ -1,22 +1,16 @@
-GRV Expense Tracker — Theme Switcher dropdown fix
+GRV Expense Tracker — mobile Appearance button positioning fix
 
 What changed:
-- Removed the duplicate init() declaration that shadowed the first initializer.
-- Fixed the dropdown builder so the theme list is actually created before it is appended.
-- Kept one floating 🎨 Appearance button that opens/closes the theme panel.
-- Kept theme selection buttons, active-state styling, saved theme preference, Escape-to-close,
-  and outside-click-to-close behavior.
-- Fixed invalid CSS font shorthand and added visible keyboard-focus outlines.
-- Did not modify the app repository, index.html, transaction logic, or GitHub.
+- Desktop positioning remains the same.
+- On mobile (<=600px), Appearance moves from the bottom-right overlay to a 48x48 circular palette button near the top controls, immediately left of the existing info-button area.
+- The long "🎨 Appearance" label is visually replaced with a palette icon on mobile.
+- Theme panel opens below the circular button, with a viewport-bounded height.
+- Very narrow screens (<=380px) receive a small horizontal adjustment.
+- No transaction code, tab-bar markup, theme palettes, or existing info button was modified.
 
-Local test:
-1. Back up your local app files.
-2. Load theme-switcher.js in the app using your existing local test method.
-3. Click 🎨 Appearance: the panel should open; click again to close.
-4. Select several themes and confirm the active button updates and the style persists after refresh.
-5. Test Escape, outside click, Dark/Light toggle, and mobile viewport widths.
+Important:
+The vertical/horizontal placement is based on the supplied screenshot. Since the info button's exact selector and responsive position are not exposed in the standalone switcher, this uses a tuned mobile offset rather than attaching directly to that button. Check it on the target device; browser safe-area and header height can vary.
 
-Verification:
-- JavaScript syntax checked with Node.js.
-- Static assertions and ZIP integrity checked.
-- No live browser/app runtime test was available, so visual integration still needs local verification.
+Testing:
+- Node.js syntax check and ZIP integrity were run.
+- A real mobile browser/device visual test was not available.

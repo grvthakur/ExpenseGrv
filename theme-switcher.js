@@ -33,6 +33,55 @@
 #grv-visual-theme-list button:focus-visible,#grv-visual-theme-toggle:focus-visible{outline:3px solid var(--accent,#7dd3fc);outline-offset:3px}
 #grv-visual-theme-status{font-size:12px;opacity:.8;margin:10px 2px 2px}
 @media(max-width:600px){#grv-visual-theme-widget{right:10px;bottom:10px}#grv-visual-theme-toggle{min-height:44px}}
+
+@media(max-width:600px){
+  /* Place the appearance control beside the existing info button, not over the bottom tab bar. */
+  #grv-visual-theme-widget{
+    right:calc(31px + 70px);
+    top:calc(env(safe-area-inset-top, 0px) + 145px);
+    bottom:auto;
+    width:48px;
+    height:48px;
+  }
+  #grv-visual-theme-toggle{
+    width:48px;
+    height:48px;
+    min-height:48px;
+    padding:0;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0;
+    line-height:1;
+    background:var(--surface,rgba(30,70,110,.65));
+    border:1px solid var(--border,rgba(220,240,255,.55));
+    box-shadow:0 4px 14px #0003;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+  }
+  #grv-visual-theme-toggle::before{
+    content:"🎨";
+    font-size:22px;
+  }
+  #grv-visual-theme-toggle:focus-visible{
+    outline:3px solid var(--accent,#7dd3fc);
+    outline-offset:3px;
+  }
+  /* The panel opens below the circular button and stays inside the viewport. */
+  #grv-visual-theme-panel{
+    top:56px;
+    bottom:auto;
+    right:-70px;
+    width:min(320px,calc(100vw - 24px));
+    max-height:calc(100dvh - 220px);
+  }
+}
+@media(max-width:380px){
+  #grv-visual-theme-widget{right:calc(28px + 64px);top:calc(env(safe-area-inset-top, 0px) + 145px)}
+  #grv-visual-theme-panel{right:-66px;width:calc(100vw - 24px)}
+}
+
 /* Strongly differentiated palettes, layered over the app's existing CSS variables. */
 body[data-grv-visual-theme="skeuomorphism"]{--bg:#252a31;--surface:#39414c;--s2:#2d333c;--border:#687381;--accent:#75d5f0;--green:#67d6a1;--pink:#f29bc4;--danger:#ff8585;--muted:#c0c7d0;--text:#f5f7fa;--radius:12px;--radius-sm:7px}
 body[data-grv-visual-theme="neumorphism"]{--bg:#dfe4ec;--surface:#e8edf4;--s2:#dfe4ec;--border:#dfe4ec;--accent:#566eaa;--green:#277e65;--pink:#b64e83;--danger:#b63c4b;--muted:#65718a;--text:#293247;--radius:20px;--radius-sm:13px}
