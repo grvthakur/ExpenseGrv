@@ -2,28 +2,77 @@
    Targets the real app selectors: .stat, .card, .table-wrapper, .topbar,
    .field, .btn, .expense-table. Does not modify transaction logic. */
 (function () {
-  'use strict';
-  var KEY='grv-expense-visual-theme';
-  var THEMES=[
-    ['default','Default (Current Design)'],['skeuomorphism','Skeuomorphism'],
-    ['neumorphism','Neumorphism'],['glassmorphism','Glassmorphism'],
-    ['claymorphism','Claymorphism'],['minimalism','Minimalism'],
-    ['brutalism','Brutalism'],['liquid-glass','Liquid Glass'],['spatial-ui','Spatial UI'],
-    ['cartoon','Cartoon'],['space','Space']
+  "use strict";
+  var KEY = "grv-expense-visual-theme";
+  var THEMES = [
+    ["default", "Default (Current Design)"],
+    ["skeuomorphism", "Skeuomorphism"],
+    ["neumorphism", "Neumorphism"],
+    ["glassmorphism", "Glassmorphism"],
+    ["claymorphism", "Claymorphism"],
+    ["minimalism", "Minimalism"],
+    ["brutalism", "Brutalism"],
+    ["liquid-glass", "Liquid Glass"],
+    ["spatial-ui", "Spatial UI"],
+    ["cartoon", "Cartoon"],
+    ["space", "Space"],
   ];
-  function read(){try{var v=localStorage.getItem(KEY);return THEMES.some(function(t){return t[0]===v;})?v:'default';}catch(e){return'default';}}
-  function apply(v){
-    var b=document.body,h=document.documentElement;
-    if(v==='default'){b.removeAttribute('data-grv-visual-theme');h.removeAttribute('data-grv-visual-theme');}
-    else{b.setAttribute('data-grv-visual-theme',v);h.setAttribute('data-grv-visual-theme',v);}
-    try{localStorage.setItem(KEY,v);}catch(e){}
-    var s=document.getElementById('grv-visual-theme-select');if(s)s.value=v;document.querySelectorAll('#grv-visual-theme-list button').forEach(function(b){b.classList.toggle('is-active',b.getAttribute('data-theme')===v);});
-    var status=document.getElementById('grv-visual-theme-status');
-    if(status)status.textContent='Active style: '+THEMES.filter(function(t){return t[0]===v;})[0][1];
+  function read() {
+    try {
+      var v = localStorage.getItem(KEY);
+      return THEMES.some(function (t) {
+        return t[0] === v;
+      })
+        ? v
+        : "default";
+    } catch (e) {
+      return "default";
+    }
   }
-  function init(){
-    if(document.getElementById('grv-visual-theme-widget'))return;
-    var css=`
+  function apply(v) {
+    var b = document.body,
+      h = document.documentElement;
+    if (v === "default") {
+      b.removeAttribute("data-grv-visual-theme");
+      h.removeAttribute("data-grv-visual-theme");
+    } else {
+      b.setAttribute("data-grv-visual-theme", v);
+      h.setAttribute("data-grv-visual-theme", v);
+    }
+    // The floating widget lives under HTML for reliable iOS fixed positioning;
+    // mirror active theme variables from BODY so its colours still follow the theme.
+    var themeWidget = document.getElementById("grv-visual-theme-widget");
+    if (themeWidget) {
+      var computedBody = window.getComputedStyle(b);
+      ["--text", "--surface", "--s2", "--border", "--accent", "--bg"].forEach(
+        function (name) {
+          var value = computedBody.getPropertyValue(name);
+          if (value) themeWidget.style.setProperty(name, value);
+          else themeWidget.style.removeProperty(name);
+        },
+      );
+    }
+    try {
+      localStorage.setItem(KEY, v);
+    } catch (e) {}
+    var s = document.getElementById("grv-visual-theme-select");
+    if (s) s.value = v;
+    document
+      .querySelectorAll("#grv-visual-theme-list button")
+      .forEach(function (b) {
+        b.classList.toggle("is-active", b.getAttribute("data-theme") === v);
+      });
+    var status = document.getElementById("grv-visual-theme-status");
+    if (status)
+      status.textContent =
+        "Active style: " +
+        THEMES.filter(function (t) {
+          return t[0] === v;
+        })[0][1];
+  }
+  function init() {
+    if (document.getElementById("grv-visual-theme-widget")) return;
+    var css = `
 #grv-visual-theme-widget{position:fixed;right:16px;bottom:16px;z-index:2147483000;font-family:inherit;color:var(--text,#eee)}
 #grv-visual-theme-widget *{box-sizing:border-box}
 #grv-visual-theme-toggle{border:1px solid var(--border,#555);border-radius:999px;padding:12px 16px;background:var(--surface,#181820);color:var(--text,#eee);box-shadow:0 4px 18px #0004;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
@@ -276,44 +325,137 @@ body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{ba
 body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{color:#fff!important}
 
 `;
-    var style=document.createElement('style');style.id='grv-visual-theme-styles';style.textContent=css;document.head.appendChild(style);
-    var widget=document.createElement('div');widget.id='grv-visual-theme-widget';
-    var toggle=document.createElement('button');toggle.id='grv-visual-theme-toggle';toggle.type='button';toggle.textContent='🎨 Appearance';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls','grv-visual-theme-panel');
-    var panel=document.createElement('div');panel.id='grv-visual-theme-panel';panel.setAttribute('aria-label','Website appearance');
-    var label=document.createElement('div');label.id='grv-visual-theme-label';label.textContent='Choose design style';label.setAttribute('role','heading');label.setAttribute('aria-level','2');
-    var list=document.createElement('div');list.id='grv-visual-theme-list';list.setAttribute('role','group');list.setAttribute('aria-label','Design styles');
-    THEMES.forEach(function(t){
-      var b=document.createElement('button');b.type='button';b.textContent=t[1];b.setAttribute('data-theme',t[0]);
-      b.addEventListener('click',function(){apply(t[0]);});
+    var style = document.createElement("style");
+    style.id = "grv-visual-theme-styles";
+    style.textContent = css;
+    document.head.appendChild(style);
+    var widget = document.createElement("div");
+    widget.id = "grv-visual-theme-widget";
+    var toggle = document.createElement("button");
+    toggle.id = "grv-visual-theme-toggle";
+    toggle.type = "button";
+    toggle.textContent = "🎨 Appearance";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", "grv-visual-theme-panel");
+    var panel = document.createElement("div");
+    panel.id = "grv-visual-theme-panel";
+    panel.setAttribute("aria-label", "Website appearance");
+    var label = document.createElement("div");
+    label.id = "grv-visual-theme-label";
+    label.textContent = "Choose design style";
+    label.setAttribute("role", "heading");
+    label.setAttribute("aria-level", "2");
+    var list = document.createElement("div");
+    list.id = "grv-visual-theme-list";
+    list.setAttribute("role", "group");
+    list.setAttribute("aria-label", "Design styles");
+    THEMES.forEach(function (t) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = t[1];
+      b.setAttribute("data-theme", t[0]);
+      b.addEventListener("click", function () {
+        apply(t[0]);
+      });
       list.appendChild(b);
     });
-    var status=document.createElement('div');status.id='grv-visual-theme-status';status.setAttribute('aria-live','polite');
-    panel.appendChild(label);panel.appendChild(list);panel.appendChild(status);widget.appendChild(panel);widget.appendChild(toggle);document.body.appendChild(widget);
+    var status = document.createElement("div");
+    status.id = "grv-visual-theme-status";
+    status.setAttribute("aria-live", "polite");
+    panel.appendChild(label);
+    panel.appendChild(list);
+    panel.appendChild(status);
+    widget.appendChild(panel);
+    widget.appendChild(toggle);
+    // Keep the fixed control outside BODY so iOS Safari body transforms/scrolling
+    // cannot turn its fixed positioning into page-relative positioning.
+    var bodyStyles = window.getComputedStyle(document.body);
+    ["--text", "--surface", "--s2", "--border", "--accent", "--bg"].forEach(
+      function (name) {
+        var value = bodyStyles.getPropertyValue(name);
+        if (value) widget.style.setProperty(name, value);
+      },
+    );
+    document.documentElement.appendChild(widget);
 
-    // Keep the appearance button aligned immediately to the left of the app's info button.
-    // Measure the real button position so this remains correct across mobile screen sizes.
-    function positionAppearanceButton(){
-      if(!window.matchMedia || !window.matchMedia('(max-width: 600px)').matches)return;
-      var infoButton=document.getElementById('versionBtn');
-      if(!infoButton)return;
-      var rect=infoButton.getBoundingClientRect();
-      var buttonSize=48;
-      var gap=8;
-      var left=Math.max(8,rect.left-buttonSize-gap);
-      var top=rect.top+(rect.height-buttonSize)/2;
-      widget.style.left=left+'px';
-      widget.style.right='auto';
-      widget.style.top=Math.max(8,top)+'px';
-      widget.style.bottom='auto';
+    // Keep the appearance button immediately left of the app's info button.
+    // IMPORTANT: position is computed scroll-independently and only on real
+    // layout changes (resize/orientation) — NOT on scroll or visualViewport
+    // resize (those fire while the mobile address bar collapses and would
+    // make the button follow the page).
+    var lastW = 0;
+    function positionAppearanceButton() {
+      if (
+        !window.matchMedia ||
+        !window.matchMedia("(max-width: 600px)").matches
+      ) {
+        widget.style.left = "";
+        widget.style.right = "";
+        widget.style.top = "";
+        widget.style.bottom = "";
+        return;
+      }
+      var infoButton = document.getElementById("versionBtn");
+      if (!infoButton) return;
+      var rect = infoButton.getBoundingClientRect();
+      var isFixed = window.getComputedStyle(infoButton).position === "fixed";
+      var scrollY =
+        window.pageYOffset || document.documentElement.scrollTop || 0;
+      // If the info button scrolls with the page, convert to its position at scroll=0
+      var absTop = isFixed ? rect.top : rect.top + scrollY;
+      var buttonSize = 48,
+        gap = 8;
+      var left = Math.max(8, rect.left - buttonSize - gap);
+      var top = absTop + (rect.height - buttonSize) / 2;
+      // Follow the info button: scroll with the page unless it is itself fixed.
+      widget.style.setProperty(
+        "position",
+        isFixed ? "fixed" : "absolute",
+        "important",
+      );
+      widget.style.setProperty("left", left + "px", "important");
+      widget.style.setProperty("right", "auto", "important");
+      widget.style.setProperty("top", Math.max(8, top) + "px", "important");
+      widget.style.setProperty("bottom", "auto", "important");
     }
     positionAppearanceButton();
-    window.addEventListener('resize',positionAppearanceButton,{passive:true});
-    window.addEventListener('orientationchange',positionAppearanceButton,{passive:true});
+    window.addEventListener("load", positionAppearanceButton);
+    window.addEventListener("orientationchange", function () {
+      setTimeout(positionAppearanceButton, 300);
+    });
+    window.addEventListener(
+      "resize",
+      function () {
+        // ignore height-only resizes (address bar show/hide while scrolling)
+        if (window.innerWidth !== lastW) {
+          lastW = window.innerWidth;
+          positionAppearanceButton();
+        }
+      },
+      { passive: true },
+    );
+    lastW = window.innerWidth;
 
-    toggle.addEventListener('click',function(){var open=panel.classList.toggle('is-open');toggle.setAttribute('aria-expanded',String(open));});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&panel.classList.contains('is-open')){panel.classList.remove('is-open');toggle.setAttribute('aria-expanded','false');toggle.focus();}});
-    document.addEventListener('pointerdown',function(e){if(!widget.contains(e.target)){panel.classList.remove('is-open');toggle.setAttribute('aria-expanded','false');}});
+    toggle.addEventListener("click", function () {
+      var open = panel.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && panel.classList.contains("is-open")) {
+        panel.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.focus();
+      }
+    });
+    document.addEventListener("pointerdown", function (e) {
+      if (!widget.contains(e.target)) {
+        panel.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    });
     apply(read());
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  else init();
 })();
