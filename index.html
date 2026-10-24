@@ -215,8 +215,7 @@
             flex-shrink: 0;
             animation: lakshmiAura 4s ease-in-out infinite;
             filter:
-                drop-shadow(0 0 4px rgba(231, 200, 121, 0.35))
-                drop-shadow(0 0 8px rgba(231, 200, 121, 0.12));
+                drop-shadow(0 0 4px rgba(231, 200, 121, 0.35)) drop-shadow(0 0 8px rgba(231, 200, 121, 0.12));
         }
 
         .brand-name {
@@ -265,15 +264,16 @@
         }
 
         @keyframes lakshmiAura {
-            0%, 100% {
+
+            0%,
+            100% {
                 filter:
-                    drop-shadow(0 0 4px rgba(231, 200, 121, 0.35))
-                    drop-shadow(0 0 8px rgba(231, 200, 121, 0.12));
+                    drop-shadow(0 0 4px rgba(231, 200, 121, 0.35)) drop-shadow(0 0 8px rgba(231, 200, 121, 0.12));
             }
+
             50% {
                 filter:
-                    drop-shadow(0 0 6px rgba(255, 220, 135, 0.58))
-                    drop-shadow(0 0 12px rgba(231, 200, 121, 0.2));
+                    drop-shadow(0 0 6px rgba(255, 220, 135, 0.58)) drop-shadow(0 0 12px rgba(231, 200, 121, 0.2));
             }
         }
 
@@ -282,12 +282,15 @@
                 transform: translate(0, 5px) scale(0.5);
                 opacity: 0;
             }
+
             25% {
                 opacity: 0.65;
             }
+
             75% {
                 opacity: 0.35;
             }
+
             100% {
                 transform: translate(8px, -13px) scale(0.15);
                 opacity: 0;
@@ -295,6 +298,7 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
+
             .brand-lakshmi,
             .brand-particle {
                 animation: none;
@@ -7579,6 +7583,23 @@
                 min-width: 110px !important;
                 white-space: nowrap !important;
             }
+
+
+
+            #expenseTable td:nth-child(5) {
+                vertical-align: middle !important;
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+
+            #expenseTable td:nth-child(5) .delete-btn {
+                vertical-align: middle !important;
+                flex-shrink: 0 !important;
+            }
+
+
+
+
         }
 
         @media (max-width: 600px) {

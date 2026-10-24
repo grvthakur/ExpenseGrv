@@ -636,7 +636,8 @@ function renderExcludedSweetieList(excludedTransactions) {
     wrap = document.createElement("section");
     wrap.id = "excludedSweetieWrap";
     wrap.style.cssText =
-      "display:none;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--s1);";
+      "display:none;margin-top:24px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--s1);";
+
     scroll.insertAdjacentElement("afterend", wrap);
   }
 
@@ -870,13 +871,20 @@ function render() {
       const sweetieLabel = document.createElement("span");
       sweetieLabel.textContent = "↳ Sweetie";
       sweetieLabel.title = "Original transaction Sweetie tab mein safe rahega";
-      sweetieLabel.style.marginRight = "6px";
+      sweetieLabel.style.cssText =
+        "display:inline-flex;align-items:center;white-space:nowrap;margin-right:10px;line-height:1.2;vertical-align:middle;";
+      actCell.style.verticalAlign = "middle";
+      actCell.style.whiteSpace = "nowrap";
       actCell.appendChild(sweetieLabel);
 
       const excludeBtn = document.createElement("button");
       excludeBtn.type = "button";
       excludeBtn.textContent = "⊖";
       excludeBtn.className = "delete-btn";
+
+      excludeBtn.style.verticalAlign = "middle";
+      excludeBtn.style.flexShrink = "0";
+
       excludeBtn.title = "Exclude from Expenses (Sweetie original safe rahega)";
       excludeBtn.setAttribute(
         "aria-label",

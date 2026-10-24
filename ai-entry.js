@@ -352,6 +352,20 @@
     w.length <= 3
       ? w.toUpperCase()
       : w[0].toUpperCase() + w.slice(1).toLowerCase();
+  const plainName = (source) =>
+    source
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .find(
+        (l, i, a) =>
+          l &&
+          l.length <= 30 &&
+          !/\d/.test(l) &&
+          l.split(/\s+/).length <= 3 &&
+          !/[:,*.]/.test(l) &&
+          !/\b(dear|hi|hello|bank|card|credit|debit|info|summary|merchant|amount|date|limit|transaction|regards|thank|dispute|call|available|total|flipkart|axis)\b/i.test(l) &&
+          !/[:*]\s*$/.test(a[i - 1] || ""),
+      );
   // Short extra line before/after an SMS ("GRV,FLIPKART") = who + description.
   // Explicit labels ("Used by: X", "Desc: Y", "Remarks: Z") always win over any guessing.
   function labelHint(text) {
@@ -619,7 +633,7 @@
       .filter(Boolean);
     if (lines.length < 2) return null;
     const bad =
-      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!:]|\b(call|dispute|click|link|otp|available|avl|limit|bank|merchant|dear|hi|hello|thank|regards|team|please|kindly|sincerely)\b/i;
+      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\b(call|dispute|click|link|otp|available|avl|limit|bank|merchant|dear|hi|hello|thank|regards|team|please|kindly|sincerely)\b/i;
     let line = "";
     for (let k = lines.length - 1; k >= 0; k--)
       if (
@@ -631,6 +645,29 @@
         break;
       }
     if (!line) return null;
+
+    // Explicit custom note format: "Grv Grocery: dudh dahi egg".
+    const colonNote = line.match(/^([A-Za-z][A-Za-z'-]*)\s+([^:]{1,35}):\s*(.+)$/);
+    if (colonNote) {
+      const whoToken = colonNote[1].trim();
+      const knownPeople = peopleSet();
+      const whoKnown =
+        knownPeople.has(whoToken.toLowerCase()) ||
+        /^(grv|gaurav|sweetie|tanya|me|self)$/i.test(whoToken);
+      if (whoKnown) {
+        const category = colonNote[2].trim();
+        const note = colonNote[3].trim();
+        return {
+          card: "",
+          who: cap(whoToken),
+          rem: [category, note].filter(Boolean).join(" - ").toUpperCase(),
+          date: "",
+          sure: true,
+          line,
+        };
+      }
+    }
+
     let t = " " + line.toLowerCase().replace(/[₹,]/g, " ") + " ";
     let date = "",
       m;
@@ -1864,16 +1901,7 @@
             if (ul0.rem && !(lab && lab.rem)) sm.remarks = ul0.rem;
           }
           if (!sm.usedBy && !(lab && lab.who)) {
-            const nm = text
-              .split(/\n+/)
-              .map((l) => l.trim())
-              .find(
-                (l) =>
-                  l &&
-                  l.length <= 30 &&
-                  !/\d/.test(l) &&
-                  l.split(/\s+/).length <= 3,
-              );
+            const nm = plainName(text);
             if (nm)
               sm.usedBy = nm
                 .split(/\s+/)
@@ -1942,16 +1970,7 @@
       )
         r.kind = "card";
       if (r.kind === "card" && !r.usedBy && !(lab && lab.who)) {
-        const nm = text
-          .split(/\n+/)
-          .map((l) => l.trim())
-          .find(
-            (l) =>
-              l &&
-              l.length <= 30 &&
-              !/\d/.test(l) &&
-              l.split(/\s+/).length <= 3,
-          );
+        const nm = plainName(text);
         if (nm)
           r.usedBy = nm
             .split(/\s+/)
