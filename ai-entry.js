@@ -632,6 +632,30 @@
     }
     return null;
   }
+  // Merge a user-supplied product hint into the transaction description without
+  // turning it into a personal remark. Purely local and deterministic.
+  function appendDescriptionHint(o, hint) {
+    if (!o || !hint) return o;
+    const item = String(hint).trim().replace(/\s+/g, " ").toUpperCase();
+    if (!item) return o;
+    const current = String(o.desc || "").trim();
+    if (!current) {
+      o.desc = item;
+      return o;
+    }
+    const norm = (v) => v.toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+    if (norm(current).includes(norm(item))) return o;
+    // If the extracted merchant field contains a platform plus noisy/product
+    // text, retain the known platform and replace the unreliable suffix.
+    const brand = BRANDS.find(([re]) => re.test(current));
+    if (brand) {
+      o.desc = brand[1] + " - " + item;
+      return o;
+    }
+    o.desc = current + " - " + item;
+    return o;
+  }
+
   // User's own hint line under a pasted SMS ("hdfc tata neu mummy 9oct2026"): card + person + date + remarks, no AI needed.
   function userLine(text) {
     const lines = text
@@ -2006,14 +2030,16 @@
             if (sh.card) sm.card = sh.card;
             if (sh.usedBy) sm.usedBy = sh.usedBy;
             if (sh.desc) sm.desc = sh.desc;
-            if (sh.remarks) sm.remarks = sh.remarks;
           }
           applyLab(sm);
           if (ul0) {
             if (ul0.card) sm.card = ul0.card;
             if (ul0.date) sm.date = ul0.date;
             if (ul0.who) sm.usedBy = ul0.who;
-            if (ul0.rem && !(lab && lab.rem)) sm.remarks = ul0.rem;
+            // A free-form person hint such as "Grv Biryani" is product context,
+            // not a personal transaction remark. Explicit Remarks labels are
+            // applied separately by applyLab().
+            if (ul0.rem && !(sh && sh.desc)) appendDescriptionHint(sm, ul0.rem);
           }
           if (!sm.usedBy && !(lab && lab.who)) {
             const nm = plainName(text);
@@ -2058,7 +2084,8 @@
         if (!loc) throw aiErr || new Error("Could not understand this text");
         if (h0) {
           if (h0.desc) loc.desc = h0.desc;
-          if (h0.rem) loc.remarks = h0.rem;
+          // splitHint.rem is heuristic text, not a user-confirmed Remarks value.
+          // Only explicit "Remarks: ..." labels may populate this field.
           if (h0.who && loc.kind === "card") loc.usedBy = h0.who;
         }
         box.style.display = "none";
@@ -2071,7 +2098,6 @@
         if (sh.card) { r.card = sh.card; r.kind = "card"; }
         if (sh.usedBy && r.kind === "card") r.usedBy = sh.usedBy;
         if (sh.desc) r.desc = sh.desc;
-        if (sh.remarks) r.remarks = sh.remarks;
       }
       const ul = lab && lab.who ? null : userLine(text);
       if (ul) {
@@ -2081,7 +2107,7 @@
         }
         if (ul.date) r.date = ul.date;
         if (r.kind === "card" && ul.who) r.usedBy = ul.who;
-        if (ul.rem && !(lab && lab.rem)) r.remarks = ul.rem;
+        if (ul.rem) appendDescriptionHint(r, ul.rem);
       }
       // Client-side guards (work even if the server is an older version)
       if (
