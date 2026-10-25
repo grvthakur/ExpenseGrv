@@ -6450,6 +6450,10 @@
 
     <!-- ═══ EXPENSES STATS (shown when Expenses tab active) ═══ -->
     <div id="expenseSection">
+        <div class="stats-tools">
+            <button type="button" class="amount-mask-btn" id="amountMaskBtn" aria-pressed="false"
+                aria-label="Hide amounts" title="Hide / show amounts">👁️</button>
+        </div>
         <div class="stats is-loading" aria-busy="true">
             <div class="stat">
                 <div class="stat-label">Total Expenses</div>
@@ -6466,6 +6470,14 @@
             <div class="stat">
                 <div class="stat-label">Sweetie Balance</div>
                 <div class="stat-value c-pink" id="statSweetie">₹0</div>
+            </div>
+            <div class="stat stat-saving">
+                <div class="stat-label">Total Saving</div>
+                <div class="stat-value c-green" id="statTotalSaving">₹0</div>
+            </div>
+            <div class="stat stat-saving">
+                <div class="stat-label">This Month Saving</div>
+                <div class="stat-value c-green" id="statMonthSaving">₹0</div>
             </div>
         </div>
 
@@ -7936,6 +7948,84 @@
             #expenseSection #expenseTable td:nth-child(5)>span+button {
                 float: none !important;
                 margin: 0 2px 0 0 !important
+            }
+        }
+
+        /* Savings cards + amount mask (six dashboard cards) */
+        #expenseSection .stats {
+            grid-template-columns: repeat(3, minmax(0, 1fr))
+        }
+
+        #expenseSection .stats .stat:nth-child(5),
+        #expenseSection .stats .stat:nth-child(6) {
+            --sc: 52, 211, 153
+        }
+
+        #expenseSection .stats-tools {
+            display: flex;
+            justify-content: flex-end;
+            padding: 12px 28px 0
+        }
+
+        .amount-mask-btn {
+            width: 30px;
+            height: 26px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .85rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--muted);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px
+        }
+
+        .amount-mask-btn:hover,
+        .amount-mask-btn[aria-pressed="true"] {
+            border-color: var(--accent);
+            color: var(--text, inherit)
+        }
+
+        .amount-mask-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px
+        }
+
+        /* Masking is visual only: the stored text, count-up animation and calculations are untouched. */
+        #expenseSection .stats.amounts-masked .stat-value {
+            filter: blur(9px);
+            user-select: none;
+            pointer-events: none
+        }
+
+        @media (max-width: 600px) {
+            #expenseSection .stats-tools {
+                padding: 6px 12px 0
+            }
+
+            #expenseSection .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px
+            }
+
+            #expenseSection .stats .stat {
+                padding: 8px 10px
+            }
+
+            #expenseSection .stats .stat .stat-label {
+                font-size: .58rem;
+                letter-spacing: .6px
+            }
+
+            #expenseSection .stats .stat .stat-value {
+                font-size: 1.05rem;
+                margin-top: 2px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap
             }
         }
     </style>

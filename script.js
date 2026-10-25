@@ -734,6 +734,7 @@ function render() {
 
   let totalExp = 0,
     sweetSave = 0,
+    sipSave = 0,
     sweetBorrow = 0,
     sweetBorrowAll = 0,
     totalReceived = 0;
@@ -742,8 +743,10 @@ function render() {
     if (cat === "Received") {
       totalReceived += amt;
     } else if (cat === "Sweetie Saving") {
+      // Saving is not an expense: kept out of totalExp, still deducted from Remaining below.
       sweetSave += amt;
-      totalExp += amt;
+    } else if (cat === "Savings and Investments") {
+      sipSave += amt;
     } else if (cat === "Sweetie Borrow") {
       sweetBorrow += amt;
       sweetBorrowAll += amt;
@@ -759,8 +762,32 @@ function render() {
   });
 
   const salary = salaries[key] || 0;
-  const remaining = salary + totalReceived - (totalExp - sweetBorrow);
+  // Remaining is unchanged from before: saving still leaves cash in hand,
+  // so it is deducted here even though it is no longer part of totalExp.
+  const remaining =
+    salary + totalReceived - (totalExp + sweetSave + sipSave - sweetBorrow);
   const sweetBal = sweetSave - sweetBorrowAll;
+
+  const monthSaving = sweetSave + sipSave;
+  // Overall saving: locally cached months (freshest) + any other months from the
+  // full history once it has been loaded. Read-only; nothing is written.
+  const localMonths = new Set(expenses.map((e) => e.month));
+  const totalSaving = [
+    ...expenses,
+    ...(Array.isArray(grvExpenseHistory) ? grvExpenseHistory : []).filter(
+      (e) => !localMonths.has(e.month),
+    ),
+  ].reduce(
+    (sum, e) =>
+      getGrvCategoryType(e.category) === "saving"
+        ? sum + (Number(e.amount) || 0)
+        : sum,
+    0,
+  );
+  const totalSavingEl = document.getElementById("statTotalSaving");
+  const monthSavingEl = document.getElementById("statMonthSaving");
+  if (totalSavingEl) totalSavingEl.textContent = money(totalSaving);
+  if (monthSavingEl) monthSavingEl.textContent = money(monthSaving);
 
   document.getElementById("statTotalExpenses").textContent = money(totalExp);
   document.getElementById("statSalary").textContent = salary
@@ -1121,6 +1148,12 @@ async function syncFromSheet(isManual = false, isInitial = false) {
     markLastSynced("lastSyncedExpenses");
     finishInitialSkeleton();
     if (isManual) toast(`Synced ✓ — ${fromSheet.length} entries for ${key}`);
+    // Total Saving needs every month: load the read-only history once, then refresh the cards.
+    if (!grvExpenseHistoryLoaded && !grvExpenseHistoryLoading) {
+      syncGrvExpenseHistory()
+        .then(() => render())
+        .catch(() => {});
+    }
   } catch (err) {
     console.error("Sync error:", err);
     if (isManual) toast("⚠️ Sync failed — showing local data", true);
@@ -4790,3 +4823,29 @@ async function syncSweetieFromSheet(isManual = false) {
     }
   }
 }
+
+/* Mask / reveal amounts on the six Expenses dashboard cards (visual only). */
+(function initAmountMask() {
+  const btn = document.getElementById("amountMaskBtn");
+  const stats = document.querySelector("#expenseSection .stats");
+  if (!btn || !stats) return;
+  const KEY = "grv_mask_amounts";
+  const apply = (masked) => {
+    stats.classList.toggle("amounts-masked", masked);
+    btn.setAttribute("aria-pressed", String(masked));
+    btn.setAttribute("aria-label", masked ? "Show amounts" : "Hide amounts");
+    btn.textContent = masked ? "🙈" : "👁️";
+  };
+  let masked = false;
+  try {
+    masked = localStorage.getItem(KEY) === "1";
+  } catch (e) {}
+  apply(masked);
+  btn.addEventListener("click", () => {
+    masked = !masked;
+    apply(masked);
+    try {
+      localStorage.setItem(KEY, masked ? "1" : "0");
+    } catch (e) {}
+  });
+})();

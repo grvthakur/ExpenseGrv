@@ -344,6 +344,8 @@
       "statSalary",
       "statRemaining",
       "statSweetie",
+      "statTotalSaving",
+      "statMonthSaving",
       "salaryDisplay",
       "ccStatTotal",
       "ccStatUnpaid",
