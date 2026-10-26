@@ -145,6 +145,14 @@ if (!hasJsdom) {
     assert.equal(dash(a).exp, a.app.money(400));
     a.close();
   });
+  test("Remaining card shows this month's Sweetie Borrow (rows + Sweetie ledger DEBIT), not deducted", () => {
+    const a = loadApp();
+    a.app.set({ expenses: [OCT("Sweetie Borrow", 2600, 1), OCT("Sweetie Borrow", 390, 2)], salaries: { "Oct-26": 10000 }, sweetieTxns: [{ id: "x", type: "DEBIT", amount: 5000, date: "2026-10-02", description: "e" }, { id: "y", type: "DEBIT", amount: 77, date: "2026-09-02", description: "old month" }] });
+    a.setMonth(2026, 9); a.app.render();
+    assert.equal(a.text("statBorrowSub"), a.app.money(7990));
+    assert.equal(a.text("statRemaining"), a.app.money(10000), "Remaining not reduced by borrow");
+    a.close();
+  });
   test("Sweetie Borrow does not reduce Remaining", () => {
     const a = loadApp();
     a.app.set({ expenses: [OCT("Sweetie Borrow", 800, 1)], salaries: { "Oct-26": 5000 }, sweetieTxns: [] });
@@ -246,7 +254,7 @@ if (!hasJsdom) {
     btn.click();
     assert.ok(st.classList.contains("amounts-masked")); assert.equal(btn.getAttribute("aria-pressed"), "true"); assert.equal(btn.getAttribute("aria-label"), "Show amounts");
     deq(dash(a), before, "text must be unchanged while masked");
-    assert.equal(st.querySelectorAll(".stat .stat-value").length, 6);
+    assert.equal(st.querySelectorAll(".stat .stat-value").length, 7, "6 cards, Remaining card holds two values");
     btn.click();
     assert.ok(!st.classList.contains("amounts-masked")); assert.equal(btn.getAttribute("aria-label"), "Hide amounts");
     a.close();
@@ -260,7 +268,7 @@ if (!hasJsdom) {
   });
   test("masking uses CSS only; stylesheet defines the blur and a compact 2-column mobile grid", () => {
     const css = read("index.html");
-    assert.match(css, /amounts-masked \.stat-value\s*\{[^}]*filter:\s*blur/);
+    assert.match(css, /amounts-masked \.stat-value,[^{]*\{[^}]*filter:\s*blur/);
     assert.match(css, /@media \(max-width: 600px\)\s*\{\s*#expenseSection \.stats-tools[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/);
   });
   test("storage keys used by the app are unchanged", () => {

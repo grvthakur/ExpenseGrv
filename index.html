@@ -6463,9 +6463,15 @@
                 <div class="stat-label">Salary</div>
                 <div class="stat-value c-green" id="statSalary">—</div>
             </div>
-            <div class="stat">
-                <div class="stat-label">Remaining</div>
-                <div class="stat-value c-purple" id="statRemaining">—</div>
+            <div class="stat stat-split">
+                <div class="stat-half">
+                    <div class="stat-label">Remaining</div>
+                    <div class="stat-value c-purple" id="statRemaining">—</div>
+                </div>
+                <div class="stat-half stat-half-borrow">
+                    <div class="stat-label">Sweetie Borrow</div>
+                    <div class="stat-value c-pink" id="statBorrowSub">₹0.00</div>
+                </div>
             </div>
             <div class="stat">
                 <div class="stat-label">Sweetie Balance</div>
@@ -7995,16 +8001,41 @@
         }
 
         /* Masking is visual only: the stored text, count-up animation and calculations are untouched. */
-        #expenseSection .stats.amounts-masked .stat-value {
+        #expenseSection .stats .stat-split {
+            display: flex
+        }
+
+        #expenseSection .stats .stat-half {
+            flex: 1 1 0;
+            min-width: 0
+        }
+
+        #expenseSection .stats .stat-half+.stat-half {
+            margin-left: 12px;
+            padding-left: 12px;
+            border-left: 1px solid rgba(var(--sc), .35)
+        }
+
+        #expenseSection .stats .stat-half-borrow .stat-label {
+            color: rgba(244, 114, 182, .9)
+        }
+
+        #expenseSection .stats .stat-half-borrow .stat-value {
+            color: rgb(244, 114, 182)
+        }
+
+        #expenseSection .stats .stat-sub {
+            font-size: .72rem;
+            margin-top: 3px;
+            color: var(--muted);
+            white-space: nowrap
+        }
+
+        #expenseSection .stats.amounts-masked .stat-value,
+        #expenseSection .stats.amounts-masked .stat-sub {
             filter: blur(9px);
             user-select: none;
             pointer-events: none
-        }
-
-        #salaryDisplay.amounts-masked {
-            filter: blur(9px);
-            user-select: none;
-            pointer-events: none;
         }
 
         @media (max-width: 600px) {
@@ -8019,6 +8050,16 @@
 
             #expenseSection .stats .stat {
                 padding: 8px 10px
+            }
+
+            #expenseSection .stats .stat-split,
+            #expenseSection .stats .stat:nth-child(6) {
+                grid-column: 1 / -1
+            }
+
+            #expenseSection .stats .stat-sub {
+                font-size: .6rem;
+                margin-top: 1px
             }
 
             #expenseSection .stats .stat .stat-label {

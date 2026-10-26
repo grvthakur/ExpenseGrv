@@ -56,6 +56,23 @@ const server = http.createServer((q, res) => { let p = decodeURIComponent(q.url.
     check(`${name}: no horizontal scroll, 6 cards, mask button`, m.sw <= m.iw + 1 && m.cards === 6 && m.btn, `scrollWidth ${m.sw} / viewport ${m.iw}, cards block height ${m.h}px`);
     if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: path.join(SHOTS, name + ".png"), clip: { x: 0, y: 0, width: w, height: Math.min(h, 520) } }); }
   }
+  for (const [w, h, name] of [[390, 844, "m"], [1280, 900, "d"]]) {
+    await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(300);
+    const r = await page.evaluate(() => { const ib = document.getElementById("versionBtn"), wd = document.getElementById("grv-visual-theme-widget"), th = document.getElementById("themeToggleBtn"); const a = wd.getBoundingClientRect(), b = ib.getBoundingClientRect(), c = th.getBoundingClientRect(); const hit = (x, y) => a.left < x.right && a.right > x.left && a.top < x.bottom && a.bottom > x.top; return { sameRow: wd.parentNode === ib.parentNode, overlapInfo: hit(b), overlapLight: hit(c), pos: getComputedStyle(wd).position, gap: Math.round(b.left - a.right) }; });
+    const near = Math.abs(r.gap) <= 60;
+    check(`${name === "m" ? "mobile" : "desktop"}: Appearance sits beside the (i) button, no overlap`, !r.overlapInfo && !r.overlapLight && (name === "m" ? r.pos === "absolute" || r.pos === "fixed" : r.sameRow && r.pos === "relative"), JSON.stringify(r));
+    await page.click("#versionBtn"); await page.waitForTimeout(200);
+    const top = await page.evaluate(() => { const p = document.getElementById("versionPopup").getBoundingClientRect(); const el = document.elementFromPoint(p.left + p.width / 2, p.top + p.height / 2); return !!(el && el.closest("#versionPopup")); });
+    check(`${name === "m" ? "mobile" : "desktop"}: info popup is on top (Appearance is not above it)`, top);
+    if (SHOTS) await page.screenshot({ path: path.join(SHOTS, `header-${name}-info.png`), clip: { x: 0, y: 0, width: w, height: 300 } });
+    await page.click("#versionBtn"); await page.click("#grv-visual-theme-toggle"); await page.waitForTimeout(200);
+    const open = await page.evaluate(() => { const p = document.getElementById("grv-visual-theme-panel").getBoundingClientRect(); return p.width > 0 && p.left >= 0 && p.right <= innerWidth && p.top >= 0; });
+    check(`${name === "m" ? "mobile" : "desktop"}: Appearance panel opens fully on screen`, open);
+    await page.click("#grv-visual-theme-toggle");
+  }
+  const sub = await page.evaluate(() => document.getElementById("statBorrowSub").textContent);
+  check("Remaining card shows Sweetie Borrow as its right half", /^₹[\d,]+\.\d{2}$/.test(sub), sub);
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(200);
   await page.click("#amountMaskBtn"); await page.waitForTimeout(150);
   const blur = await page.evaluate(() => getComputedStyle(document.querySelector("#statTotalSaving")).filter);
   check("mask button blurs the amounts", /blur/.test(blur), blur);

@@ -383,31 +383,45 @@ body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{co
     // layout changes (resize/orientation) — NOT on scroll or visualViewport
     // resize (those fire while the mobile address bar collapses and would
     // make the button follow the page).
+    // Dock the widget INSIDE the header, right before the (i) button, so it sits with it on every
+    // screen size, scrolls with it and can never float above the info popup or other dialogs.
+    var dock = document.createElement("style");
+    dock.id = "grv-theme-dock-style";
+    dock.textContent =
+      "#grv-visual-theme-widget{z-index:150!important}" +
+      "#grv-visual-theme-widget.is-docked{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;z-index:auto!important;width:auto!important;max-height:none!important;display:inline-flex;align-items:center;flex:0 0 auto}" +
+      "#grv-visual-theme-widget.is-docked #grv-visual-theme-panel{top:calc(100% + 8px)!important;bottom:auto!important;right:0!important;left:auto!important;z-index:300}" +
+      "@media(min-width:601px){#grv-visual-theme-widget.is-docked #grv-visual-theme-toggle{padding:6px 12px;min-height:34px;font-size:.8rem}}";
+    document.head.appendChild(dock);
     var lastW = 0;
     function positionAppearanceButton() {
-      if (
-        !window.matchMedia ||
-        !window.matchMedia("(max-width: 600px)").matches
-      ) {
-        widget.style.left = "";
-        widget.style.right = "";
-        widget.style.top = "";
-        widget.style.bottom = "";
+      var infoButton = document.getElementById("versionBtn");
+      if (!infoButton || !infoButton.parentNode) return;
+      var mobile =
+        window.matchMedia && window.matchMedia("(max-width: 600px)").matches;
+      if (!mobile) {
+        // Desktop/tablet: sit in the header right before the (i) button.
+        ["left", "right", "top", "bottom", "position"].forEach(function (p) {
+          widget.style.removeProperty(p);
+        });
+        if (widget.parentNode !== infoButton.parentNode)
+          infoButton.parentNode.insertBefore(widget, infoButton);
+        widget.classList.add("is-docked");
         return;
       }
-      var infoButton = document.getElementById("versionBtn");
-      if (!infoButton) return;
+      // Mobile: float beside the (i) button (keeps the compact header), below popups.
+      widget.classList.remove("is-docked");
+      if (widget.parentNode !== document.documentElement)
+        document.documentElement.appendChild(widget);
       var rect = infoButton.getBoundingClientRect();
       var isFixed = window.getComputedStyle(infoButton).position === "fixed";
       var scrollY =
         window.pageYOffset || document.documentElement.scrollTop || 0;
-      // If the info button scrolls with the page, convert to its position at scroll=0
       var absTop = isFixed ? rect.top : rect.top + scrollY;
       var buttonSize = 48,
         gap = 8;
       var left = Math.max(8, rect.left - buttonSize - gap);
       var top = absTop + (rect.height - buttonSize) / 2;
-      // Follow the info button: scroll with the page unless it is itself fixed.
       widget.style.setProperty(
         "position",
         isFixed ? "fixed" : "absolute",
@@ -419,6 +433,7 @@ body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{co
       widget.style.setProperty("bottom", "auto", "important");
     }
     positionAppearanceButton();
+    window.addEventListener("DOMContentLoaded", positionAppearanceButton);
     window.addEventListener("load", positionAppearanceButton);
     window.addEventListener("orientationchange", function () {
       setTimeout(positionAppearanceButton, 300);
@@ -438,6 +453,18 @@ body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{co
 
     toggle.addEventListener("click", function () {
       var open = panel.classList.toggle("is-open");
+      if (open) {
+        // keep the panel fully on screen whatever the header layout is
+        panel.style.transform = "";
+        var pr = panel.getBoundingClientRect();
+        var dx =
+          pr.left < 8
+            ? 8 - pr.left
+            : pr.right > window.innerWidth - 8
+              ? window.innerWidth - 8 - pr.right
+              : 0;
+        if (dx) panel.style.transform = "translateX(" + dx + "px)";
+      }
       toggle.setAttribute("aria-expanded", String(open));
     });
     document.addEventListener("keydown", function (e) {
