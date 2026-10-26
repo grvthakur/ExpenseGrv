@@ -7257,6 +7257,8 @@
     <script src="dropdown.js"></script>
     <script src="summary-plus.js?v=2"></script>
     <script src="mobile-fix.js"></script>
+
+    <script src="go-to-table.js"></script>
     <script src="theme-switcher.js" defer></script>
 
     <style id="mobile-card-summary-compact">
@@ -8036,6 +8038,13 @@
             filter: blur(9px);
             user-select: none;
             pointer-events: none
+        }
+
+        /* Also hide the Monthly Salary amount */
+        #expenseSection.amounts-masked .salary-amount {
+            filter: blur(9px);
+            user-select: none;
+            pointer-events: none;
         }
 
         @media (max-width: 600px) {
