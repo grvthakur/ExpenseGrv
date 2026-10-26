@@ -4869,10 +4869,16 @@ async function syncSweetieFromSheet(isManual = false) {
 (function initAmountMask() {
   const btn = document.getElementById("amountMaskBtn");
   const stats = document.querySelector("#expenseSection .stats");
+
+  const salaryDisplay = document.getElementById("salaryDisplay");
   if (!btn || !stats) return;
   const KEY = "grv_mask_amounts";
   const apply = (masked) => {
     stats.classList.toggle("amounts-masked", masked);
+
+    if (salaryDisplay) {
+      salaryDisplay.classList.toggle("amounts-masked", masked);
+    }
     btn.setAttribute("aria-pressed", String(masked));
     btn.setAttribute("aria-label", masked ? "Show amounts" : "Hide amounts");
     btn.textContent = masked ? "🙈" : "👁️";
