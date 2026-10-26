@@ -1167,13 +1167,15 @@
     (Array.isArray(e) ? e : []).forEach((r) => {
       const k = String(r[1]).slice(0, 7),
         cat = String(r[3]).trim();
-      const o = (mm[k] = mm[k] || { exp: 0, rec: 0 });
+      const o = (mm[k] = mm[k] || { exp: 0, rec: 0, sav: 0 });
       const a = +r[5] || 0;
       if (cat === "Received") o.rec += a;
+      else if (cat === "Savings and Investments" || cat === "Sweetie Saving")
+        o.sav += a; // savings are not spending, but still leave the salary
       else if (cat !== "Sweetie Borrow") o.exp += a;
     });
     Object.keys({ ...mm, ...salM }).forEach((k) => {
-      const o = mm[k] || { exp: 0, rec: 0 },
+      const o = mm[k] || { exp: 0, rec: 0, sav: 0 },
         s = salM[k] || 0;
       out.push({
         ...blank,
@@ -1186,8 +1188,9 @@
           " | Spent " +
           inr(o.exp) +
           " | Received " +
-          inr(o.rec),
-        amount: s + o.rec - o.exp,
+          inr(o.rec) +
+          (o.sav ? " | Saved " + inr(o.sav) : ""),
+        amount: s + o.rec - o.exp - o.sav,
       });
     });
     const used = {};

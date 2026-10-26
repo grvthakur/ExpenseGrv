@@ -134,6 +134,7 @@ try {
 let grvExpenseHistory = [];
 let grvExpenseHistoryLoaded = false;
 let grvExpenseHistoryLoading = false;
+let grvHistoryAttempted = false; // true once the full-history fetch has finished (ok or failed)
 
 // Sweetie tracker state
 let sweetieTxns = []; // raw entries from sheet [{id,type,amount,date,description}]
@@ -766,7 +767,15 @@ function render() {
   // so it is deducted here even though it is no longer part of totalExp.
   const remaining =
     salary + totalReceived - (totalExp + sweetSave + sipSave - sweetBorrow);
-  const sweetBal = sweetSave - sweetBorrowAll;
+  // Sweetie Balance = the Sweetie tab's Current Balance (running total over the whole
+  // ledger). Falls back to the old this-month figure only while no ledger is loaded.
+  const sweetLedger =
+    typeof sweetieTxns !== "undefined" && Array.isArray(sweetieTxns)
+      ? sweetieTxns
+      : [];
+  const sweetBal = sweetLedger.length
+    ? computeSweetieRunningBalance(sweetLedger).finalBalance
+    : sweetSave - sweetBorrowAll;
 
   const monthSaving = sweetSave + sipSave;
   // Overall saving: locally cached months (freshest) + any other months from the
@@ -786,7 +795,28 @@ function render() {
   );
   const totalSavingEl = document.getElementById("statTotalSaving");
   const monthSavingEl = document.getElementById("statMonthSaving");
-  if (totalSavingEl) totalSavingEl.textContent = money(totalSaving);
+  // Total Saving needs every month. Until the full history has been fetched show the
+  // last known total (or "…"), never a this-month-only number that looks like a total.
+  const SAVING_CACHE_KEY = "grv_total_saving_v1";
+  let totalSavingText;
+  if (grvExpenseHistoryLoaded || grvHistoryAttempted) {
+    totalSavingText = money(totalSaving);
+    if (grvExpenseHistoryLoaded) {
+      try {
+        localStorage.setItem(SAVING_CACHE_KEY, String(totalSaving));
+      } catch (e) {}
+    }
+  } else {
+    let cached = null;
+    try {
+      cached = localStorage.getItem(SAVING_CACHE_KEY);
+    } catch (e) {}
+    totalSavingText =
+      cached !== null && cached !== "" && Number.isFinite(+cached)
+        ? money(+cached)
+        : "…";
+  }
+  if (totalSavingEl) totalSavingEl.textContent = totalSavingText;
   if (monthSavingEl) monthSavingEl.textContent = money(monthSaving);
 
   document.getElementById("statTotalExpenses").textContent = money(totalExp);
@@ -1150,9 +1180,7 @@ async function syncFromSheet(isManual = false, isInitial = false) {
     if (isManual) toast(`Synced ✓ — ${fromSheet.length} entries for ${key}`);
     // Total Saving needs every month: load the read-only history once, then refresh the cards.
     if (!grvExpenseHistoryLoaded && !grvExpenseHistoryLoading) {
-      syncGrvExpenseHistory()
-        .then(() => render())
-        .catch(() => {});
+      syncGrvExpenseHistory().catch(() => {});
     }
   } catch (err) {
     console.error("Sync error:", err);
@@ -3248,6 +3276,13 @@ async function syncGrvExpenseHistory() {
     console.warn("GRV monthly history/salary sync failed:", e);
   } finally {
     grvExpenseHistoryLoading = false;
+    grvHistoryAttempted = true;
+    // Refresh the Expenses dashboard too: Total Saving depends on this history.
+    try {
+      render();
+    } catch (e) {
+      console.warn("Dashboard refresh after history sync failed:", e);
+    }
   }
 }
 
@@ -4810,6 +4845,12 @@ async function syncSweetieFromSheet(isManual = false) {
 
     saveLocal();
     renderSweetie();
+    // The Expenses dashboard (Sweetie Balance card, Sweetie Borrow rows) reads this ledger too.
+    try {
+      render();
+    } catch (e) {
+      console.warn("Dashboard refresh after Sweetie sync failed:", e);
+    }
     markLastSynced("lastSyncedSweetie");
     if (isManual) toast("Sweetie synced ✓");
   } catch (err) {

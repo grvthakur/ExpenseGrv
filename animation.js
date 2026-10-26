@@ -255,87 +255,85 @@
 
   function formatMoney(prefix, value, decimals) {
     const sign = value < 0 ? "-" : "";
-    return `${sign}${prefix.replace("-", "")}${Math.abs(value).toFixed(decimals || 2)}`;
+    const d = decimals || 2;
+    return `${sign}${prefix.replace("-", "")}${Math.abs(value).toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
   }
 
+  /*
+   * Count-up on CHANGE only. The first value shown is never counted up from zero (that made every
+   * card flash ₹0 on load), and the text the app wrote is always restored at the end, so the final
+   * format is exactly what the app produced.
+   */
   function setupCountUp(id) {
     const el = document.getElementById(id);
     if (!el) return;
 
-    let lastValue = null;
-    let animating = false;
+    let lastValue = null; // numeric value currently shown (null = nothing numeric yet)
+    let lastWritten = "";
+    const watch = () =>
+      observer.observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
 
-    const runCountUp = (from, to, parsed) => {
-      if (REDUCE_MOTION || animating) {
-        el.textContent = formatMoney(parsed.prefix, to, parsed.decimals);
+    const runCountUp = (from, to, parsed, finalText) => {
+      if (REDUCE_MOTION) {
+        watch();
         return;
       }
-      animating = true;
+      lastWritten = finalText;
       el.classList.add("is-counting");
       const duration = 550;
       const start = performance.now();
-
+      const done = () => {
+        el.classList.remove("is-counting");
+        watch();
+      };
       function step(now) {
+        if (el.textContent !== lastWritten) {
+          // The app wrote a newer value mid-animation: keep it, do not overwrite with a stale one.
+          const p = parseMoney(el.textContent);
+          lastValue = p ? p.value : null;
+          done();
+          return;
+        }
         const progress = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-        const current = from + (to - from) * eased;
-        el.textContent = formatMoney(parsed.prefix, current, parsed.decimals);
         if (progress < 1) {
+          const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+          lastWritten = formatMoney(
+            parsed.prefix,
+            from + (to - from) * eased,
+            parsed.decimals,
+          );
+          el.textContent = lastWritten;
           requestAnimationFrame(step);
         } else {
-          el.textContent = formatMoney(parsed.prefix, to, parsed.decimals);
-          animating = false;
-          el.classList.remove("is-counting");
+          lastWritten = finalText;
+          el.textContent = finalText;
+          done();
         }
       }
       requestAnimationFrame(step);
     };
 
     const observer = new MutationObserver(() => {
-      if (animating) return; // ignore mutations we caused ourselves
       const parsed = parseMoney(el.textContent);
       if (!parsed) {
         lastValue = null;
         return;
       }
-      const from = lastValue === null ? 0 : lastValue;
       if (parsed.value === lastValue) return;
+      const from = lastValue === null ? parsed.value : lastValue;
       lastValue = parsed.value;
+      if (from === parsed.value) return; // first real value: show it as is
       observer.disconnect();
-      runCountUp(from, parsed.value, parsed);
-      // Reconnect after the animation has had a chance to settle
-      setTimeout(
-        () =>
-          observer.observe(el, {
-            childList: true,
-            characterData: true,
-            subtree: true,
-          }),
-        600,
-      );
+      runCountUp(from, parsed.value, parsed, el.textContent);
     });
 
-    observer.observe(el, {
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
-
-    // Animate the very first paint too (count up from 0 on load)
     const initial = parseMoney(el.textContent);
-    if (initial) {
-      lastValue = 0;
-      observer.disconnect();
-      runCountUp(0, initial.value, initial);
-      setTimeout(() => {
-        lastValue = initial.value;
-        observer.observe(el, {
-          childList: true,
-          characterData: true,
-          subtree: true,
-        });
-      }, 600);
-    }
+    lastValue = initial ? initial.value : null;
+    watch();
   }
 
   function setupAllCountUps() {

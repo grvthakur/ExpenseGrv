@@ -47,6 +47,7 @@
       count = 0,
       top = null,
       sw = 0,
+      saved = 0,
       received = 0;
 
     const bump = (category, amount, description) => {
@@ -68,6 +69,12 @@
 
         if (category === "Received") {
           received += amount;
+          return;
+        }
+
+        // Savings are not expenses: kept out of spent/categories, shown separately.
+        if (category === "Sweetie Saving" || category === "Savings and Investments") {
+          saved += amount;
           return;
         }
 
@@ -113,7 +120,7 @@
       bump("Sweetie Borrow", amount, String(t.description || "Sweetie DEBIT"));
     });
 
-    return { spent, cats, count, top, sw, received };
+    return { spent, cats, count, top, sw, saved, received };
   }
 
   function keyAt(off) {
@@ -252,8 +259,11 @@
       cur = calc(key),
       prev = calc(keyAt(1).k),
       salary = salaries[key] || 0;
-    const remaining = salary + cur.received - (cur.spent - cur.sw);
-    usedPct = salary ? Math.min(100, ((cur.spent - cur.sw) / salary) * 100) : 0;
+    // Savings still leave the salary, so Remaining / Salary used keep their old values.
+    const remaining = salary + cur.received - (cur.spent - cur.sw) - cur.saved;
+    usedPct = salary
+      ? Math.min(100, ((cur.spent - cur.sw + cur.saved) / salary) * 100)
+      : 0;
     const m = parseInt(document.getElementById("monthSelect").value),
       y = parseInt(document.getElementById("yearSelect").value);
     const dim = new Date(y, m + 1, 0).getDate(),
@@ -321,6 +331,7 @@
         <div><small>vs last month</small><b style="color:${dC}">${dT}</b></div>
         <div><small>Txns</small><b>${cur.count}</b></div>
       </div>
+      <div class="sp-card">💰 <b>Saved:</b> ${inr(cur.saved)} <small>(SIP + Sweetie Saving, not counted as spent)</small></div>
       ${cur.top ? `<div class="sp-card">🔥 <b>Biggest:</b> ${esc(cur.top.c)} · ${inr(cur.top.amount)}</div>` : ""}
       <div class="sp-card"><div class="sp-title">6-month trend</div><div class="sp-trend">${trend}</div></div>
       <div class="sp-title">Categories <em>(tap to focus)</em></div><div class="sp-list">${rows}</div>`;
