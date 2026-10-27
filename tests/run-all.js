@@ -563,6 +563,12 @@ suite("10. Repo's own regression scripts");
   }, f.startsWith("shorthand") ? { knownBug: "Pre-existing (same as the remark-on-separate-line bug above); that script exits 0 even when a case says pass:false." } : {});
 });
 
+suite("11. Duplicate-entry fix (server + client write order)");
+test("server-dup-test.js passes", () => {
+  const p = spawnSync(process.execPath, [path.join(__dirname, "server-dup-test.js")], { encoding: "utf8" });
+  assert.equal(p.status, 0, (p.stdout || "").slice(-400));
+});
+
 // ───────────────────────────────────────────────────────────────────────────
 function finish() {
   const by = {};

@@ -327,6 +327,17 @@ function sheetWrite(url) {
   });
 }
 
+// Ordered writes: each request finishes before the next starts (delete -> add).
+async function sheetWriteSeq(urls) {
+  for (const u of urls) {
+    try {
+      await fetch(u, { mode: "no-cors" });
+    } catch (err) {
+      console.warn("Sheet write error (data likely saved):", err);
+    }
+  }
+}
+
 // ─── TAB SWITCHING ───────────────────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
@@ -1056,12 +1067,12 @@ function addEntry() {
     expenses.push(updEntry);
     saveLocal();
     // Delete old from sheet then re-add updated
-    sheetWrite(apiUrl(`action=delete&id=${editingExpId}`));
-    sheetWrite(
+    sheetWriteSeq([
+      apiUrl(`action=delete&id=${editingExpId}`),
       apiUrl(
         `action=add&id=${updEntry.id}&date=${updEntry.date}&month=${enc(updEntry.month)}&category=${enc(updEntry.category)}&description=${enc(updEntry.description)}&amount=${updEntry.amount}`,
       ),
-    );
+    ]);
     cancelEditExpense();
     toast("Entry updated ✓");
     return;
@@ -4763,12 +4774,12 @@ function addSweetieEntry() {
     sweetieTxns = sweetieTxns.filter((t) => t.id !== editingSweetieId);
     sweetieTxns.push(updEntry);
     saveLocal();
-    sheetWrite(apiUrl(`action=deleteSweetie&id=${editingSweetieId}`));
-    sheetWrite(
+    sheetWriteSeq([
+      apiUrl(`action=deleteSweetie&id=${editingSweetieId}`),
       apiUrl(
         `action=addSweetie&id=${updEntry.id}&type=${enc(updEntry.type)}&amount=${updEntry.amount}&date=${enc(updEntry.date)}&description=${enc(updEntry.description)}`,
       ),
-    );
+    ]);
     cancelEditSweetie();
     toast("Sweetie entry updated ✓");
     return;

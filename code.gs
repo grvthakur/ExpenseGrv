@@ -736,13 +736,14 @@ function doGet(e) {
       const id = String(e.parameter.id || "").trim();
       const cardSheet = getOrCreateCardsSheet(ss);
       const rows = cardSheet.getDataRange().getValues();
-      for (let i = 1; i < rows.length; i++) {
+      let delCount = 0;
+      for (let i = rows.length - 1; i >= 1; i--) {
         if (String(rows[i][0]).trim() === id) {
           cardSheet.deleteRow(i + 1);
-          return textOut("Deleted");
+          delCount++;
         }
       }
-      return textOut("NotFound");
+      return textOut(delCount ? "Deleted" : "NotFound");
     }
 
     if (action === "updateCardStatus") {
@@ -919,14 +920,15 @@ function doGet(e) {
       const id = String(e.parameter.id || "").trim();
       const sweetieSheet = getOrCreateSweetieSheet(ss);
       const rows = sweetieSheet.getDataRange().getValues();
-      for (let i = 1; i < rows.length; i++) {
+      let delCount = 0;
+      for (let i = rows.length - 1; i >= 1; i--) {
         if (String(rows[i][0]).trim() === id) {
           sweetieSheet.deleteRow(i + 1);
-          recalcSweetieBalances(sweetieSheet);
-          return textOut("Deleted");
+          delCount++;
         }
       }
-      return textOut("NotFound");
+      if (delCount) recalcSweetieBalances(sweetieSheet);
+      return textOut(delCount ? "Deleted" : "NotFound");
     }
 
     // ── CC MASTER LIST ───────────────────────────────────────────────────
@@ -944,6 +946,11 @@ function doGet(e) {
     return textOut("ERROR: " + err.message);
   } finally {
     if (writeLock) {
+      try {
+        // Commit pending sheet changes BEFORE the next request gets the lock,
+        // so its duplicate-ID check sees this write.
+        SpreadsheetApp.flush();
+      } catch (e) {}
       try {
         writeLock.releaseLock();
       } catch (e) {}
@@ -1276,3 +1283,23 @@ function recalcMonth(expSheet, salSheet, sumSheet, month) {
 //PropertiesService.getScriptProperties().setProperty("CC_PASSWORD", "Gaurav@123");
 //Logger.log("Password set successfully.");
 //}
+
+
+// Read-only helper: run manually from the Apps Script editor.
+// Logs rows in Sweetie / Cards sheets that share the same ID. Deletes nothing.
+function findDuplicateIds() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ["Sweetie", "Cards"].forEach((name) => {
+    const sh = ss.getSheetByName(name);
+    if (!sh) return;
+    const seen = {};
+    sh.getDataRange().getValues().slice(1).forEach((r, i) => {
+      const id = String(r[0] || "").trim();
+      if (id) (seen[id] = seen[id] || []).push(i + 2);
+    });
+    Object.keys(seen).forEach((id) => {
+      if (seen[id].length > 1)
+        Logger.log(name + ": ID " + id + " in rows " + seen[id].join(", "));
+    });
+  });
+}

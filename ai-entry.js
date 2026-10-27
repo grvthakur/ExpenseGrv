@@ -327,6 +327,10 @@
       $("aiTxt").focus();
     };
     $("pvOk").onclick = () => {
+      // An AI add must never become an update of a leftover edit.
+      try {
+        if (typeof cancelEditSweetie === "function") cancelEditSweetie();
+      } catch (_) {}
       const vals = {};
       pv.querySelectorAll("[data-k]").forEach(
         (e) => (vals[e.dataset.k] = e.value),
