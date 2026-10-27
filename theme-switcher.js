@@ -324,6 +324,151 @@ body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button,body[data-gr
 body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{background:#ff4d6d!important}
 body[data-grv-visual-theme="cartoon"] #grv-visual-theme-list button.is-active{color:#fff!important}
 
+/* ═══ POLISH v4 — premium refinement layer (visual only; no layout/logic changes) ═══ */
+body[data-grv-visual-theme] .stat-value,body[data-grv-visual-theme] .expense-table td{font-variant-numeric:tabular-nums}
+body[data-grv-visual-theme] .stat,body[data-grv-visual-theme] .card,body[data-grv-visual-theme] .btn,body[data-grv-visual-theme] .tab-btn,body[data-grv-visual-theme] .field input,body[data-grv-visual-theme] .field select{transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,background .22s ease,border-color .22s ease}
+body[data-grv-visual-theme] :is(.btn,.tab-btn,.field input,.field select):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Skeuomorphism — stitched leather & brushed metal */
+body[data-grv-visual-theme="skeuomorphism"] :is(.stat,.card,.table-wrapper,.modal-content){background:linear-gradient(180deg,#4a5360,#363d48 55%,#2f353f);border:1px solid #1b1f26;box-shadow:inset 0 1px 0 #ffffff40,inset 0 -2px 4px #0006,0 1px 0 #ffffff14,0 10px 22px #0007,0 2px 4px #0005;outline:1px dashed #ffffff22;outline-offset:-6px}
+body[data-grv-visual-theme="skeuomorphism"] .stat-value{text-shadow:0 1px 0 #000a,0 -1px 0 #ffffff26}
+body[data-grv-visual-theme="skeuomorphism"] .btn-primary{background:linear-gradient(180deg,#9be4f7,#4fb4d2 55%,#3a97b5);color:#10303b;text-shadow:0 1px 0 #ffffff80;border:1px solid #1d6a82;box-shadow:inset 0 1px 0 #fff9,0 3px 0 #1d6a82,0 6px 10px #0007}
+body[data-grv-visual-theme="skeuomorphism"] .btn-primary:active{transform:translateY(3px);box-shadow:inset 0 2px 4px #0005,0 0 0 #0000}
+body[data-grv-visual-theme="skeuomorphism"] :is(.field input,.field select){background:linear-gradient(180deg,#232830,#2d333c);box-shadow:inset 0 2px 5px #000a,0 1px 0 #ffffff1f}
+/* Neumorphism — soft extrusion */
+body[data-grv-visual-theme="neumorphism"] :is(.stat,.card,.table-wrapper,.modal-content){background:linear-gradient(145deg,#eef2f9,#d9dfe9);box-shadow:9px 9px 20px #b9c0cf,-9px -9px 20px #ffffff}
+body[data-grv-visual-theme="neumorphism"] :is(.field input,.field select){background:#dfe4ec;border:0;box-shadow:inset 4px 4px 9px #b9c0cf,inset -4px -4px 9px #fff}
+body[data-grv-visual-theme="neumorphism"] .btn{border:0;box-shadow:5px 5px 11px #b9c0cf,-5px -5px 11px #fff}
+body[data-grv-visual-theme="neumorphism"] .btn:active,body[data-grv-visual-theme="neumorphism"] .tab-btn.tab-active{box-shadow:inset 4px 4px 9px #b9c0cf,inset -4px -4px 9px #fff}
+body[data-grv-visual-theme="neumorphism"] .btn-primary{background:linear-gradient(145deg,#6a83c2,#4a62a0);color:#fff}
+/* Glassmorphism — frosted pane with specular edge */
+body[data-grv-visual-theme="glassmorphism"] :is(.stat,.card,.table-wrapper,.modal-content){background:linear-gradient(135deg,#ffffff2b,#ffffff0a);backdrop-filter:blur(22px) saturate(1.6);-webkit-backdrop-filter:blur(22px) saturate(1.6);border:1px solid #ffffff2e;box-shadow:inset 0 1px 0 #ffffff59,inset 0 0 0 1px #ffffff0d,0 18px 40px #0a143a66}
+body[data-grv-visual-theme="glassmorphism"] .btn-primary{background:linear-gradient(135deg,#8bdcff,#a78bfa);color:#0d1530;box-shadow:0 8px 22px #8bdcff44}
+body[data-grv-visual-theme="glassmorphism"] .stat:hover,body[data-grv-visual-theme="glassmorphism"] .card:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 #ffffff73,0 24px 46px #0a143a80}
+/* Claymorphism — inflated, candy-soft */
+body[data-grv-visual-theme="claymorphism"] :is(.stat,.card,.table-wrapper,.modal-content){background:linear-gradient(160deg,#fff7f1,#ffe4d3);box-shadow:inset 0 3px 0 #fff,inset 0 -6px 10px #f0b99a66,0 10px 0 #e9bda4,0 18px 26px #b5705a38}
+body[data-grv-visual-theme="claymorphism"] .btn-primary{background:linear-gradient(160deg,#e07aa0,#b55c7b);color:#fff;border:0;box-shadow:inset 0 3px 0 #ffffff66,inset 0 -4px 6px #7a2e4a55,0 6px 0 #8f3f5e,0 12px 16px #8f3f5e44}
+body[data-grv-visual-theme="claymorphism"] .btn:active{transform:translateY(4px);box-shadow:inset 0 3px 6px #7a2e4a44}
+body[data-grv-visual-theme="claymorphism"] :is(.field input,.field select){border:2px solid #f1c8b2;box-shadow:inset 0 3px 6px #d9a98f55}
+/* Minimalism — quiet, typographic */
+body[data-grv-visual-theme="minimalism"] :is(.stat,.card,.table-wrapper,.modal-content){background:#fff;border:1px solid #e6e8ee;box-shadow:0 1px 2px #0f172a0a}
+body[data-grv-visual-theme="minimalism"] .stat-label,body[data-grv-visual-theme="minimalism"] .expense-table th{text-transform:uppercase;letter-spacing:.08em;font-size:.72em;font-weight:600}
+body[data-grv-visual-theme="minimalism"] .stat-value{font-weight:600;letter-spacing:-.02em}
+body[data-grv-visual-theme="minimalism"] .btn-primary{background:#111827;color:#fff;box-shadow:none}
+body[data-grv-visual-theme="minimalism"] .btn-primary:hover{background:#000}
+body[data-grv-visual-theme="minimalism"] .tab-btn.tab-active{box-shadow:inset 0 -2px 0 #111827}
+/* Brutalism — raw, hard-edged */
+body[data-grv-visual-theme="brutalism"]{font-family:"Space Grotesk","Archivo",ui-monospace,Menlo,monospace}
+body[data-grv-visual-theme="brutalism"] :is(.stat-label,.card-title,.expense-table th,.btn){text-transform:uppercase;letter-spacing:.04em;font-weight:800}
+body[data-grv-visual-theme="brutalism"] :is(.stat,.card){box-shadow:6px 6px 0 #171717}
+body[data-grv-visual-theme="brutalism"] :is(.stat,.card):hover{transform:translate(-2px,-2px);box-shadow:9px 9px 0 #171717}
+body[data-grv-visual-theme="brutalism"] .btn:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #171717}
+body[data-grv-visual-theme="brutalism"] .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 #171717}
+body[data-grv-visual-theme="brutalism"] .btn-primary{background:#ff5b35;color:#171717}
+body[data-grv-visual-theme="brutalism"] .expense-table th{background:#ffe36e;color:#171717}
+/* Liquid Glass — fluid, refractive */
+body[data-grv-visual-theme="liquid-glass"] :is(.stat,.card,.table-wrapper,.modal-content){background:radial-gradient(120% 90% at 15% 0%,#ffffff40,#ffffff0d 55%),linear-gradient(160deg,#5fb6e855,#2a68a02e);border:1px solid #ffffff52;border-radius:26px;box-shadow:inset 0 2px 1px #ffffff80,inset 0 -10px 24px #7fd4ff26,inset 0 0 0 1px #ffffff1a,0 20px 44px #04204a66}
+body[data-grv-visual-theme="liquid-glass"] .btn{border-radius:999px}
+body[data-grv-visual-theme="liquid-glass"] .btn-primary{background:linear-gradient(160deg,#c6f3ff,#6dd0f5 60%,#41a9e0);color:#06314d;box-shadow:inset 0 2px 1px #fffc,0 10px 24px #3cb6ee55}
+body[data-grv-visual-theme="liquid-glass"] :is(.stat,.card):hover{transform:translateY(-3px) scale(1.005)}
+/* Spatial UI — layered depth */
+body[data-grv-visual-theme="spatial-ui"] :is(.stat,.card,.table-wrapper,.modal-content){background:linear-gradient(180deg,#2e3447,#1f2331);border:1px solid #ffffff17;box-shadow:inset 0 1px 0 #ffffff26,0 2px 4px #0006,0 14px 30px #0007,0 30px 60px #0005}
+body[data-grv-visual-theme="spatial-ui"] .btn-primary{background:linear-gradient(180deg,#bcc9ff,#8da2ff);color:#12162b;box-shadow:inset 0 1px 0 #fff9,0 8px 20px #8da2ff55}
+/* Cartoon — chunky outlines, bouncy */
+body[data-grv-visual-theme="cartoon"] :is(.stat,.card,.table-wrapper,.modal-content){border:3px solid #1b1b1b!important;border-radius:20px;box-shadow:5px 6px 0 #1b1b1b}
+body[data-grv-visual-theme="cartoon"] .btn{border:3px solid #1b1b1b;border-radius:14px;font-weight:800;box-shadow:3px 4px 0 #1b1b1b}
+body[data-grv-visual-theme="cartoon"] .btn:hover{transform:translateY(-2px) rotate(-1deg)}
+body[data-grv-visual-theme="cartoon"] .btn:active{transform:translate(3px,4px);box-shadow:0 0 0 #1b1b1b}
+body[data-grv-visual-theme="cartoon"] .btn-primary{background:#ff4d6d!important}
+/* Space — nebula glow */
+body[data-grv-visual-theme="space"] :is(.stat,.card,.table-wrapper,.modal-content){background:linear-gradient(160deg,#1b1840cc,#0d0b26cc);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid #8b7cff55;box-shadow:inset 0 1px 0 #ffffff1f,0 0 0 1px #0006,0 0 28px #6a4dff33,0 16px 36px #000a}
+body[data-grv-visual-theme="space"] .stat-value{background:linear-gradient(90deg,#fff,#b9a8ff 60%,#7fd8ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+body[data-grv-visual-theme="space"] .btn-primary{background:linear-gradient(135deg,#7c5cff,#38bdf8);color:#fff;box-shadow:0 0 22px #7c5cff77}
+body[data-grv-visual-theme="space"] :is(.stat,.card):hover{box-shadow:inset 0 1px 0 #ffffff33,0 0 36px #7c5cff66,0 16px 36px #000a}
+@media(prefers-reduced-motion:reduce){body[data-grv-visual-theme] *{transition:none!important;animation-duration:.01ms!important}}
+/* ═══ POLISH v5 — reference-matched tiles & Spatial depth (no tilt) ═══ */
+body[data-grv-visual-theme="spatial-ui"] :is(.stat,.card):hover{transform:translateY(-3px)}
+body[data-grv-visual-theme="spatial-ui"] :is(.stat,.card,.table-wrapper,.modal-content,.topbar){background:linear-gradient(160deg,#ffffff1f,#ffffff08 40%,#0b1226b3);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border:1px solid #9bb8ff40;box-shadow:inset 0 1px 0 #ffffff40,inset 0 0 24px #4f7bff14,0 0 0 1px #0008,0 18px 40px #000a,0 0 32px #3b6bff22}
+body[data-grv-visual-theme="spatial-ui"] .stat-value{text-shadow:0 0 14px currentColor}
+body[data-grv-visual-theme="spatial-ui"] .btn-primary{background:linear-gradient(180deg,#6ea0ff,#3b6bff);color:#fff;box-shadow:inset 0 1px 0 #fff8,0 0 22px #3b6bffaa,0 8px 18px #0008}
+body[data-grv-visual-theme="spatial-ui"] .tab-btn.tab-active{background:linear-gradient(180deg,#5b8bff55,#3b6bff22);box-shadow:inset 0 1px 0 #fff5,0 0 18px #3b6bff77}
+/* Colour-coded stat tiles like the reference (green = income, red = expense, blue = balance) */
+body[data-grv-visual-theme="skeuomorphism"] .stat:has(.c-green){background:linear-gradient(180deg,#4f9b4d,#2f6a32);border-color:#173d1a}
+body[data-grv-visual-theme="skeuomorphism"] .stat:has(.c-red){background:linear-gradient(180deg,#c4623f,#8a3a22);border-color:#4a1d10}
+body[data-grv-visual-theme="skeuomorphism"] .stat:has(:is(.c-pink,.c-purple)){background:linear-gradient(180deg,#4f78a8,#2f4f78);border-color:#162b45}
+body[data-grv-visual-theme="neumorphism"] .stat:has(.c-green){background:linear-gradient(145deg,#eaf7f1,#d5e8df)}
+body[data-grv-visual-theme="neumorphism"] .stat:has(.c-red){background:linear-gradient(145deg,#fbeaf0,#ecd6de)}
+body[data-grv-visual-theme="neumorphism"] .stat:has(:is(.c-pink,.c-purple)){background:linear-gradient(145deg,#e6edfb,#d2dcf1)}
+body[data-grv-visual-theme="glassmorphism"] .stat:has(.c-green){background:linear-gradient(135deg,#34d39940,#ffffff08)}
+body[data-grv-visual-theme="glassmorphism"] .stat:has(.c-red){background:linear-gradient(135deg,#fb718566,#ffffff08)}
+body[data-grv-visual-theme="glassmorphism"] .stat:has(:is(.c-pink,.c-purple)){background:linear-gradient(135deg,#60a5fa55,#ffffff08)}
+body[data-grv-visual-theme="claymorphism"] .stat:has(.c-green){background:linear-gradient(160deg,#c9f2dc,#9edfbd)}
+body[data-grv-visual-theme="claymorphism"] .stat:has(.c-red){background:linear-gradient(160deg,#ffd0cc,#fba7a2)}
+body[data-grv-visual-theme="claymorphism"] .stat:has(:is(.c-pink,.c-purple)){background:linear-gradient(160deg,#d9d2ff,#b3a6f7)}
+body[data-grv-visual-theme="brutalism"] .stat:has(.c-green){background:#3ddc84}
+body[data-grv-visual-theme="brutalism"] .stat:has(.c-red){background:#ff4d4d}
+body[data-grv-visual-theme="brutalism"] .stat:has(:is(.c-pink,.c-purple)){background:#4da3ff}
+body[data-grv-visual-theme="brutalism"] .stat :is(.stat-value,.stat-label){color:#171717!important}
+body[data-grv-visual-theme="liquid-glass"] .stat:has(.c-green){background:radial-gradient(120% 90% at 15% 0%,#ffffff50,#ffffff0d 55%),linear-gradient(160deg,#34e0a199,#0f9d6a55)}
+body[data-grv-visual-theme="liquid-glass"] .stat:has(.c-red){background:radial-gradient(120% 90% at 15% 0%,#ffffff50,#ffffff0d 55%),linear-gradient(160deg,#ff7aa899,#c43a8a55)}
+body[data-grv-visual-theme="liquid-glass"] .stat:has(:is(.c-pink,.c-purple)){background:radial-gradient(120% 90% at 15% 0%,#ffffff50,#ffffff0d 55%),linear-gradient(160deg,#6ec6ff99,#3a6fe055)}
+body[data-grv-visual-theme="space"] .stat:has(.c-green){border-color:#34d399aa;box-shadow:0 0 22px #34d39944,inset 0 1px 0 #ffffff22}
+body[data-grv-visual-theme="space"] .stat:has(.c-red){border-color:#fb7185aa;box-shadow:0 0 22px #fb718544,inset 0 1px 0 #ffffff22}
+body[data-grv-visual-theme="space"] .stat:has(:is(.c-pink,.c-purple)){border-color:#60a5faaa;box-shadow:0 0 22px #60a5fa44,inset 0 1px 0 #ffffff22}
+body[data-grv-visual-theme="cartoon"] .stat:has(.c-green){background:#b8f0c8!important}
+body[data-grv-visual-theme="cartoon"] .stat:has(.c-red){background:#ffc2c2!important}
+body[data-grv-visual-theme="cartoon"] .stat:has(:is(.c-pink,.c-purple)){background:#bfe0ff!important}
+/* ═══ POLISH v6 — true 3D: extruded slabs, bevels, pressable keys ═══ */
+body[data-grv-visual-theme]{--ex:#0006}
+body[data-grv-visual-theme]:is([data-grv-visual-theme="skeuomorphism"],[data-grv-visual-theme="claymorphism"],[data-grv-visual-theme="spatial-ui"],[data-grv-visual-theme="cartoon"],[data-grv-visual-theme="liquid-glass"],[data-grv-visual-theme="space"]) :is(.btn,.tab-btn){position:relative}
+/* Skeuomorphism: leather slabs with stacked edge + embossed type */
+body[data-grv-visual-theme="skeuomorphism"] :is(.stat,.card,.table-wrapper,.modal-content){background-image:radial-gradient(120% 80% at 20% 0%,#ffffff2e,#0000 55%),repeating-linear-gradient(0deg,#0000 0 2px,#0000000d 2px 3px),linear-gradient(180deg,#4f5866,#2f3640);box-shadow:inset 0 2px 0 #ffffff55,inset 0 -3px 6px #0009,inset 2px 0 0 #ffffff12,0 1px 0 #1a1e25,0 2px 0 #171b21,0 3px 0 #14181d,0 4px 0 #111419,0 5px 0 #0e1115,0 16px 24px #000a,0 6px 8px #0007}
+body[data-grv-visual-theme="skeuomorphism"] :is(.stat-label,.card-title,.expense-table th){text-shadow:0 1px 0 #000c,0 -1px 0 #ffffff22}
+body[data-grv-visual-theme="skeuomorphism"] .tab-btn{background:linear-gradient(180deg,#5a6472,#363d48);border:1px solid #14181d;box-shadow:inset 0 1px 0 #ffffff55,0 3px 0 #0e1115,0 6px 8px #0008;border-radius:10px}
+body[data-grv-visual-theme="skeuomorphism"] .tab-btn.tab-active{background:linear-gradient(180deg,#e9b95a,#b57f22);color:#2b1a02;text-shadow:0 1px 0 #ffe9b0;box-shadow:inset 0 1px 0 #fff9,0 3px 0 #6b4509,0 7px 10px #000a}
+body[data-grv-visual-theme="skeuomorphism"] .tab-btn:active{transform:translateY(3px);box-shadow:inset 0 2px 5px #0009,0 0 0 #0000}
+/* Neumorphism: deep soft plates + dished inputs */
+body[data-grv-visual-theme="neumorphism"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:14px 14px 30px #b3bbcb,-14px -14px 30px #fff,inset 1px 1px 0 #ffffffcc,inset -1px -1px 0 #c7cedb}
+body[data-grv-visual-theme="neumorphism"] .tab-btn{background:linear-gradient(145deg,#f0f4fa,#dbe1ea);border:0;border-radius:14px;box-shadow:6px 6px 12px #b3bbcb,-6px -6px 12px #fff}
+body[data-grv-visual-theme="neumorphism"] .tab-btn.tab-active{background:#dfe4ec;color:#4a62a0;box-shadow:inset 5px 5px 10px #b3bbcb,inset -5px -5px 10px #fff}
+body[data-grv-visual-theme="neumorphism"] .stat-value{text-shadow:1px 1px 0 #fff,-1px -1px 2px #b3bbcb66}
+/* Glassmorphism: floating panes with refraction layers */
+body[data-grv-visual-theme="glassmorphism"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:inset 0 1px 0 #fff8,inset 0 -1px 0 #ffffff1a,inset 0 0 30px #ffffff0f,0 1px 0 #ffffff22,0 12px 24px #0a143a70,0 30px 60px #0a143a55}
+body[data-grv-visual-theme="glassmorphism"] .tab-btn{background:linear-gradient(180deg,#ffffff38,#ffffff0d);border:1px solid #ffffff40;box-shadow:inset 0 1px 0 #fff7,0 8px 18px #0a143a55;border-radius:12px;backdrop-filter:blur(10px)}
+body[data-grv-visual-theme="glassmorphism"] .tab-btn.tab-active{background:linear-gradient(180deg,#8bdcff66,#a78bfa33);box-shadow:inset 0 1px 0 #fffa,0 0 22px #8bdcff66,0 10px 20px #0a143a66}
+/* Claymorphism: thick puffy extrusion */
+body[data-grv-visual-theme="claymorphism"] :is(.stat,.card,.table-wrapper,.modal-content){border:0;box-shadow:inset 0 4px 0 #fff,inset 0 -10px 16px #eeae8e77,inset 4px 0 8px #ffffff88,0 4px 0 #ecc0a8,0 8px 0 #e3ab90,0 12px 0 #d99a7e,0 26px 30px #b5705a55}
+body[data-grv-visual-theme="claymorphism"] .tab-btn{background:linear-gradient(160deg,#fff,#ffdcc8);border:0;border-radius:16px;box-shadow:inset 0 3px 0 #fff,inset 0 -4px 6px #eeae8e77,0 5px 0 #e3ab90,0 10px 14px #b5705a44}
+body[data-grv-visual-theme="claymorphism"] .tab-btn.tab-active{background:linear-gradient(160deg,#e07aa0,#b55c7b);color:#fff;box-shadow:inset 0 3px 0 #ffffff77,inset 0 -5px 8px #7a2e4a66,0 5px 0 #8f3f5e,0 12px 16px #8f3f5e55}
+body[data-grv-visual-theme="claymorphism"] .tab-btn:active{transform:translateY(5px);box-shadow:inset 0 3px 8px #7a2e4a55}
+/* Minimalism: subtle lift only */
+body[data-grv-visual-theme="minimalism"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:0 1px 1px #0f172a0a,0 4px 8px #0f172a08,0 16px 32px #0f172a0a}
+body[data-grv-visual-theme="minimalism"] :is(.stat,.card):hover{transform:translateY(-2px);box-shadow:0 2px 2px #0f172a0a,0 10px 20px #0f172a0d,0 24px 48px #0f172a14}
+/* Brutalism: stacked offset slabs */
+body[data-grv-visual-theme="brutalism"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:2px 2px 0 #171717,4px 4px 0 #ffe36e,6px 6px 0 #171717,8px 8px 0 #171717}
+body[data-grv-visual-theme="brutalism"] .tab-btn{background:#fff;border:3px solid #171717;border-radius:0;box-shadow:4px 4px 0 #171717;font-weight:800;text-transform:uppercase}
+body[data-grv-visual-theme="brutalism"] .tab-btn.tab-active{background:#ffe36e;transform:translate(2px,2px);box-shadow:2px 2px 0 #171717}
+/* Liquid Glass: glossy bubbles with caustic rim */
+body[data-grv-visual-theme="liquid-glass"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:inset 0 3px 2px #ffffffa0,inset 0 -14px 28px #7fd4ff33,inset 0 0 0 1px #ffffff26,inset 6px 0 14px #ffffff14,0 2px 0 #ffffff22,0 14px 28px #04204a77,0 34px 60px #04204a55}
+body[data-grv-visual-theme="liquid-glass"] .tab-btn{background:radial-gradient(90% 70% at 30% 10%,#ffffff88,#ffffff12 60%),linear-gradient(160deg,#6dd0f566,#3a6fe044);border:1px solid #ffffff66;border-radius:999px;box-shadow:inset 0 2px 1px #fffc,inset 0 -6px 10px #7fd4ff44,0 8px 16px #04204a66}
+body[data-grv-visual-theme="liquid-glass"] .tab-btn.tab-active{background:radial-gradient(90% 70% at 30% 10%,#fffc,#ffffff22 60%),linear-gradient(160deg,#9de9ff,#41a9e0);color:#06314d;box-shadow:inset 0 2px 1px #fff,0 0 24px #7fe0ff99,0 10px 18px #04204a77}
+/* Spatial UI: floating glass slabs with true layered depth */
+body[data-grv-visual-theme="spatial-ui"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:inset 0 1px 0 #ffffff55,inset 0 -2px 0 #0008,inset 0 0 30px #4f7bff18,0 1px 0 #1b2a55,0 2px 0 #16224a,0 3px 0 #111b3d,0 4px 0 #0c1430,0 22px 36px #000b,0 40px 70px #0009,0 0 40px #3b6bff2e}
+body[data-grv-visual-theme="spatial-ui"] .tab-btn{background:linear-gradient(180deg,#ffffff26,#ffffff08);border:1px solid #9bb8ff44;border-radius:14px;box-shadow:inset 0 1px 0 #fff5,0 4px 0 #0c1430,0 10px 18px #000a}
+body[data-grv-visual-theme="spatial-ui"] .tab-btn.tab-active{background:linear-gradient(180deg,#7aa6ff,#3b6bff);color:#fff;box-shadow:inset 0 1px 0 #fffa,0 4px 0 #1e3fa8,0 0 26px #3b6bffcc,0 12px 20px #000a}
+body[data-grv-visual-theme="spatial-ui"] .tab-btn:active{transform:translateY(4px);box-shadow:inset 0 2px 6px #0008}
+/* Cartoon: chunky sticker extrusion */
+body[data-grv-visual-theme="cartoon"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:3px 3px 0 #1b1b1b,6px 6px 0 #1b1b1b,8px 9px 0 #1b1b1b,inset 0 4px 0 #ffffffb0}
+body[data-grv-visual-theme="cartoon"] .tab-btn{background:#fff3b0!important;border:3px solid #1b1b1b!important;border-radius:14px;box-shadow:0 5px 0 #1b1b1b,inset 0 3px 0 #fff}
+body[data-grv-visual-theme="cartoon"] .tab-btn.tab-active{background:#ff4d6d!important;transform:translateY(2px);box-shadow:0 3px 0 #1b1b1b,inset 0 3px 0 #ff9cb0}
+body[data-grv-visual-theme="cartoon"] .tab-btn:active{transform:translateY(5px);box-shadow:0 0 0 #1b1b1b}
+/* Space: levitating holo-panels with neon rim + under-glow */
+body[data-grv-visual-theme="space"] :is(.stat,.card,.table-wrapper,.modal-content){box-shadow:inset 0 1px 0 #ffffff40,inset 0 -2px 0 #000a,inset 0 0 26px #6a4dff1f,0 0 0 1px #0008,0 3px 0 #1a1550,0 6px 0 #110e38,0 24px 40px #000c,0 0 44px #6a4dff44}
+body[data-grv-visual-theme="space"] .tab-btn{background:linear-gradient(180deg,#2a2563,#14113a);border:1px solid #8b7cff66;border-radius:12px;box-shadow:inset 0 1px 0 #fff4,0 4px 0 #0a0825,0 0 14px #6a4dff44}
+body[data-grv-visual-theme="space"] .tab-btn.tab-active{background:linear-gradient(180deg,#9b82ff,#5a3fe0);color:#fff;box-shadow:inset 0 1px 0 #fff9,0 4px 0 #2e1f94,0 0 28px #7c5cffcc}
+/* Shared: tactile press + 3D table headers */
+body[data-grv-visual-theme] .btn:active{transform:translateY(2px)}
+body[data-grv-visual-theme="skeuomorphism"] .expense-table th,body[data-grv-visual-theme="spatial-ui"] .expense-table th,body[data-grv-visual-theme="space"] .expense-table th{box-shadow:inset 0 1px 0 #ffffff30,inset 0 -2px 0 #0006}
+@media(max-width:600px){body[data-grv-visual-theme] :is(.stat,.card){margin-bottom:6px}}
 `;
     var style = document.createElement("style");
     style.id = "grv-visual-theme-styles";
