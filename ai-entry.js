@@ -263,7 +263,10 @@
     if (sep) {
       const at = sep.index;
       const source = normDesc(raw.slice(0, at));
-      const item = raw.slice(at + sep[0].length).trim().toUpperCase();
+      const item = raw
+        .slice(at + sep[0].length)
+        .trim()
+        .toUpperCase();
       return [source, item].filter(Boolean).join(" - ");
     }
     const L = aLoad(),
@@ -374,7 +377,9 @@
           !/\d/.test(l) &&
           l.split(/\s+/).length <= 3 &&
           !/[:,*.]/.test(l) &&
-          !/\b(dear|hi|hello|bank|card|credit|debit|info|summary|merchant|amount|date|limit|transaction|regards|thank|dispute|call|available|total|flipkart|axis)\b/i.test(l) &&
+          !/\b(dear|hi|hello|bank|card|credit|debit|info|summary|merchant|amount|date|limit|transaction|regards|thank|dispute|call|available|total|flipkart|axis)\b/i.test(
+            l,
+          ) &&
           !/[:*]\s*$/.test(a[i - 1] || ""),
       );
   // Short extra line before/after an SMS ("GRV,FLIPKART") = who + description.
@@ -593,8 +598,20 @@
       const k0 = rest.findIndex((w) => KWX.test(w));
       const main = k0 >= 0 ? rest.slice(0, k0) : rest;
       const rem = k0 >= 0 ? rest.slice(k0).join(" ").toUpperCase() : "";
-      const who = main.filter((w) => people.has(w));
-      const desc = main.filter((w) => !people.has(w));
+      const ALIAS = {
+        mom: "mummy",
+        mommy: "mummy",
+        mumma: "mummy",
+        mum: "mummy",
+        maa: "mummy",
+        mother: "mummy",
+        dad: "papa",
+        daddy: "papa",
+      };
+      const isP = (w) => people.has(w) || ALIAS[w];
+      const who = main.filter(isP).map((w) => ALIAS[w] || w);
+      const wi = main.findIndex(isP);
+      const desc = main.filter((w, i) => i !== wi);
       return {
         ...out,
         kind: "card",
@@ -647,7 +664,11 @@
       o.desc = item;
       return o;
     }
-    const norm = (v) => v.toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+    const norm = (v) =>
+      v
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, " ")
+        .trim();
     if (norm(current).includes(norm(item))) return o;
     // If the extracted merchant field contains a platform plus noisy/product
     // text, retain the known platform and replace the unreliable suffix.
@@ -668,13 +689,15 @@
       .filter(Boolean);
     if (lines.length < 2) return null;
     const bad =
-      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\b(call|dispute|click|link|otp|available|avl|limit|bank|merchant|dear|hi|hello|thank|regards|team|please|kindly|sincerely)\b/i;
+      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\d{1,2}:\d{2}|[x*]{2,}\s*\d{2,4}|\b(ist|call|dispute|click|link|otp|available|avl|limit|bank|merchant|name|amount|date|time|dear|hi|hello|thank|regards|team|please|kindly|sincerely)\b/i;
     let line = "";
     for (let k = lines.length - 1; k >= 0; k--)
       if (
         lines[k].split(/\s+/).length <= 7 &&
         lines[k].length <= 80 &&
-        !bad.test(lines[k])
+        !bad.test(lines[k]) &&
+        !/[*&@]/.test(lines[k]) &&
+        !(k > 0 && /:\s*$/.test(lines[k - 1]))
       ) {
         line = lines[k];
         break;
@@ -682,7 +705,9 @@
     if (!line) return null;
 
     // Explicit custom note format: "Grv Grocery: dudh dahi egg".
-    const colonNote = line.match(/^([A-Za-z][A-Za-z'-]*)\s+([^:]{1,35}):\s*(.+)$/);
+    const colonNote = line.match(
+      /^([A-Za-z][A-Za-z'-]*)\s+([^:]{1,35}):\s*(.+)$/,
+    );
     if (colonNote) {
       const whoToken = colonNote[1].trim();
       const knownPeople = peopleSet();
@@ -705,7 +730,9 @@
 
     // Explicit shorthand: "Grv Chaypatti and Pyaj" means person=GRV,
     // remarks="CHAYPATTI - PYAJ". Never infer the person's name from the whole phrase.
-    const hintParts = line.match(/^([A-Za-z][A-Za-z'-]*)\s+(.+)$/);
+    const hintParts = line.match(
+      /^([A-Za-z][A-Za-z'-]*)(?:\s*[,;]\s*|\s+)(.+)$/,
+    );
     if (hintParts) {
       const whoToken = hintParts[1].trim();
       const knownPeople = peopleSet();
@@ -713,18 +740,56 @@
         knownPeople.has(whoToken.toLowerCase()) ||
         /^(grv|gaurav|sweetie|tanya|me|self)$/i.test(whoToken);
       if (isPerson) {
-        const remark = hintParts[2]
-          .replace(/\s+(?:and|&)\s+/gi, " - ")
-          .replace(/\s*[,;|]\s*/g, " - ")
-          .replace(/\s*[-–—]\s*/g, " - ")
-          .replace(/(?:\s*-\s*)+/g, " - ")
-          .trim()
-          .replace(/^(?:-\s*)|(?:\s*-)$/g, "");
+        let txt = " " + hintParts[2] + " ";
+        let hDate = "",
+          dm;
+        const MN = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
+        if (
+          (dm = txt.match(
+            new RegExp(
+              "\\b(\\d{1,2})\\s*[-\\/]?\\s*(" +
+                MN +
+                ")[a-z]*\\s*[-\\/,]?\\s*(\\d{4}|\\d{2})?\\b",
+              "i",
+            ),
+          ))
+        ) {
+          const y = dm[3]
+            ? dm[3].length === 2
+              ? 2000 + +dm[3]
+              : +dm[3]
+            : new Date().getFullYear();
+          hDate = iso(new Date(y, MON.indexOf(dm[2].toLowerCase()), +dm[1]));
+          txt = txt.replace(dm[0], " ");
+        } else if (
+          (dm = txt.match(/\s(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4}|\d{2})\s/))
+        ) {
+          const y = dm[3].length === 2 ? 2000 + +dm[3] : +dm[3];
+          hDate = iso(new Date(y, +dm[2] - 1, +dm[1]));
+          txt = txt.replace(dm[0], " ");
+        }
+        const toks = txt.split(/\s+/).filter(Boolean);
+        const ki = toks.findIndex((w) => KWX.test(w));
+        const tidyH = (a) =>
+          a
+            .join(" ")
+            .replace(/\s+(?:and|&)\s+/gi, " - ")
+            .replace(/\s*[,;|]\s*/g, " - ")
+            .replace(/\s*[-–—]\s*/g, " - ")
+            .replace(/(?:\s*-\s*)+/g, " - ")
+            .trim()
+            .replace(/^(?:-\s*)|(?:\s*-)$/g, "")
+            .toUpperCase();
+        // Words before a payment-status keyword = product/description hint;
+        // keyword onwards ("already paid", "pending") = Remarks.
+        const remark = tidyH(ki >= 0 ? toks.slice(0, ki) : toks);
+        const remarks = ki >= 0 ? tidyH(toks.slice(ki)) : "";
         return {
           card: "",
           who: cap(whoToken),
-          rem: remark.toUpperCase(),
-          date: "",
+          rem: remark,
+          remarks,
+          date: hDate,
           sure: true,
           line,
         };
@@ -839,54 +904,143 @@
   // Deterministic personal shorthand: "Grv, flpkrt axs, meethae from swiggy".
   // Returns null unless the line has a recognizable person and enough structure.
   function shorthandHint(text, base) {
-    const lines = String(text || "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
+    const lines = String(text || "")
+      .split(/\n+/)
+      .map((x) => x.trim())
+      .filter(Boolean);
     // Single-line shorthand is valid; requiring two lines skipped the canonical test input.
     if (!lines.length) return null;
-    const line = lines.slice().reverse().find((x) => x.includes(",") && x.length <= 180);
+    const line = lines
+      .slice()
+      .reverse()
+      .find((x) => x.includes(",") && x.length <= 180);
     if (!line) return null;
-    const parts = line.split(",").map((x) => x.trim()).filter(Boolean);
+    const parts = line
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
     if (parts.length < 2) return null;
-    const personToken = parts[0].replace(/^(?:used\s*by\s*[:=]\s*)/i, "").trim();
+    const personToken = parts[0]
+      .replace(/^(?:used\s*by\s*[:=]\s*)/i, "")
+      .trim();
     const known = peopleSet();
-    if (!known.has(personToken.toLowerCase()) && !/^(grv|gaurav|me|self|sweetie|mummy|papa|bhai|wife)$/i.test(personToken)) return null;
-    const cardWords = parts.slice(1).join(" ").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-    const cards = (typeof cardConfig !== "undefined" ? cardConfig : []);
+    if (
+      !known.has(personToken.toLowerCase()) &&
+      !/^(grv|gaurav|me|self|sweetie|mummy|papa|bhai|wife)$/i.test(personToken)
+    )
+      return null;
+    const cardWords = parts
+      .slice(1)
+      .join(" ")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean);
+    const cards = typeof cardConfig !== "undefined" ? cardConfig : [];
     const consonants = (w) => String(w || "").replace(/[aeiou]/g, "");
-    const cardScore = (c) => c.card.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2)
-      .reduce((n, token) => n + (cardWords.some((w) => w === token || consonants(w) === consonants(token)) ? 1 : 0), 0);
-    const ranked = cards.map((c) => ({card:c.card, score:cardScore(c)})).filter((x) => x.score > 0).sort((a,b) => b.score-a.score);
-    const card = ranked.length && (ranked.length === 1 || ranked[0].score > ranked[1].score) ? ranked[0].card : "";
-    const cardPartIndex = card ? parts.findIndex((part) => {
-      const ws = part.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-      return cardWords.some((w) => ws.includes(w) || ws.some((x) => consonants(x) === consonants(w)));
-    }) : -1;
-    const tail = parts.slice(cardPartIndex >= 1 ? cardPartIndex + 1 : 1).join(", ");
+    const cardScore = (c) =>
+      c.card
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length > 2)
+        .reduce(
+          (n, token) =>
+            n +
+            (cardWords.some(
+              (w) => w === token || consonants(w) === consonants(token),
+            )
+              ? 1
+              : 0),
+          0,
+        );
+    const ranked = cards
+      .map((c) => ({ card: c.card, score: cardScore(c) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const card =
+      ranked.length &&
+      (ranked.length === 1 || ranked[0].score > ranked[1].score)
+        ? ranked[0].card
+        : "";
+    const cardPartIndex = card
+      ? parts.findIndex((part) => {
+          const ws = part
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter(Boolean);
+          return cardWords.some(
+            (w) =>
+              ws.includes(w) || ws.some((x) => consonants(x) === consonants(w)),
+          );
+        })
+      : -1;
+    const tail = parts
+      .slice(cardPartIndex >= 1 ? cardPartIndex + 1 : 1)
+      .join(", ");
     const explicitRemark = tail.match(/\b(?:remarks?|note)\s*[:=]\s*(.+)$/i);
-    const itemSource = tail.replace(/\b(?:remarks?|note)\s*[:=]\s*.+$/i, "").trim();
-    const noteMatch = itemSource.match(/\b(?:already\s+paid|paid\s+in|will\s+get\s+refund|refund|split\s+with|for\s+(?:mummy|papa|bhai|wife))\b.+$/i);
-    const extraNote = lines.filter((x) => x !== line && /\\b(?:already\\s+paid|paid\\s+in|will\\s+get\\s+refund|refund|split\\s+with|pending|settled|due)\\b/i.test(x)).join(" ");
-    const note = (explicitRemark ? explicitRemark[1] : noteMatch ? noteMatch[0] : extraNote).trim();
-    let phrase = itemSource.replace(/\b(?:remarks?|note)\s*[:=]\s*.+$/i, "").trim();
-    if (noteMatch && !explicitRemark) phrase = phrase.slice(0, noteMatch.index).trim();
+    const itemSource = tail
+      .replace(/\b(?:remarks?|note)\s*[:=]\s*.+$/i, "")
+      .trim();
+    const noteMatch = itemSource.match(
+      /\b(?:already\s+paid|paid\s+in|will\s+get\s+refund|refund|split\s+with|for\s+(?:mummy|papa|bhai|wife))\b.+$/i,
+    );
+    const extraNote = lines
+      .filter(
+        (x) =>
+          x !== line &&
+          /\\b(?:already\\s+paid|paid\\s+in|will\\s+get\\s+refund|refund|split\\s+with|pending|settled|due)\\b/i.test(
+            x,
+          ),
+      )
+      .join(" ");
+    const note = (
+      explicitRemark ? explicitRemark[1] : noteMatch ? noteMatch[0] : extraNote
+    ).trim();
+    let phrase = itemSource
+      .replace(/\b(?:remarks?|note)\s*[:=]\s*.+$/i, "")
+      .trim();
+    if (noteMatch && !explicitRemark)
+      phrase = phrase.slice(0, noteMatch.index).trim();
     const from = phrase.match(/^(.+?)\s+from\s+(.+)$/i);
-    let item = "", source = "";
-    if (from) { item = from[1].trim(); source = from[2].trim(); }
-    else if (phrase) {
+    let item = "",
+      source = "";
+    if (from) {
+      item = from[1].trim();
+      source = from[2].trim();
+    } else if (phrase) {
       item = phrase;
       source = String((base && base.desc) || "").trim();
     }
     const cleanSource = (s) => {
-      let v = String(s || "").trim().replace(/^(?:at|from)\s+/i, "");
-      v = v.replace(/\b(?:instamart|online|payment|transaction)\b/ig, (m) => m.toLowerCase() === "instamart" ? "Instamart" : "");
-      return v.replace(/\s+/g, " ").replace(/^[\s-]+|[\s-]+$/g, "").toUpperCase();
+      let v = String(s || "")
+        .trim()
+        .replace(/^(?:at|from)\s+/i, "");
+      v = v.replace(/\b(?:instamart|online|payment|transaction)\b/gi, (m) =>
+        m.toLowerCase() === "instamart" ? "Instamart" : "",
+      );
+      return v
+        .replace(/\s+/g, " ")
+        .replace(/^[\s-]+|[\s-]+$/g, "")
+        .toUpperCase();
     };
-    const cleanItem = (s) => String(s || "").trim().replace(/^(?:item|desc(?:ription)?)\s*[:=]\s*/i, "").replace(/^[,;\s]+|[,;\s]+$/g, "").replace(/\s+/g, " ").toUpperCase();
+    const cleanItem = (s) =>
+      String(s || "")
+        .trim()
+        .replace(/^(?:item|desc(?:ription)?)\s*[:=]\s*/i, "")
+        .replace(/^[,;\s]+|[,;\s]+$/g, "")
+        .replace(/\s+/g, " ")
+        .toUpperCase();
     const src = cleanSource(source);
     const itm = cleanItem(item);
     if (!card && !itm && !note) return null;
-    const out = { usedBy: personToken.toUpperCase() === "ME" ? "GRV" : personToken.toUpperCase(), card, remarks: note.toUpperCase() };
+    const out = {
+      usedBy:
+        personToken.toUpperCase() === "ME" ? "GRV" : personToken.toUpperCase(),
+      card,
+      remarks: note.toUpperCase(),
+    };
     if (src && itm) out.desc = src + " - " + itm;
-    else if (itm && base && base.desc) out.desc = cleanSource(base.desc) + " - " + itm;
+    else if (itm && base && base.desc)
+      out.desc = cleanSource(base.desc) + " - " + itm;
     else if (itm) out.desc = itm;
     return out;
   }
@@ -1018,13 +1172,29 @@
     // Fast local card resolution: merchant + issuer + last-four hint; no server call.
     if (!card) {
       const merchantText = String((mm && mm[1]) || t).toLowerCase();
-      const bankMatch = t.match(/\b(axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank\s+of\s+baroda)\b/i);
-      const bankName = bankMatch ? (/^bank\s+of\s+baroda$/i.test(bankMatch[1]) ? "bob" : bankMatch[1].toLowerCase()) : "";
+      const bankMatch = t.match(
+        /\b(axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank\s+of\s+baroda)\b/i,
+      );
+      const bankName = bankMatch
+        ? /^bank\s+of\s+baroda$/i.test(bankMatch[1])
+          ? "bob"
+          : bankMatch[1].toLowerCase()
+        : "";
       const candidates = cardConfig.filter((c) => {
         const name = String(c.card || "").toLowerCase();
         const issuerOk = !bankName || name.startsWith(bankName + "-");
-        const tokens = name.split(/[^a-z0-9]+/).filter((x) => x.length > 2 && !["axis", "hdfc", "icici", "kotak", "sbi", "card"].includes(x));
-        const merchantOk = tokens.some((x) => merchantText.includes(x) || (x === "flipkart" && /flipkar/i.test(t)));
+        const tokens = name
+          .split(/[^a-z0-9]+/)
+          .filter(
+            (x) =>
+              x.length > 2 &&
+              !["axis", "hdfc", "icici", "kotak", "sbi", "card"].includes(x),
+          );
+        const merchantOk = tokens.some(
+          (x) =>
+            merchantText.includes(x) ||
+            (x === "flipkart" && /flipkar/i.test(t)),
+        );
         return issuerOk && merchantOk;
       });
       if (candidates.length === 1) card = candidates[0].card;
@@ -2047,6 +2217,7 @@
             // not a personal transaction remark. Explicit Remarks labels are
             // applied separately by applyLab().
             if (ul0.rem && !(sh && sh.desc)) appendDescriptionHint(sm, ul0.rem);
+            if (ul0.remarks) sm.remarks = ul0.remarks;
           }
           if (!sm.usedBy && !(lab && lab.who)) {
             const nm = plainName(text);
@@ -2102,7 +2273,10 @@
       applyLab(r);
       const sh = shorthandHint(text, r);
       if (sh) {
-        if (sh.card) { r.card = sh.card; r.kind = "card"; }
+        if (sh.card) {
+          r.card = sh.card;
+          r.kind = "card";
+        }
         if (sh.usedBy && r.kind === "card") r.usedBy = sh.usedBy;
         if (sh.desc) r.desc = sh.desc;
       }
@@ -2115,6 +2289,7 @@
         if (ul.date) r.date = ul.date;
         if (r.kind === "card" && ul.who) r.usedBy = ul.who;
         if (ul.rem) appendDescriptionHint(r, ul.rem);
+        if (ul.remarks) r.remarks = ul.remarks;
       }
       // Client-side guards (work even if the server is an older version)
       if (
