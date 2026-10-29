@@ -6386,6 +6386,9 @@
 </head>
 
 <body>
+    <!-- Pre-paint theme: applies the saved light/dark choice before first paint so the page never flashes
+         dark first. Mirrors initTheme() in script.js. Fails silently if storage is blocked. -->
+    <script>(function () { try { if (localStorage.getItem("theme") === "light") document.body.classList.add("light-mode"); } catch (e) { } })();</script>
 
     <div class="topbar">
 
@@ -7246,7 +7249,7 @@
 
     <div id="toastMsg" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="script.js?v=ai2"></script>
+    <script src="script.js?v=ai3"></script>
     <script src="card-fix.js"></script>
     <script src="ai-entry.js?v=4"></script>
     <script src="ai-orb.js?v=1"></script>
@@ -7260,7 +7263,7 @@
     <script src="mobile-fix.js"></script>
 
     <script src="go-to-table.js"></script>
-    <script src="theme-switcher.js" defer></script>
+    <script src="theme-switcher.js?v=3" defer></script>
 
     <style id="mobile-card-summary-compact">
         @media (max-width: 600px) {

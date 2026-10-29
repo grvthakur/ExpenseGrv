@@ -2507,8 +2507,12 @@ document.addEventListener(
 );
 
 function initTheme() {
-  const saved = localStorage.getItem("theme") || "dark";
-  applyTheme(saved);
+  // localStorage can throw (blocked storage / private mode); never let that stop boot.
+  let saved = null;
+  try {
+    saved = localStorage.getItem("theme");
+  } catch (e) {}
+  applyTheme(saved || "dark");
 }
 
 function applyTheme(theme) {
@@ -2516,11 +2520,15 @@ function applyTheme(theme) {
   if (theme === "light") {
     document.body.classList.add("light-mode");
     if (btn) btn.textContent = "🌙 Dark";
-    localStorage.setItem("theme", "light");
+    try {
+      localStorage.setItem("theme", "light");
+    } catch (e) {}
   } else {
     document.body.classList.remove("light-mode");
     if (btn) btn.textContent = "☀️ Light";
-    localStorage.setItem("theme", "dark");
+    try {
+      localStorage.setItem("theme", "dark");
+    } catch (e) {}
   }
 }
 
