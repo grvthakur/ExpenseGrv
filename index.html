@@ -7251,7 +7251,7 @@
 
     <script src="script.js?v=ai3"></script>
     <script src="card-fix.js"></script>
-    <script src="ai-entry.js?v=4"></script>
+    <script src="ai-entry.js?v=6"></script>
     <script src="ai-orb.js?v=1"></script>
     <!-- Export layer — reads rendered tables only, touches no app logic -->
     <script src="export.js"></script>
@@ -8101,37 +8101,219 @@
     </style>
 
 
-<style id="mobile-fix-v3">
-@media (max-width:600px){
-html body table#sweetieTable,html body table#grvCardTable{min-width:0 !important;width:100% !important;table-layout:auto !important}
-html body table#grvCardTable th:nth-child(5),html body table#grvCardTable td:nth-child(5){display:none !important}
-html body table#sweetieTable th:nth-child(n),html body table#sweetieTable td:nth-child(n),html body table#grvCardTable th:nth-child(n),html body table#grvCardTable td:nth-child(n){min-width:0 !important;max-width:none !important;padding:6px 2px !important;font-size:.6rem !important;line-height:1.25 !important;overflow-wrap:normal !important;word-break:normal !important;white-space:normal !important}
-html body table#sweetieTable td:nth-child(5) .table-data-pill,html body table#grvCardTable td:nth-child(3) .table-data-pill,html body table#grvCardTable td:nth-child(4) .table-data-pill{display:block !important;width:auto !important;max-width:100% !important;white-space:normal !important;overflow-wrap:break-word !important;word-break:normal !important;padding:1px 3px !important;font-size:.56rem !important}
-html body table#grvCardTable td .cc-rem{overflow-wrap:break-word !important;word-break:normal !important;font-size:.55rem !important}
-html body table#grvCardTable th:nth-child(6),html body table#grvCardTable td:nth-child(6),html body table#grvCardTable th:nth-child(7),html body table#grvCardTable td:nth-child(7),html body table#sweetieTable th:nth-child(6),html body table#sweetieTable td:nth-child(6){white-space:nowrap !important;width:1% !important}
-html body table#grvCardTable td:nth-child(7) .status-toggle{padding:1px !important;min-width:0 !important}
-html body table#grvCardTable td:nth-child(7) .status-badge{padding:2px 4px !important;font-size:.52rem !important}
-html body table#sweetieTable td:nth-child(6) button{width:24px !important;height:24px !important;min-width:0 !important;padding:0 !important;margin:0 1px 0 0 !important;font-size:.7rem !important}
-html body table#cardTable{min-width:0 !important;width:100% !important;table-layout:auto !important}
-html body table#cardTable th:nth-child(5),html body table#cardTable td:nth-child(5),html body table#cardTable th:nth-child(8),html body table#cardTable td:nth-child(8){display:none !important}
-html body table#cardTable th:nth-child(n),html body table#cardTable td:nth-child(n){min-width:0 !important;max-width:none !important;padding:6px 3px !important;font-size:.62rem !important;line-height:1.25 !important;overflow-wrap:normal !important;word-break:normal !important}
-html body table#cardTable th:nth-child(1),html body table#cardTable td:nth-child(1),html body table#cardTable th:nth-child(2),html body table#cardTable td:nth-child(2),html body table#cardTable th:nth-child(3),html body table#cardTable td:nth-child(3),html body table#cardTable th:nth-child(4),html body table#cardTable td:nth-child(4){white-space:normal !important}
-html body table#cardTable td:nth-child(2) .table-data-pill,html body table#cardTable td:nth-child(3) .table-data-pill,html body table#cardTable td:nth-child(4) .table-data-pill{display:block !important;width:auto !important;max-width:100% !important;white-space:normal !important;overflow-wrap:break-word !important;word-break:normal !important;padding:1px 2px !important;font-size:.55rem !important;letter-spacing:0 !important}
-html body table#cardTable td .cc-rem{overflow-wrap:break-word !important;word-break:normal !important;font-size:.55rem !important}
-html body table#cardTable td:nth-child(7) .status-toggle{padding:1px !important;min-width:0 !important}
-html body table#cardTable td:nth-child(7) .status-badge{padding:2px 4px !important;font-size:.52rem !important}
-html body table#cardTable th:nth-child(n){font-size:.55rem !important;letter-spacing:0 !important}
-html body table#cardTable td:nth-child(6){font-size:.58rem !important}
-html body table#cardTable th:nth-child(n),html body table#cardTable td:nth-child(n){padding-left:2px !important;padding-right:2px !important}
-html body table#cardTable td:nth-child(6),html body table#cardTable td:nth-child(7),html body table#cardTable th:nth-child(6),html body table#cardTable th:nth-child(7),html body table#cardTable th:nth-child(9),html body table#cardTable td:nth-child(9){white-space:nowrap !important;width:1% !important}
-html body table#cardTable td:nth-child(9){display:table-cell !important}
-html body table#cardTable td:nth-child(9) .edit-btn,html body table#cardTable td:nth-child(9) .clone-btn,html body table#cardTable td:nth-child(9) .delete-btn{display:inline-flex !important;align-items:center;justify-content:center;width:24px !important;height:24px !important;min-width:0 !important;min-height:0 !important;padding:0 !important;margin:0 1px 0 0 !important;font-size:.6rem !important;vertical-align:top !important;width:20px !important;height:20px !important}
-html body table#cardTable th:nth-child(1),html body table#cardTable td:nth-child(1),html body table#sweetieTable th:nth-child(1),html body table#sweetieTable td:nth-child(1),html body table#grvCardTable th:nth-child(2),html body table#grvCardTable td:nth-child(2){white-space:nowrap !important;width:1% !important}
-html body #cardTable th:nth-child(n),html body #cardTable td:nth-child(n){vertical-align:top !important}
-html body #cardTable td{padding-top:10px !important}
-html body #cardTable td .table-data-pill{margin:0 !important}
-}
-</style>
+    <style id="mobile-fix-v3">
+        @media (max-width:600px) {
+
+            html body table#sweetieTable,
+            html body table#grvCardTable {
+                min-width: 0 !important;
+                width: 100% !important;
+                table-layout: auto !important
+            }
+
+            html body table#grvCardTable th:nth-child(5),
+            html body table#grvCardTable td:nth-child(5) {
+                display: none !important
+            }
+
+            html body table#sweetieTable th:nth-child(n),
+            html body table#sweetieTable td:nth-child(n),
+            html body table#grvCardTable th:nth-child(n),
+            html body table#grvCardTable td:nth-child(n) {
+                min-width: 0 !important;
+                max-width: none !important;
+                padding: 6px 2px !important;
+                font-size: .6rem !important;
+                line-height: 1.25 !important;
+                overflow-wrap: normal !important;
+                word-break: normal !important;
+                white-space: normal !important
+            }
+
+            html body table#sweetieTable td:nth-child(5) .table-data-pill,
+            html body table#grvCardTable td:nth-child(3) .table-data-pill,
+            html body table#grvCardTable td:nth-child(4) .table-data-pill {
+                display: block !important;
+                width: auto !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
+                padding: 1px 3px !important;
+                font-size: .56rem !important
+            }
+
+            html body table#grvCardTable td .cc-rem {
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
+                font-size: .55rem !important
+            }
+
+            html body table#grvCardTable th:nth-child(6),
+            html body table#grvCardTable td:nth-child(6),
+            html body table#grvCardTable th:nth-child(7),
+            html body table#grvCardTable td:nth-child(7),
+            html body table#sweetieTable th:nth-child(6),
+            html body table#sweetieTable td:nth-child(6) {
+                white-space: nowrap !important;
+                width: 1% !important
+            }
+
+            html body table#grvCardTable td:nth-child(7) .status-toggle {
+                padding: 1px !important;
+                min-width: 0 !important
+            }
+
+            html body table#grvCardTable td:nth-child(7) .status-badge {
+                padding: 2px 4px !important;
+                font-size: .52rem !important
+            }
+
+            html body table#sweetieTable td:nth-child(6) button {
+                width: 24px !important;
+                height: 24px !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                margin: 0 1px 0 0 !important;
+                font-size: .7rem !important
+            }
+
+            html body table#cardTable {
+                min-width: 0 !important;
+                width: 100% !important;
+                table-layout: auto !important
+            }
+
+            html body table#cardTable th:nth-child(5),
+            html body table#cardTable td:nth-child(5),
+            html body table#cardTable th:nth-child(8),
+            html body table#cardTable td:nth-child(8) {
+                display: none !important
+            }
+
+            html body table#cardTable th:nth-child(n),
+            html body table#cardTable td:nth-child(n) {
+                min-width: 0 !important;
+                max-width: none !important;
+                padding: 6px 3px !important;
+                font-size: .62rem !important;
+                line-height: 1.25 !important;
+                overflow-wrap: normal !important;
+                word-break: normal !important
+            }
+
+            html body table#cardTable th:nth-child(1),
+            html body table#cardTable td:nth-child(1),
+            html body table#cardTable th:nth-child(2),
+            html body table#cardTable td:nth-child(2),
+            html body table#cardTable th:nth-child(3),
+            html body table#cardTable td:nth-child(3),
+            html body table#cardTable th:nth-child(4),
+            html body table#cardTable td:nth-child(4) {
+                white-space: normal !important
+            }
+
+            html body table#cardTable td:nth-child(2) .table-data-pill,
+            html body table#cardTable td:nth-child(3) .table-data-pill,
+            html body table#cardTable td:nth-child(4) .table-data-pill {
+                display: block !important;
+                width: auto !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
+                padding: 1px 2px !important;
+                font-size: .55rem !important;
+                letter-spacing: 0 !important
+            }
+
+            html body table#cardTable td .cc-rem {
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
+                font-size: .55rem !important
+            }
+
+            html body table#cardTable td:nth-child(7) .status-toggle {
+                padding: 1px !important;
+                min-width: 0 !important
+            }
+
+            html body table#cardTable td:nth-child(7) .status-badge {
+                padding: 2px 4px !important;
+                font-size: .52rem !important
+            }
+
+            html body table#cardTable th:nth-child(n) {
+                font-size: .55rem !important;
+                letter-spacing: 0 !important
+            }
+
+            html body table#cardTable td:nth-child(6) {
+                font-size: .58rem !important
+            }
+
+            html body table#cardTable th:nth-child(n),
+            html body table#cardTable td:nth-child(n) {
+                padding-left: 2px !important;
+                padding-right: 2px !important
+            }
+
+            html body table#cardTable td:nth-child(6),
+            html body table#cardTable td:nth-child(7),
+            html body table#cardTable th:nth-child(6),
+            html body table#cardTable th:nth-child(7),
+            html body table#cardTable th:nth-child(9),
+            html body table#cardTable td:nth-child(9) {
+                white-space: nowrap !important;
+                width: 1% !important
+            }
+
+            html body table#cardTable td:nth-child(9) {
+                display: table-cell !important
+            }
+
+            html body table#cardTable td:nth-child(9) .edit-btn,
+            html body table#cardTable td:nth-child(9) .clone-btn,
+            html body table#cardTable td:nth-child(9) .delete-btn {
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 24px !important;
+                height: 24px !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                padding: 0 !important;
+                margin: 0 1px 0 0 !important;
+                font-size: .6rem !important;
+                vertical-align: top !important;
+                width: 20px !important;
+                height: 20px !important
+            }
+
+            html body table#cardTable th:nth-child(1),
+            html body table#cardTable td:nth-child(1),
+            html body table#sweetieTable th:nth-child(1),
+            html body table#sweetieTable td:nth-child(1),
+            html body table#grvCardTable th:nth-child(2),
+            html body table#grvCardTable td:nth-child(2) {
+                white-space: nowrap !important;
+                width: 1% !important
+            }
+
+            html body #cardTable th:nth-child(n),
+            html body #cardTable td:nth-child(n) {
+                vertical-align: top !important
+            }
+
+            html body #cardTable td {
+                padding-top: 10px !important
+            }
+
+            html body #cardTable td .table-data-pill {
+                margin: 0 !important
+            }
+        }
+    </style>
 </body>
 
 </html>

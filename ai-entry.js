@@ -340,6 +340,7 @@
       );
       if (!(+vals.amount > 0)) return toast("Enter a valid amount", true);
       if (origDesc && vals.desc) learnAlias(origDesc, vals.desc);
+      if (kind === "card" && vals.card && lastD4) learnLast4(lastD4, vals.card);
       for (const e of pv.querySelectorAll("select[data-k]"))
         if (!e.value)
           return toast(
@@ -518,7 +519,8 @@
       )
       .replace(/\s+/g, " ")
       .trim()
-      .toUpperCase();
+      .toUpperCase()
+      .replace(/\s+IN$/, "");
   const standalone = (t) =>
     t
       .split(/\n+/)
@@ -540,7 +542,7 @@
           skel(w).length > 3 &&
           skel(w) === skel(t).slice(0, skel(w).length))));
   const KWX =
-    /^(already|paid|pay|payed|kotak|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
+    /^(already|paid|pay|payed|kotak|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder|split|splits|shared|sharing|reimburse|reimbursed|received|later|waiting)$/i;
   function localParse(text) {
     if (text.length > 80) return null;
     let t =
@@ -655,6 +657,15 @@
   }
   // Merge a user-supplied product hint into the transaction description without
   // turning it into a personal remark. Purely local and deterministic.
+  // RULE: Description = what/where was paid (platform + item). Remarks = only a note about the
+  // payment itself ("already paid", "paid in kotak", "will be split"). ul.rem is the item hint, ul.remarks the payment note.
+  function applyUserHint(o, ul) {
+    if (!o || !ul) return o;
+    if (ul.rem) appendDescriptionHint(o, ul.rem);
+    const more = String(ul.remarks || "").trim();
+    if (more) o.remarks = more;
+    return o;
+  }
   function appendDescriptionHint(o, hint) {
     if (!o || !hint) return o;
     const item = String(hint).trim().replace(/\s+/g, " ").toUpperCase();
@@ -681,6 +692,9 @@
     return o;
   }
 
+  // Bank/SMS boilerplate: never a user's hint, remark or description.
+  const BOILER =
+    /\b(otps?|one[-\s]?time|passwords?|secret|disclose|confidential|never\s+share|do\s+not\s+share|not\s+you|dispute|helpline|customer\s*care|toll[-\s]?free|fraud|block\s+(your\s+)?card|t\s*&\s*c|tnc|dear|regards|thank(s|\s*you)?)\b/i;
   // User's own hint line under a pasted SMS ("hdfc tata neu mummy 9oct2026"): card + person + date + remarks, no AI needed.
   function userLine(text) {
     const lines = text
@@ -689,7 +703,7 @@
       .filter(Boolean);
     if (lines.length < 2) return null;
     const bad =
-      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\d{1,2}:\d{2}|[x*]{2,}\s*\d{2,4}|\b(ist|call|dispute|click|link|otp|available|avl|limit|bank|merchant|name|amount|date|time|dear|hi|hello|thank|regards|team|please|kindly|sincerely)\b/i;
+      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\d{1,2}:\d{2}|[x*]{2,}\s*\d{2,4}|\b(ist|call|dispute|click|link|otps?|available|avl|limit|bank|merchant|name|amount|date|time|dear|hi|hello|thank|regards|team|please|kindly|sincerely|secret|disclose|password|one-time|confidential|fraud|helpline|never|share|not you)\b/i;
     let line = "";
     for (let k = lines.length - 1; k >= 0; k--)
       if (
@@ -884,22 +898,33 @@
         nm = main.slice(0, 2);
     }
     const extra = main.slice(nm.length);
-    let rem =
+    // Item/platform words -> rem (goes to Description). Payment-status words onwards -> remarks.
+    const rem = extra.join(" ").toUpperCase();
+    const remarks = (
       kw >= 0
         ? words
             .slice(kw)
             .filter((w) => !FILL.test(w))
             .join(" ")
-        : "";
-    if (extra.length) rem = (extra.join(" ") + " " + rem).trim();
-    rem = rem.toUpperCase();
-    const who = nm.map(cap).join(" ");
-    if (!card && !who && !rem && !date) return null;
+        : ""
+    ).toUpperCase();
+    const nameCase = (w) =>
+      ppl.has(w) || /^(grv|me|sbi)$/.test(w)
+        ? cap(w)
+        : w[0].toUpperCase() + w.slice(1).toLowerCase();
+    const who = nm.map(nameCase).join(" ");
+    if (!card && !who && !rem && !remarks && !date) return null;
     const REL =
       /^(mummy|mommy|mom|maa|mama|papa|pappa|dad|bhai|bhaiya|didi|behen|bhabhi|wife|biwi|sweetie|dost|friend|self|gaurav|grv)$/;
+    // A bare 1-2 word name line ("DILIP JI") under a bank SMS is the person.
+    const bareName =
+      !rem && !remarks && !card && !date && !extra.length && nm.length <= 2;
     const sure =
-      !who || ppl.has(who.toLowerCase()) || REL.test(who.toLowerCase());
-    return { card, who, rem, date, sure, line };
+      !who ||
+      bareName ||
+      ppl.has(who.toLowerCase()) ||
+      REL.test(who.toLowerCase());
+    return { card, who, rem, remarks, date, sure, line };
   }
   // Deterministic personal shorthand: "Grv, flpkrt axs, meethae from swiggy".
   // Returns null unless the line has a recognizable person and enough structure.
@@ -1070,6 +1095,63 @@
     }
     return first;
   }
+  // Card last-4 -> card name, resolved synchronously (never waits on the network):
+  // 1) learned map from cards you confirmed before, 2) in-memory CC Master, 3) CC Master saved on this device.
+  const L4_KEY = "ai_last4_v1";
+  const l4Load = () => {
+    try {
+      return JSON.parse(localStorage.getItem(L4_KEY) || "{}") || {};
+    } catch (_) {
+      return {};
+    }
+  };
+  const last4Of = (t) =>
+    (String(t || "").match(/\b(?:card|a\/c|acct?)[^\d]{0,14}(\d{4})\b/i) ||
+      String(t || "").match(/\b(?:x{2,}|\*{2,})\s*(\d{4})\b/i) ||
+      [])[1] || "";
+  function last4Card(d4) {
+    if (!d4) return "";
+    const has = (n) =>
+      (typeof cardConfig !== "undefined" ? cardConfig : []).find(
+        (c) => String(c.card).toLowerCase() === String(n).toLowerCase(),
+      );
+    const L = l4Load();
+    if (L[d4] && has(L[d4])) return has(L[d4]).card;
+    let rows = (typeof ccMasterCache !== "undefined" && ccMasterCache) || null;
+    if (!Array.isArray(rows) || !rows.length) {
+      try {
+        rows = JSON.parse(localStorage.getItem("cc_master_cache_v1") || "[]");
+      } catch (_) {
+        rows = [];
+      }
+    }
+    const row = (Array.isArray(rows) ? rows : []).find(
+      (x) =>
+        String(x[2] || "")
+          .replace(/\D/g, "")
+          .endsWith(d4) ||
+        String(x[3] || "")
+          .split("/")[0]
+          .replace(/\D/g, "")
+          .endsWith(d4),
+    );
+    const hit =
+      row &&
+      has(String(row[0]).trim() + "-" + String(row[1]).trim());
+    return hit ? hit.card : "";
+  }
+  function learnLast4(d4, card) {
+    try {
+      if (!d4 || !card) return;
+      const L = l4Load();
+      if (L[d4] === card) return;
+      L[d4] = card;
+      const ks = Object.keys(L);
+      if (ks.length > 60) delete L[ks[0]];
+      localStorage.setItem(L4_KEY, JSON.stringify(L));
+    } catch (_) {}
+  }
+  let lastD4 = "";
   // Instant bank SMS / email parser (no AI): amount, card last-4/bank, date, merchant.
   async function smsParse(t) {
     if (t.length > 3000) return null;
@@ -1109,34 +1191,20 @@
     const d4 = (t.match(/\b(?:card|a\/c|acct?)[^\d]{0,14}(\d{4})\b/i) ||
       t.match(/\b(?:x{2,}|\*{2,})\s*(\d{4})\b/i) ||
       [])[1];
-    if (d4) {
-      try {
-        // Never block Smart Entry on a network lookup. Use only an already-warm cache.
-        const rows =
-          (typeof ccMasterCache !== "undefined" && ccMasterCache) || [];
-        const row = rows.find(
-          (x) =>
-            String(x[2] || "")
-              .replace(/\D/g, "")
-              .endsWith(d4) ||
-            String(x[3] || "")
-              .split("/")[0]
-              .replace(/\D/g, "")
-              .endsWith(d4),
-        );
-        const hit =
-          row &&
-          cardConfig.find(
-            (c) =>
-              c.card.toLowerCase() ===
-              (
-                String(row[0]).trim() +
-                "-" +
-                String(row[1]).trim()
-              ).toLowerCase(),
-          );
-        if (hit) card = hit.card;
-      } catch (_) {}
+    if (d4) card = last4Card(d4);
+    if (!card) {
+      // Card named in the SMS itself ("on HDFC TATA NEU"): every word of exactly one configured card must appear.
+      const tl = " " + t.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+      const full = (typeof cardConfig !== "undefined" ? cardConfig : []).filter(
+        (c) => {
+          const tk = String(c.card || "")
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((x) => x.length > 1);
+          return tk.length >= 2 && tk.every((x) => tl.includes(" " + x + " "));
+        },
+      );
+      if (full.length === 1) card = full[0].card;
     }
     if (!card) {
       const bank = [
@@ -1167,7 +1235,7 @@
       lm ||
       (fm && !/\b(at|towards|@)\s+[A-Za-z0-9]/i.test(t) ? fm : null) ||
       t.match(
-        /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
+        /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+using\b|\s+via\b|\s+from\b|\s+with\b|\s+credit\b|\s+debit\b|\s+card\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
       );
     // Fast local card resolution: merchant + issuer + last-four hint; no server call.
     if (!card) {
@@ -1199,10 +1267,13 @@
       });
       if (candidates.length === 1) card = candidates[0].card;
     }
-    if (!card) return null;
+    const bankSeen = /\b(axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank\s+of\s+baroda)\b/i.test(t);
+    // Complete SMS but unknown card: still instant (user picks the card once; it is learned for next time).
+    if (!card && !(d4 || bankSeen)) return null;
+    lastD4 = d4 || "";
     return {
       kind: "card",
-      card,
+      card: card || "",
       usedBy: "",
       desc: (() => {
         const raw = cleanM(
@@ -2201,23 +2272,21 @@
               .join("\n")
           : body0;
         const sm = await smsParse(bodyP);
-        if (sm && sm.amount > 0 && sm.card && sm.desc && (!ul0 || ul0.sure)) {
+        if (sm && sm.amount > 0 && sm.desc && (!ul0 || ul0.sure)) {
           const sh = shorthandHint(text, sm);
           if (sh) {
             if (sh.card) sm.card = sh.card;
             if (sh.usedBy) sm.usedBy = sh.usedBy;
-            if (sh.desc) sm.desc = sh.desc;
+            // The SMS merchant is the Description; shorthand only fills it when the SMS had none.
+            if (sh.desc && !sm.desc) sm.desc = sh.desc;
           }
           applyLab(sm);
           if (ul0) {
             if (ul0.card) sm.card = ul0.card;
             if (ul0.date) sm.date = ul0.date;
             if (ul0.who) sm.usedBy = ul0.who;
-            // A free-form person hint such as "Grv Biryani" is product context,
-            // not a personal transaction remark. Explicit Remarks labels are
-            // applied separately by applyLab().
-            if (ul0.rem && !(sh && sh.desc)) appendDescriptionHint(sm, ul0.rem);
-            if (ul0.remarks) sm.remarks = ul0.remarks;
+            // Description = merchant (+ item hint); Remarks only for payment notes (paid in kotak, split...).
+            applyUserHint(sm, ul0);
           }
           if (!sm.usedBy && !(lab && lab.who)) {
             const nm = plainName(text);
@@ -2288,9 +2357,12 @@
         }
         if (ul.date) r.date = ul.date;
         if (r.kind === "card" && ul.who) r.usedBy = ul.who;
-        if (ul.rem) appendDescriptionHint(r, ul.rem);
-        if (ul.remarks) r.remarks = ul.remarks;
+        applyUserHint(r, ul);
       }
+      // Never keep SMS boilerplate ("OTPs are SECRET") as a remark/description.
+      if (r.remarks && BOILER.test(r.remarks)) r.remarks = "";
+      if (r.desc && BOILER.test(r.desc)) r.desc = "";
+      lastD4 = last4Of(text);
       // Client-side guards (work even if the server is an older version)
       if (
         r.kind !== "sweetie" &&
