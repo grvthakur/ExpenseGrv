@@ -402,7 +402,11 @@
       if (/^(usedby|user|person|by)$/.test(k))
         lab.who = v
           .split(/\s+/)
-          .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+          .map((w) =>
+            w.length <= 3
+              ? w.toUpperCase()
+              : w[0].toUpperCase() + w.slice(1).toLowerCase(),
+          )
           .join(" ");
       else if (/^(desc|description|merchant)/.test(k))
         lab.desc = v.toUpperCase();
@@ -414,6 +418,52 @@
       who: lab.who,
       desc: lab.desc,
       rem: lab.rem,
+    };
+  }
+  // Unlabelled trailing lines under a bank SMS: "GRV / ITEM / REMARK" (3 lines), "GRV / ITEM", or "GRV, ITEM, REMARK".
+  // Only used when the first part is a KNOWN person; otherwise returns null (stay blank, never guess).
+  function tailLab(text) {
+    if (!isBankSms(text)) return null;
+    const lines = String(text)
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const bad =
+      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|[?!]|\d{1,2}:\d{2}|\b(dear|your|info|bank|card|credit|limit|available|avl|call|dispute|otps?|regards|thank|transaction|debited|spent|merchant)\b/i;
+    let st = lines.length;
+    while (
+      st > 0 &&
+      lines[st - 1].length <= 80 &&
+      !bad.test(lines[st - 1]) &&
+      !BOILER.test(lines[st - 1])
+    )
+      st--;
+    if (st === lines.length) return null;
+    const tail = lines.slice(st);
+    let parts =
+      tail.length === 1
+        ? tail[0]
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean)
+        : tail;
+    if (parts.length < 2 || parts.length > 4) return null;
+    const p0 = parts[0].toLowerCase();
+    if (
+      !(
+        peopleSet().has(p0) ||
+        /^(grv|gaurav|me|self|sweetie|mummy|papa|bhai|wife)$/.test(p0)
+      )
+    )
+      return null;
+    if (parts.length === 4 && BRANDS.some(([re]) => re.test(parts[1])))
+      parts = [parts[0], parts[2], parts[3]];
+    const who = p0 === "me" || p0 === "self" ? "GRV" : cap(parts[0]);
+    return {
+      body: lines.slice(0, st).join("\n"),
+      who,
+      desc: (parts[1] || "").toUpperCase(),
+      rem: parts.slice(2).join(", ").toUpperCase(),
     };
   }
   function splitHint(text) {
@@ -542,7 +592,7 @@
           skel(w).length > 3 &&
           skel(w) === skel(t).slice(0, skel(w).length))));
   const KWX =
-    /^(already|paid|pay|payed|kotak|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder|split|splits|shared|sharing|reimburse|reimbursed|received|later|waiting)$/i;
+    /^(already|paid|pay|payed|kotak|will|given|returned|return|pending|due|bill|settled|owed|borrowed|refund|via|from|through|cash|upi|gpay|phonepe|not|dont|don't|note|remind|reminder)$/i;
   function localParse(text) {
     if (text.length > 80) return null;
     let t =
@@ -657,13 +707,19 @@
   }
   // Merge a user-supplied product hint into the transaction description without
   // turning it into a personal remark. Purely local and deterministic.
-  // RULE: Description = what/where was paid (platform + item). Remarks = only a note about the
-  // payment itself ("already paid", "paid in kotak", "will be split"). ul.rem is the item hint, ul.remarks the payment note.
-  function applyUserHint(o, ul) {
+  // Put the hint-line note into Remarks. It only becomes the Description when the SMS had no merchant.
+  function hintToRemarks(o, ul, sh, remLabelled) {
     if (!o || !ul) return o;
-    if (ul.rem) appendDescriptionHint(o, ul.rem);
+    const rem = String(ul.rem || "").trim();
     const more = String(ul.remarks || "").trim();
-    if (more) o.remarks = more;
+    // An explicit "Remarks:" label owns the Remarks, so the free text after the name is the Description.
+    if (rem && remLabelled) {
+      o.desc = rem;
+      if (more) o.remarks = more;
+    } else if (rem && !(sh && sh.desc)) {
+      if (!String(o.desc || "").trim()) o.desc = rem;
+      else o.remarks = more ? rem + " - " + more : rem;
+    } else if (more) o.remarks = more;
     return o;
   }
   function appendDescriptionHint(o, hint) {
@@ -898,33 +954,31 @@
         nm = main.slice(0, 2);
     }
     const extra = main.slice(nm.length);
-    // Item/platform words -> rem (goes to Description). Payment-status words onwards -> remarks.
-    const rem = extra.join(" ").toUpperCase();
-    const remarks = (
+    let rem =
       kw >= 0
         ? words
             .slice(kw)
             .filter((w) => !FILL.test(w))
             .join(" ")
-        : ""
-    ).toUpperCase();
+        : "";
+    if (extra.length) rem = (extra.join(" ") + " " + rem).trim();
+    rem = rem.toUpperCase();
     const nameCase = (w) =>
       ppl.has(w) || /^(grv|me|sbi)$/.test(w)
         ? cap(w)
         : w[0].toUpperCase() + w.slice(1).toLowerCase();
     const who = nm.map(nameCase).join(" ");
-    if (!card && !who && !rem && !remarks && !date) return null;
+    if (!card && !who && !rem && !date) return null;
     const REL =
       /^(mummy|mommy|mom|maa|mama|papa|pappa|dad|bhai|bhaiya|didi|behen|bhabhi|wife|biwi|sweetie|dost|friend|self|gaurav|grv)$/;
     // A bare 1-2 word name line ("DILIP JI") under a bank SMS is the person.
-    const bareName =
-      !rem && !remarks && !card && !date && !extra.length && nm.length <= 2;
+    const bareName = !rem && !card && !date && !extra.length && nm.length <= 2;
     const sure =
       !who ||
       bareName ||
       ppl.has(who.toLowerCase()) ||
       REL.test(who.toLowerCase());
-    return { card, who, rem, remarks, date, sure, line };
+    return { card, who, rem, date, sure, line };
   }
   // Deterministic personal shorthand: "Grv, flpkrt axs, meethae from swiggy".
   // Returns null unless the line has a recognizable person and enough structure.
@@ -1080,6 +1134,12 @@
       if (!(v > 0)) continue;
       const before = t.slice(Math.max(0, m.index - 34), m.index).toLowerCase();
       if (
+        /^\s*(?:is\s+)?(?:total\s+|available\s+|avl\.?\s+)?(?:credit\s+)?(?:limit|balance|outstanding)/i.test(
+          t.slice(m.index + m[0].length, m.index + m[0].length + 24),
+        )
+      )
+        continue;
+      if (
         /(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(
           before,
         )
@@ -1135,9 +1195,7 @@
           .replace(/\D/g, "")
           .endsWith(d4),
     );
-    const hit =
-      row &&
-      has(String(row[0]).trim() + "-" + String(row[1]).trim());
+    const hit = row && has(String(row[0]).trim() + "-" + String(row[1]).trim());
     return hit ? hit.card : "";
   }
   function learnLast4(d4, card) {
@@ -1192,20 +1250,6 @@
       t.match(/\b(?:x{2,}|\*{2,})\s*(\d{4})\b/i) ||
       [])[1];
     if (d4) card = last4Card(d4);
-    if (!card) {
-      // Card named in the SMS itself ("on HDFC TATA NEU"): every word of exactly one configured card must appear.
-      const tl = " " + t.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
-      const full = (typeof cardConfig !== "undefined" ? cardConfig : []).filter(
-        (c) => {
-          const tk = String(c.card || "")
-            .toLowerCase()
-            .split(/[^a-z0-9]+/)
-            .filter((x) => x.length > 1);
-          return tk.length >= 2 && tk.every((x) => tl.includes(" " + x + " "));
-        },
-      );
-      if (full.length === 1) card = full[0].card;
-    }
     if (!card) {
       const bank = [
         "icici",
@@ -1267,7 +1311,10 @@
       });
       if (candidates.length === 1) card = candidates[0].card;
     }
-    const bankSeen = /\b(axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank\s+of\s+baroda)\b/i.test(t);
+    const bankSeen =
+      /\b(axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank\s+of\s+baroda)\b/i.test(
+        t,
+      );
     // Complete SMS but unknown card: still instant (user picks the card once; it is learned for next time).
     if (!card && !(d4 || bankSeen)) return null;
     lastD4 = d4 || "";
@@ -2238,11 +2285,25 @@
       ) && !isBankSms(text);
     if (!fp && (qLike || (isQuestion(text) && !localParse(text))))
       return askData(text);
-    const lab = labelHint(text);
+    const lab = labelHint(text) || tailLab(text);
     const body0 = lab ? lab.body : text;
     const applyLab = (o) => {
       if (!lab || !o) return o;
-      if (lab.desc) o.desc = lab.desc;
+      if (lab.desc) {
+        // Labelled Description is the item; keep SMS merchant as the prefix (AMAZON - ITEM).
+        if (
+          o.kind === "card" &&
+          isBankSms(text) &&
+          String(o.desc || "").trim()
+        ) {
+          const m = String(o.desc).trim();
+          if (!/^\s*$/.test(m)) {
+            const keep = m.toUpperCase().includes(lab.desc.toUpperCase());
+            if (!keep) o.desc = m + " - " + lab.desc;
+            else o.desc = m;
+          }
+        } else o.desc = lab.desc;
+      }
       if (lab.rem) o.remarks = lab.rem;
       if (lab.who && o.kind === "card") o.usedBy = lab.who;
       return o;
@@ -2264,9 +2325,9 @@
         .join(" | ");
       // 0) PATTERN FIRST: complete bank SMS (+ clear hint line) => instant, no AI. Anything doubtful falls through to AI below.
       try {
-        const ul0 = lab && lab.who ? null : userLine(text);
+        const ul0 = lab && lab.who ? null : userLine(lab ? lab.body : text);
         const bodyP = ul0
-          ? text
+          ? (lab ? lab.body : text)
               .split(/\n+/)
               .filter((l) => l.trim() !== ul0.line)
               .join("\n")
@@ -2280,14 +2341,14 @@
             // The SMS merchant is the Description; shorthand only fills it when the SMS had none.
             if (sh.desc && !sm.desc) sm.desc = sh.desc;
           }
-          applyLab(sm);
           if (ul0) {
             if (ul0.card) sm.card = ul0.card;
             if (ul0.date) sm.date = ul0.date;
             if (ul0.who) sm.usedBy = ul0.who;
-            // Description = merchant (+ item hint); Remarks only for payment notes (paid in kotak, split...).
-            applyUserHint(sm, ul0);
+            // Description = merchant from the SMS; the user's note after the name is the Remark.
+            hintToRemarks(sm, ul0, null, !!(lab && lab.rem));
           }
+          applyLab(sm);
           if (!sm.usedBy && !(lab && lab.who)) {
             const nm = plainName(text);
             if (nm)
@@ -2349,7 +2410,7 @@
         if (sh.usedBy && r.kind === "card") r.usedBy = sh.usedBy;
         if (sh.desc) r.desc = sh.desc;
       }
-      const ul = lab && lab.who ? null : userLine(text);
+      const ul = lab && lab.who ? null : userLine(lab ? lab.body : text);
       if (ul) {
         if (ul.card) {
           r.card = ul.card;
@@ -2357,12 +2418,13 @@
         }
         if (ul.date) r.date = ul.date;
         if (r.kind === "card" && ul.who) r.usedBy = ul.who;
-        applyUserHint(r, ul);
+        hintToRemarks(r, ul, null, !!(lab && lab.rem));
       }
       // Never keep SMS boilerplate ("OTPs are SECRET") as a remark/description.
       if (r.remarks && BOILER.test(r.remarks)) r.remarks = "";
       if (r.desc && BOILER.test(r.desc)) r.desc = "";
       lastD4 = last4Of(text);
+      applyLab(r); // explicit labels always win
       // Client-side guards (work even if the server is an older version)
       if (
         r.kind !== "sweetie" &&
