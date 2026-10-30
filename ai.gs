@@ -458,7 +458,13 @@ function aiParse_(e) {
   const people = String(e.parameter.people || "");
   const text = String(e.parameter.text || "").slice(0, 1500);
   // Optional sidecar context; explicit user input always wins.
-  const learning = grvAiLearningContext_(text);
+  let learning = { patterns: [] };
+  try {
+    if (typeof grvAiLearningContext_ === "function")
+      learning = grvAiLearningContext_(text) || learning;
+  } catch (learningErr) {
+    console.warn("[GRV AI Learning] parser context skipped:", learningErr);
+  }
   const learnedHints = (learning.patterns || [])
     .filter((p) => p.confidence >= 0.7 && p.count >= 2 && p.source && p.target)
     .slice(0, 8)
