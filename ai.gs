@@ -457,10 +457,19 @@ function aiParse_(e) {
   const cats = String(e.parameter.cats || "");
   const people = String(e.parameter.people || "");
   const text = String(e.parameter.text || "").slice(0, 1500);
+  // Optional sidecar context; explicit user input always wins.
+  const learning = grvAiLearningContext_(text);
+  const learnedHints = (learning.patterns || [])
+    .filter((p) => p.confidence >= 0.7 && p.count >= 2 && p.source && p.target)
+    .slice(0, 8)
+    .map((p) => p.kind + ": " + p.source + " => " + p.target);
   const prompt = [
     "Today is " +
       today +
       ". Extract ONE transaction from the user's text. The text may be a bank SMS/email, or casual Hinglish typing, or voice-typed (spelling errors like 'Roarbank' for a bank name).",
+    learnedHints.length
+      ? "LEARNED USER PATTERNS (soft hints only; explicit labels and current message always win):\n" + learnedHints.join("\n")
+      : "",
     'Reply ONLY JSON: {"kind":"card|expense|sweetie","card":"","usedBy":"","desc":"","remarks":"","amount":0,"date":"YYYY-MM-DD","category":"","type":"SAVING|CREDIT|DEBIT"}',
     "READ THE WHOLE MESSAGE. It can mix a bank SMS/email with the user's own lines (names, notes). Explicit labels win: 'Used by: X' => usedBy X; 'Desc: Y' => desc; 'Remarks/Note: Z' => remarks. Natural shorthand like 'Grv, flpkrt axs, meethae from swiggy' means Used by GRV, card=the configured Flipkart Axis card, Description='SWIGGY - MEETHAE', Remarks empty. 'Grv, swiggy, meethae, already paid in kotak' means Description='SWIGGY - MEETHAE', Remarks='ALREADY PAID IN KOTAK'.",
     "BANK SMS: amount = the transaction amount only (INR/Rs/₹ value next to 'spent'/'debited'/'transaction'/'towards'), NOT the OTP, NOT the available limit/balance, NOT the card last-4. desc = the MERCHANT (text after 'towards', 'at', 'on', 'to', e.g. 'towards Flipkart' => FLIPKART; 'IIL*Indian Rail' => IRCTC; 'PNB*IRCTC' => IRCTC; 'AMAZON PAY IN G' => AMAZON). Date from the SMS if present. The bank + 'Credit Card'/'Card XXnnnn' tells the card.",
