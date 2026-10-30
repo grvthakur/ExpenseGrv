@@ -417,6 +417,14 @@ function doGet(e) {
       expSheet.appendRow([id, date, month, category, description, amount]);
       forceText(expSheet, expSheet.getLastRow(), 3);
       recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+      try {
+        grvAiLearnSaved_({
+          id, kind: "expense", description, desc: description,
+          sourceDescription: String(e.parameter.aiSource || ""), category,
+        }, e.parameter.aiSource || "");
+      } catch (learningErr) {
+        console.warn("[GRV AI Learning] expense hook skipped:", learningErr);
+      }
       return textOut("Added");
     }
 
@@ -519,6 +527,15 @@ function doGet(e) {
         status,
         billingMonth,
       ]);
+      try {
+        grvAiLearnSaved_({
+          id, kind: "card", card, cardFingerprint: card, person: usedBy,
+          usedBy, description, desc: description, remarks,
+          sourceDescription: String(e.parameter.aiSource || ""),
+        }, e.parameter.aiSource || "");
+      } catch (learningErr) {
+        console.warn("[GRV AI Learning] card hook skipped:", learningErr);
+      }
       return textOut("Added");
     }
 
@@ -913,6 +930,14 @@ function doGet(e) {
       // Remaining Amount column written as 0 here — recalcSweetieBalances() fixes it below
       sweetieSheet.appendRow([id, type, amount, 0, date, description]);
       recalcSweetieBalances(sweetieSheet);
+      try {
+        grvAiLearnSaved_({
+          id, kind: "sweetie", description, desc: description,
+          sourceDescription: String(e.parameter.aiSource || ""), type,
+        }, e.parameter.aiSource || "");
+      } catch (learningErr) {
+        console.warn("[GRV AI Learning] Sweetie hook skipped:", learningErr);
+      }
       return textOut("Added");
     }
 
