@@ -115,6 +115,7 @@ let cardSearch = "";
 let cardStatusFilter = "ALL"; // ALL, PAID, UNPAID
 let cardMonthFilter = "3"; // "1" = current month only, "3" = last 3 months
 let cardCardFilter = "ALL"; // ALL or specific card name
+let cardUsedByFilter = "ALL"; // ALL or a normalised "used by" name
 
 // GRV CC personal-view state (uses the same cardTxns / Cards sheet)
 let grvCardSort = { col: "txnDate", dir: "desc" };
@@ -436,6 +437,9 @@ function clearAllCardFilters() {
   if (f) f.value = "";
   if (t) t.value = "";
   if (c) c.value = "ALL";
+  const u = document.getElementById("ccUsedByFilter");
+  if (u) u.value = "ALL";
+  cardUsedByFilter = "ALL";
   setCardStatusFilter("ALL");
   setCardMonthFilter("3");
   cardCardFilter = "ALL";
@@ -485,6 +489,8 @@ function markAllPaid() {
   const cardDateTo = (document.getElementById("cardDateTo") || {}).value || "";
   const selCard =
     (document.getElementById("ccCardFilter") || {}).value || "ALL";
+  const selUsedBy =
+    (document.getElementById("ccUsedByFilter") || {}).value || "ALL";
   const search = ((document.getElementById("cardSearchBox") || {}).value || "")
     .trim()
     .toLowerCase();
@@ -503,6 +509,9 @@ function markAllPaid() {
     const matchTo = !cardDateTo || t.txnDate <= cardDateTo;
     // Card filter
     const matchCard = selCard === "ALL" || t.card === selCard;
+    // Used-by filter (must match what the table shows, or Mark All Paid would touch hidden rows)
+    const matchUsedBy =
+      selUsedBy === "ALL" || normUsedBy(t.usedBy) === selUsedBy;
     // Search
     const matchSearch =
       !search ||
@@ -515,7 +524,13 @@ function markAllPaid() {
     const isUnpaid = t.status === "UNPAID";
 
     return (
-      matchMonth && matchFrom && matchTo && matchCard && matchSearch && isUnpaid
+      matchMonth &&
+      matchFrom &&
+      matchTo &&
+      matchCard &&
+      matchUsedBy &&
+      matchSearch &&
+      isUnpaid
     );
   });
 
@@ -525,7 +540,14 @@ function markAllPaid() {
   }
 
   // Confirm — show exactly what will be marked
-  const cardLabel = selCard !== "ALL" ? ` for ${selCard}` : "";
+  const usedByOpt = document.getElementById("ccUsedByFilter");
+  const usedByLabel =
+    selUsedBy !== "ALL" && usedByOpt && usedByOpt.selectedOptions[0]
+      ? usedByOpt.selectedOptions[0].text
+      : "";
+  const cardLabel =
+    (selCard !== "ALL" ? ` for ${selCard}` : "") +
+    (usedByLabel ? ` used by ${usedByLabel}` : "");
   if (
     !confirm(`Mark ${visibleUnpaid.length} visible UNPAID transaction(s)${cardLabel} as PAID?
 
@@ -593,6 +615,39 @@ function populateCCCardFilter() {
   // restore selection if still valid
   if (current && [...sel.options].some((o) => o.value === current))
     sel.value = current;
+}
+
+// ─── POPULATE CC "USED BY" FILTER DROPDOWN ───────────────────────────────────
+// Names are compared case-insensitively with spaces collapsed; the first spelling seen is shown.
+function normUsedBy(v) {
+  return String(v || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function populateCCUsedByFilter() {
+  const sel = document.getElementById("ccUsedByFilter");
+  if (!sel) return;
+  const names = new Map();
+  cardTxns.forEach((t) => {
+    const k = normUsedBy(t.usedBy);
+    if (k && !names.has(k)) names.set(k, String(t.usedBy).trim());
+  });
+  const list = [...names.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const sig = list.map((e) => e[0] + "|" + e[1]).join("\n");
+  if (sel.dataset.sig === sig) return; // unchanged: don't rebuild an open dropdown
+  const current = sel.value;
+  sel.innerHTML = '<option value="ALL">All Users</option>';
+  list.forEach(([k, label]) => {
+    const o = document.createElement("option");
+    o.value = k;
+    o.text = label;
+    sel.appendChild(o);
+  });
+  sel.dataset.sig = sig;
+  sel.value = [...sel.options].some((o) => o.value === current)
+    ? current
+    : "ALL";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1252,6 +1307,7 @@ function calcBillingMonth(dateStr, cutoff) {
 
 // Render credit card stats and table for current billing month
 function renderCards() {
+  populateCCUsedByFilter();
   const bMonth = billingMonthKey();
   const selMonth = parseInt(document.getElementById("monthSelect").value);
   const selYear = parseInt(document.getElementById("yearSelect").value);
@@ -1346,6 +1402,8 @@ function renderCards() {
   const cardDateTo = (document.getElementById("cardDateTo") || {}).value || "";
   const selCard = document.getElementById("ccCardFilter");
   cardCardFilter = selCard ? selCard.value : "ALL";
+  const selUsedByEl = document.getElementById("ccUsedByFilter");
+  cardUsedByFilter = selUsedByEl ? selUsedByEl.value : "ALL";
 
   const filteredCardRows = rows.filter((t) => {
     // Search filter
@@ -1365,12 +1423,23 @@ function renderCards() {
     // Card filter
     const matchCard = cardCardFilter === "ALL" || t.card === cardCardFilter;
 
+    // Used-by filter
+    const matchUsedBy =
+      cardUsedByFilter === "ALL" || normUsedBy(t.usedBy) === cardUsedByFilter;
+
     // Date range filter
     const txnDate = t.txnDate || "";
     const matchFrom = !cardDateFrom || txnDate >= cardDateFrom;
     const matchTo = !cardDateTo || txnDate <= cardDateTo;
 
-    return matchSearch && matchStatus && matchCard && matchFrom && matchTo;
+    return (
+      matchSearch &&
+      matchStatus &&
+      matchCard &&
+      matchUsedBy &&
+      matchFrom &&
+      matchTo
+    );
   });
 
   // Update sort header arrows
@@ -1390,7 +1459,8 @@ function renderCards() {
     return;
   }
   emptyEl.style.display = "none";
-  document.getElementById("ccRowCount").textContent = cardSearch
+  document.getElementById("ccRowCount").textContent =
+    cardSearch || filteredCardRows.length !== rows.length
     ? `${filteredCardRows.length} of ${rows.length} entries`
     : `${rows.length} entries`;
 

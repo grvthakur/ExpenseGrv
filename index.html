@@ -6720,6 +6720,12 @@
                                 <option value="ALL">All Cards</option>
                             </select>
 
+                            <!-- Used-by filter -->
+                            <select id="ccUsedByFilter" onchange="renderCards()" aria-label="Filter by used by"
+                                style="background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:4px 10px;color:var(--text);font-size:0.75rem;cursor:pointer;outline:none;">
+                                <option value="ALL">All Users</option>
+                            </select>
+
                             <span id="ccRowCount" class="stat-label"
                                 style="background:var(--s2);padding:2px 8px;border-radius:20px;">0 entries</span>
 
