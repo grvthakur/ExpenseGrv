@@ -341,7 +341,7 @@
       if (!(+vals.amount > 0)) return toast("Enter a valid amount", true);
       if (origDesc && vals.desc) learnAlias(origDesc, vals.desc);
       // Preserve the confirmed parser input for the existing save handler.
-      window.__grvAiLearningSource = String(text || "").slice(0, 1500);
+      window.__grvAiLearningSource = String(aiLearningSourceText || "").slice(0, 1500);
       if (kind === "card" && vals.card && lastD4) learnLast4(lastD4, vals.card);
       for (const e of pv.querySelectorAll("select[data-k]"))
         if (!e.value)
@@ -1212,6 +1212,7 @@
     } catch (_) {}
   }
   let lastD4 = "";
+  let aiLearningSourceText = "";
   // Instant bank SMS / email parser (no AI): amount, card last-4/bank, date, merchant.
   async function smsParse(t) {
     if (t.length > 3000) return null;
@@ -2274,6 +2275,7 @@
     const fp = forceParse || !!(ev && ev.isTrusted);
     forceParse = false;
     const text = $("aiTxt").value.trim();
+    aiLearningSourceText = text;
     if (!text) {
       showAiError(
         "Text needed",
