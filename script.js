@@ -1155,9 +1155,10 @@ function addEntry() {
 
   sheetWrite(
     apiUrl(
-      `action=add&id=${entry.id}&date=${entry.date}&month=${enc(entry.month)}&category=${enc(entry.category)}&description=${enc(entry.description)}&amount=${entry.amount}`,
+      `action=add&id=${entry.id}&date=${entry.date}&month=${enc(entry.month)}&category=${enc(entry.category)}&description=${enc(entry.description)}&amount=${entry.amount}&aiSource=${enc(window.__grvAiLearningSource || "")}`,
     ),
   );
+  window.__grvAiLearningSource = "";
 }
 
 function deleteEntry(id) {
@@ -1843,9 +1844,10 @@ function addCardEntry() {
 
   sheetWrite(
     apiUrl(
-      `action=addCard&id=${entry.id}&card=${enc(entry.card)}&usedBy=${enc(entry.usedBy)}&description=${enc(entry.description)}&txnDate=${enc(entry.txnDate)}&remarks=${enc(entry.remarks)}&amount=${entry.amount}&status=${enc(entry.status)}&billingMonth=${enc(entry.billingMonth)}`,
+      `action=addCard&id=${entry.id}&card=${enc(entry.card)}&usedBy=${enc(entry.usedBy)}&description=${enc(entry.description)}&txnDate=${enc(entry.txnDate)}&remarks=${enc(entry.remarks)}&amount=${entry.amount}&status=${enc(entry.status)}&billingMonth=${enc(entry.billingMonth)}&aiSource=${enc(window.__grvAiLearningSource || "")}`,
     ),
   );
+  window.__grvAiLearningSource = "";
 }
 
 // Delete a card transaction
@@ -4886,9 +4888,10 @@ function addSweetieEntry() {
 
   sheetWrite(
     apiUrl(
-      `action=addSweetie&id=${entry.id}&type=${enc(entry.type)}&amount=${entry.amount}&date=${enc(entry.date)}&description=${enc(entry.description)}`,
+      `action=addSweetie&id=${entry.id}&type=${enc(entry.type)}&amount=${entry.amount}&date=${enc(entry.date)}&description=${enc(entry.description)}&aiSource=${enc(window.__grvAiLearningSource || "")}`,
     ),
   );
+  window.__grvAiLearningSource = "";
 }
 
 function deleteSweetieEntry(id) {
