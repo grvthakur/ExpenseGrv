@@ -341,7 +341,10 @@
       if (!(+vals.amount > 0)) return toast("Enter a valid amount", true);
       if (origDesc && vals.desc) learnAlias(origDesc, vals.desc);
       // Preserve the confirmed parser input for the existing save handler.
-      window.__grvAiLearningSource = String(aiLearningSourceText || "").slice(0, 1500);
+      window.__grvAiLearningSource = String(aiLearningSourceText || "")
+        .replace(/\b(?:\+?91[- ]?)?[6-9]\d{9}\b/g, "[phone]")
+        .replace(/\b\d{4,}\b/g, "[digits]")
+        .slice(0, 1000);
       if (kind === "card" && vals.card && lastD4) learnLast4(lastD4, vals.card);
       for (const e of pv.querySelectorAll("select[data-k]"))
         if (!e.value)
