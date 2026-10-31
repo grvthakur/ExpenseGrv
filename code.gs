@@ -154,13 +154,6 @@ function doGet(e) {
     const action = e.parameter.action || "";
     const _ai = aiHandle(action, e);
     if (_ai) return _ai;
-
-    // Additive Developer Engine routes — keep diagnostics isolated from finance routes.
-    const _dev = grvDevHandle(action, e);
-    if (_dev) return _dev;
-
-    const _devAnalysis = grvDevAnalyzeHandle(action, e);
-    if (_devAnalysis) return _devAnalysis;
     // Serialize all mutating routes. This prevents double-taps / concurrent
     // requests from interleaving delete+recalc, status updates, bill payment,
     // settlement, and other multi-step writes. Read-only routes remain unlocked.
