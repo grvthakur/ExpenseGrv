@@ -869,3 +869,9 @@ body.light-mode select option:checked {
   color: var(--danger) !important;
   text-shadow: 0 0 5px rgba(248, 113, 113, 0.24);
 }
+/* Expenses table: Amount header ko amounts ke saath right-align karo */
+.expense-table th:nth-child(4),
+.expense-table td:nth-child(4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
