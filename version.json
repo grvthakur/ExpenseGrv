@@ -1,5 +1,5 @@
 {
-  "commit": "fix(pages): restore app entry point after repository reorganization",
-  "hash": "10bcf6e",
-  "time": "02 Nov 2026, 07:24 PM"
+  "commit": "Fix Amount header alignment in Expenses table (desktop)",
+  "hash": "1bc52fc",
+  "time": "02 Nov 2026, 10:18 PM"
 }
