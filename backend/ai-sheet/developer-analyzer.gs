@@ -61,8 +61,8 @@ function grvDevAnalyzeLatest_() {
 
   const id = Utilities.getUuid();
   const now = new Date();
-  const evidence = Array.isArray(parsed.evidence) ? parsed.evidence.slice(0, 8).join(" | ") : "";
-  const checks = Array.isArray(parsed.recommendedChecks) ? parsed.recommendedChecks.slice(0, 8).join(" | ") : "";
+  const evidence = JSON.stringify(Array.isArray(parsed.evidence) ? parsed.evidence.slice(0, 8) : []);
+  const checks = JSON.stringify(Array.isArray(parsed.recommendedChecks) ? parsed.recommendedChecks.slice(0, 8) : []);
   const row = [
     id, now, events.length, ai.provider,
     grvDevClip_(parsed.severity || "unknown", 30),

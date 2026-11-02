@@ -9,7 +9,7 @@
 const fs = require("fs"), path = require("path"), http = require("http");
 let chromium;
 try { ({ chromium } = require("playwright")); } catch (_) { console.log("SKIPPED: playwright not installed"); process.exit(0); }
-const ROOT = path.resolve(__dirname, ".."), SHOTS = process.argv[2];
+const ROOT = path.resolve(__dirname, "..", "frontend"), SHOTS = process.argv[2];
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".txt": "text/plain" };
 const IDS = ["statTotalExpenses", "statSalary", "statRemaining", "statSweetie", "statTotalSaving", "statMonthSaving"];
 const exp = [["1","2026-10-02","Oct-26","Food and Groceries","a",20000],["2","2026-10-03","Oct-26","Savings and Investments","sip",5000],["3","2026-10-04","Oct-26","Sweetie Saving","sw",1650],["4","2026-10-05","Oct-26","Sweetie Borrow","b",43000],["5","2026-10-06","Oct-26","Shopping","s",1200.5]];

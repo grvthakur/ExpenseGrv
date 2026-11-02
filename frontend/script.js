@@ -322,6 +322,19 @@ function lockDatePicker() {
 }
 
 // ─── SHEET WRITE (fire-and-forget, no-cors) ──────────────────────────────────
+function grvAiLearningQuery_() {
+  try {
+    const pending = window.__grvAiLearningPending;
+    if (!pending) return "";
+    const encoded = "&aiLearning=" + enc(JSON.stringify(pending));
+    window.__grvAiLearningPending = null;
+    return encoded;
+  } catch (_) {
+    window.__grvAiLearningPending = null;
+    return "";
+  }
+}
+
 function sheetWrite(url) {
   fetch(url, { mode: "no-cors" }).catch((err) => {
     console.warn("Sheet write error (data likely saved):", err);
@@ -350,6 +363,8 @@ function switchTab(tab) {
   const secCards = document.getElementById("cardSection");
   const secSweetie = document.getElementById("sweetieSection");
   const secGrvCC = document.getElementById("grvCCSection");
+  const elDeveloper = document.getElementById("tabDeveloper");
+  const secDeveloper = document.getElementById("developerSection");
 
   if (!elSweetie || !secSweetie) {
     console.warn(
@@ -364,10 +379,15 @@ function switchTab(tab) {
   if (elCards) elCards.classList.toggle("tab-active", tab === "cards");
   if (elSweetie) elSweetie.classList.toggle("tab-active", tab === "sweetie");
   if (elGrvCC) elGrvCC.classList.toggle("tab-active", tab === "grvcc");
+  if (elDeveloper)
+    elDeveloper.classList.toggle("tab-active", tab === "developer");
+
   if (secExpenses) secExpenses.style.display = tab === "expenses" ? "" : "none";
   if (secCards) secCards.style.display = tab === "cards" ? "" : "none";
   if (secSweetie) secSweetie.style.display = tab === "sweetie" ? "" : "none";
   if (secGrvCC) secGrvCC.style.display = tab === "grvcc" ? "" : "none";
+  if (secDeveloper)
+    secDeveloper.style.display = tab === "developer" ? "" : "none";
 
   if (tab === "expenses") {
     render();
@@ -383,6 +403,8 @@ function switchTab(tab) {
     renderGrvCC();
     populateGrvCardDropdown();
     syncGrvCCFromSheet(false);
+  } else if (tab === "developer") {
+    // Developer dashboard section is handled separately
   }
 }
 
@@ -1121,13 +1143,12 @@ function addEntry() {
     expenses = expenses.filter((e) => e.id !== editingExpId);
     expenses.push(updEntry);
     saveLocal();
-    // Delete old from sheet then re-add updated
-    sheetWriteSeq([
-      apiUrl(`action=delete&id=${editingExpId}`),
+    // One atomic server update: never delete the old row before the replacement is saved.
+    sheetWrite(
       apiUrl(
-        `action=add&id=${updEntry.id}&date=${updEntry.date}&month=${enc(updEntry.month)}&category=${enc(updEntry.category)}&description=${enc(updEntry.description)}&amount=${updEntry.amount}`,
+        `action=updateExpense&id=${enc(updEntry.id)}&date=${enc(updEntry.date)}&month=${enc(updEntry.month)}&category=${enc(updEntry.category)}&description=${enc(updEntry.description)}&amount=${updEntry.amount}${grvAiLearningQuery_()}`,
       ),
-    ]);
+    );
     cancelEditExpense();
     toast("Entry updated ✓");
     return;
@@ -1155,7 +1176,7 @@ function addEntry() {
 
   sheetWrite(
     apiUrl(
-      `action=add&id=${entry.id}&date=${entry.date}&month=${enc(entry.month)}&category=${enc(entry.category)}&description=${enc(entry.description)}&amount=${entry.amount}`,
+      `action=add&id=${entry.id}&date=${entry.date}&month=${enc(entry.month)}&category=${enc(entry.category)}&description=${enc(entry.description)}&amount=${entry.amount}${grvAiLearningQuery_()}`,
     ),
   );
 }
@@ -1461,8 +1482,8 @@ function renderCards() {
   emptyEl.style.display = "none";
   document.getElementById("ccRowCount").textContent =
     cardSearch || filteredCardRows.length !== rows.length
-    ? `${filteredCardRows.length} of ${rows.length} entries`
-    : `${rows.length} entries`;
+      ? `${filteredCardRows.length} of ${rows.length} entries`
+      : `${rows.length} entries`;
 
   const sorted = [...filteredCardRows].sort((a, b) => {
     let av = a[cardSort.col],
@@ -1790,7 +1811,7 @@ function addCardEntry() {
     saveLocal();
     sheetWrite(
       apiUrl(
-        `action=updateCard&id=${enc(updEntry.id)}&card=${enc(updEntry.card)}&usedBy=${enc(updEntry.usedBy)}&description=${enc(updEntry.description)}&txnDate=${enc(updEntry.txnDate)}&remarks=${enc(updEntry.remarks)}&amount=${updEntry.amount}&status=${enc(updEntry.status)}&billingMonth=${enc(updEntry.billingMonth)}`,
+        `action=updateCard&id=${enc(updEntry.id)}&card=${enc(updEntry.card)}&usedBy=${enc(updEntry.usedBy)}&description=${enc(updEntry.description)}&txnDate=${enc(updEntry.txnDate)}&remarks=${enc(updEntry.remarks)}&amount=${updEntry.amount}&status=${enc(updEntry.status)}&billingMonth=${enc(updEntry.billingMonth)}${grvAiLearningQuery_()}`,
       ),
     );
     cancelEditCard();
@@ -1843,7 +1864,7 @@ function addCardEntry() {
 
   sheetWrite(
     apiUrl(
-      `action=addCard&id=${entry.id}&card=${enc(entry.card)}&usedBy=${enc(entry.usedBy)}&description=${enc(entry.description)}&txnDate=${enc(entry.txnDate)}&remarks=${enc(entry.remarks)}&amount=${entry.amount}&status=${enc(entry.status)}&billingMonth=${enc(entry.billingMonth)}`,
+      `action=addCard&id=${entry.id}&card=${enc(entry.card)}&usedBy=${enc(entry.usedBy)}&description=${enc(entry.description)}&txnDate=${enc(entry.txnDate)}&remarks=${enc(entry.remarks)}&amount=${entry.amount}&status=${enc(entry.status)}&billingMonth=${enc(entry.billingMonth)}${grvAiLearningQuery_()}`,
     ),
   );
 }
@@ -4852,12 +4873,12 @@ function addSweetieEntry() {
     sweetieTxns = sweetieTxns.filter((t) => t.id !== editingSweetieId);
     sweetieTxns.push(updEntry);
     saveLocal();
-    sheetWriteSeq([
-      apiUrl(`action=deleteSweetie&id=${editingSweetieId}`),
+    // One atomic server update preserves the original ledger row if validation fails.
+    sheetWrite(
       apiUrl(
-        `action=addSweetie&id=${updEntry.id}&type=${enc(updEntry.type)}&amount=${updEntry.amount}&date=${enc(updEntry.date)}&description=${enc(updEntry.description)}`,
+        `action=updateSweetie&id=${enc(updEntry.id)}&type=${enc(updEntry.type)}&amount=${updEntry.amount}&date=${enc(updEntry.date)}&description=${enc(updEntry.description)}${grvAiLearningQuery_()}`,
       ),
-    ]);
+    );
     cancelEditSweetie();
     toast("Sweetie entry updated ✓");
     return;
@@ -4886,7 +4907,7 @@ function addSweetieEntry() {
 
   sheetWrite(
     apiUrl(
-      `action=addSweetie&id=${entry.id}&type=${enc(entry.type)}&amount=${entry.amount}&date=${enc(entry.date)}&description=${enc(entry.description)}`,
+      `action=addSweetie&id=${entry.id}&type=${enc(entry.type)}&amount=${entry.amount}&date=${enc(entry.date)}&description=${enc(entry.description)}${grvAiLearningQuery_()}`,
     ),
   );
 }

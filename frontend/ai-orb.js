@@ -31,7 +31,9 @@
     { n: 6, len: 0.34, wid: 0.19, off: 0.63, c: "#fdba74" },
     { n: 5, len: 0.34, wid: 0.22, off: 0.63, c: "#fca5a5" },
   ];
-  const TOTAL = 1 + FLOWERS.length + 5; // orb + flowers + galaxy, atom, plasma, halo, bloom
+  const TOTAL = 1 + FLOWERS.length + 5; // auto-rotating group (0..TOTAL-1)
+  const CYM = TOTAL; // Sonic Mandala: separate, manual-only; never auto-selected, stays until another design is chosen
+  const ALL = TOTAL + 1; // orb + flowers + galaxy, atom, plasma, halo, bloom
 
   const btn = document.getElementById("aiEntryBtn");
   if (!btn || btn.dataset.orb) return;
@@ -524,7 +526,110 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
     ctx.restore();
   }
 
+  // ── Sonic Mandala (cymatics): sand on a vibrating plate settles into nodal-line patterns ──
+  const CP = [
+    { m: 8, a: 4.2, b: 7, w: 0.6 },
+    { m: 26, a: 9, b: 18, w: 0.3 },
+    { m: 0, a: 16, b: 9, w: 0.4 },
+    { m: 16, a: 6, b: 11, w: 0.5 },
+    { m: 6, a: 5, b: 13, w: 0.55 },
+  ];
+  const CN = 3000,
+    cx = new Float32Array(CN),
+    cy = new Float32Array(CN);
+  for (let i = 0; i < CN; i++) {
+    const r = Math.sqrt(Math.random()) * 0.9,
+      t = Math.random() * 6.2832;
+    cx[i] = Math.cos(t) * r;
+    cy[i] = Math.sin(t) * r;
+  }
+  let cpar = Object.assign({}, CP[0]),
+    cPi = 0,
+    cLast = 0,
+    cShake = 0,
+    cTimer = 0;
+  function cf(x, y) {
+    const r = Math.sqrt(x * x + y * y) + 1e-4,
+      th = Math.atan2(y, x);
+    const m0 = Math.floor(cpar.m), fr = cpar.m - m0; // integer harmonics blended: no seam while morphing
+    const ct = Math.cos(m0 * th) * (1 - fr) + Math.cos((m0 + 1) * th) * fr;
+    return ct * Math.cos(cpar.a * r) + cpar.w * Math.cos(cpar.b * r);
+  }
+  function drawCymatic() {
+    const now = performance.now(),
+      dt = Math.min(0.05, (now - cLast) / 1000 || 0.016);
+    cLast = now;
+    cTimer += dt;
+    if (cTimer > 1.9) { // next pattern: shake, then settle
+      cTimer = 0;
+      cPi = (cPi + 1) % CP.length;
+      cShake = 0.3;
+    }
+    const tg = CP[cPi],
+      k = Math.min(1, dt * 7);
+    for (const q in tg) cpar[q] += (tg[q] - cpar[q]) * k;
+    cShake = Math.max(0, cShake - dt);
+    const R = S / 2,
+      e = 0.012;
+    ctx.clearRect(0, 0, S, S);
+    ctx.save();
+    ctx.translate(R, R);
+    ctx.globalCompositeOperation = "source-over";
+    const bg = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+    bg.addColorStop(0, "rgba(58,26,110,.95)");
+    bg.addColorStop(1, "rgba(22,10,48,.98)");
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.94, 0, 6.2832);
+    ctx.fill();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < CN; i++) {
+      let x = cx[i],
+        y = cy[i];
+      const f = cf(x, y),
+        gx = (cf(x + e, y) - cf(x - e, y)) / (2 * e),
+        gy = (cf(x, y + e) - cf(x, y - e)) / (2 * e),
+        j = cShake > 0 ? 0.12 : 0.012,
+        gg = gx * gx + gy * gy + 1;
+      let dx = (-f * gx) / gg * 1.0,
+        dy = (-f * gy) / gg * 1.0;
+      const dm = Math.sqrt(dx * dx + dy * dy);
+      if (dm > 0.06) { dx *= 0.06 / dm; dy *= 0.06 / dm; }
+      x += dx + (Math.random() - 0.5) * j;
+      y += dy + (Math.random() - 0.5) * j;
+      const d = Math.sqrt(x * x + y * y);
+      if (d > 0.88) { x *= 0.88 / d; y *= 0.88 / d; }
+      cx[i] = x;
+      cy[i] = y;
+      const c = 1 - Math.min(1, d * 0.9);
+      ctx.fillStyle = "rgba(" + ((140 + c * 70) | 0) + "," + ((80 + c * 90) | 0) + ",255," + (0.28 + c * 0.3) + ")";
+      const z = Math.max(0.8, S / 70),
+        h = z * 3.4;
+      ctx.fillRect(x * R - z / 2, y * R - z / 2, z, z);
+      ctx.globalAlpha = 0.07;
+      ctx.fillRect(x * R - h / 2, y * R - h / 2, h, h);
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = "rgba(120,70,220,.55)";
+    ctx.lineWidth = Math.max(2.5, S / 14);
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.9, 0, 6.2832);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(190,140,255,.95)";
+    ctx.lineWidth = Math.max(1.5, S / 22);
+    ctx.shadowColor = "rgba(160,90,255,.9)";
+    ctx.shadowBlur = S / 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, R * 0.92, 0, 6.2832);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function draw(ang, idx) {
+    const ic = btn.querySelector(".ai-orb-core");
+    if (ic) ic.style.visibility = idx === CYM ? "hidden" : ""; // mandala shows without the sparkle
+    if (idx === CYM) return drawCymatic();
     if (idx === 0) drawOrb(ang);
     else if (idx <= FLOWERS.length) {
       if (morph && morph.t > 0) drawFlower(ang, mixFlower(morph));
@@ -558,10 +663,11 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
   // ── design switching with soft fade ──
   const reduce =
     window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let idx = 0;
+  let idx = 0,
+    dbl = false;
   try {
     const saved = localStorage.getItem("ai_orb_idx");
-    idx = saved === null ? 0 : Math.max(0, Math.min(TOTAL - 1, parseInt(saved, 10) || 0));
+    idx = saved === null ? 0 : Math.max(0, Math.min(ALL - 1, parseInt(saved, 10) || 0));
   } catch (_) {}
   let pend = idx,
     out = false,
@@ -571,7 +677,7 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
   const DESIGN_NAMES = [
     "Glass Orb", "Lavender Flower", "Twin Petal", "Blue Flower", "Green Flower",
     "Golden Flower", "Sunset Flower", "Coral Flower", "Galaxy", "Atom",
-    "Plasma Reactor", "Quantum Halo", "Neon Bloom"
+    "Plasma Reactor", "Quantum Halo", "Neon Bloom", "Sonic Mandala ★ (stays)"
   ];
   let menuEl = null;
   let menuCloseHandler = null;
@@ -593,7 +699,7 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
     setTimeout(() => btn.classList.remove("ai-orb-burst"), 650);
   }
   function chooseDesign(n) {
-    const chosen = Math.max(0, Math.min(TOTAL - 1, Number(n) || 0));
+    const chosen = Math.max(0, Math.min(ALL - 1, Number(n) || 0));
     closeMenu();
     clearTimeout(autoT);
     pend = chosen;
@@ -661,8 +767,9 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
   window.addEventListener("ai-thinking-end", stopThinking);
 
   function next() {
+    if (idx === CYM && !dbl) return; // Sonic Mandala never auto-switches
     if (out || morph) return scheduleAuto();
-    pend = (idx + 1) % TOTAL;
+    pend = idx >= TOTAL ? 0 : (idx + 1) % TOTAL;
     const fl = (i) => i >= 1 && i <= FLOWERS.length;
     if (reduce) {
       idx = pend;
@@ -675,7 +782,7 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
   }
   function scheduleAuto() {
     clearTimeout(autoT);
-    if (AUTO_MS > 0) autoT = setTimeout(next, AUTO_MS);
+    if (AUTO_MS > 0 && idx !== CYM && pend !== CYM) autoT = setTimeout(next, AUTO_MS);
   }
 
   // ── gestures: hold (touch) / double-click (mouse) switch; single tap/click opens AI Entry ──
@@ -734,7 +841,9 @@ html body #aiEntryBtn#aiEntryBtn:active{transform:scale(.93)}
         if (clickT) {
           clearTimeout(clickT);
           clickT = 0;
-          next(); // double-click => change design
+          dbl = true;
+          next(); // double-click => change design (leaves Sonic Mandala, back to auto group)
+          dbl = false;
         } else {
           clickT = setTimeout(() => {
             clickT = 0;

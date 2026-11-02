@@ -152,8 +152,20 @@ function doGet(e) {
     const expSheet = ss.getSheetByName("Expenses");
     const salSheet = ss.getSheetByName("Salary");
     const action = e.parameter.action || "";
-    const _ai = aiHandle(action, e);
-    if (_ai) return _ai;
+    
+const _ai = aiHandle(action, e);
+if (_ai) return _ai;
+
+const _dev = grvDevHandle(action, e);
+if (_dev) return _dev;
+
+const _devAnalysis = grvDevAnalyzeHandle(action, e);
+if (_devAnalysis) return _devAnalysis;
+
+   const _devDashboard = grvDevDashboardHandle(action, e);
+   if (_devDashboard) return _devDashboard;
+
+   
     // Serialize all mutating routes. This prevents double-taps / concurrent
     // requests from interleaving delete+recalc, status updates, bill payment,
     // settlement, and other multi-step writes. Read-only routes remain unlocked.

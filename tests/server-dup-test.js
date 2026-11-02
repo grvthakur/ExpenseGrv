@@ -2,7 +2,7 @@
 // Synthetic-only: runs code.js in a vm with mocked SpreadsheetApp/LockService. No network, no real sheet.
 const assert = require("node:assert/strict");
 const fs = require("fs"), path = require("path"), vm = require("vm");
-const src = fs.readFileSync(path.join(__dirname, "..", "code.js"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "..", "backend", "expense-sheet", "code.js"), "utf8");
 function env() {
   const log = [];
   const mk = (head) => { const rows = [head]; return { rows,
@@ -49,11 +49,11 @@ t("findDuplicateIds logs but never deletes", () => {
   assert.ok(e.log.some((x) => /Sweetie: ID 3 in rows 2, 3/.test(x))); assert.equal(S.length, 3);
 });
 t("client: update writes are sequential (delete finishes before add)", () => {
-  const s = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+  const s = fs.readFileSync(path.join(__dirname, "..", "frontend", "script.js"), "utf8");
   assert.match(s, /async function sheetWriteSeq/);
   assert.match(s, /sheetWriteSeq\(\[\s*apiUrl\(`action=deleteSweetie[\s\S]*?action=addSweetie/);
   assert.match(s, /sheetWriteSeq\(\[\s*apiUrl\(`action=delete&id=\$\{editingExpId\}[\s\S]*?action=add&/);
-  const a = fs.readFileSync(path.join(__dirname, "..", "ai-entry.js"), "utf8");
+  const a = fs.readFileSync(path.join(__dirname, "..", "frontend", "ai-entry.js"), "utf8");
   assert.match(a, /cancelEditSweetie\(\)[\s\S]{0,200}const vals = \{\}/);
 });
 let bad = 0;

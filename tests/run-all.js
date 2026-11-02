@@ -31,13 +31,23 @@ const deq = (a, b, msg) => assert.deepEqual(JSON.parse(JSON.stringify(a)), b, ms
 
 // ───────────────────────────────────────────────────────────────────────────
 suite("1. Syntax of every script");
-fs.readdirSync(ROOT)
-  .filter((f) => /\.(js|gs)$/.test(f))
-  .forEach((f) =>
-    test(`${f} compiles`, () => {
-      new vm.Script(read(f), { filename: f });
-    }),
-  );
+const sourceRoots = ["frontend", "backend"];
+const sourceFiles = [];
+const walkSources = (dir, rel = "") => {
+  fs.readdirSync(path.join(dir, rel), { withFileTypes: true }).forEach((entry) => {
+    if (entry.name === "node_modules" || entry.name === ".git") return;
+    const child = path.join(rel, entry.name);
+    if (entry.isDirectory()) walkSources(dir, child);
+    else if (/\.(js|gs)$/.test(entry.name)) sourceFiles.push(path.relative(ROOT, path.join(dir, child)));
+  });
+};
+sourceRoots.forEach((dir) => walkSources(path.join(ROOT, dir)));
+["tests/issuer_detection_regression_test.js", "tests/shorthand-regression-test.js"].forEach((f) => sourceFiles.push(f));
+sourceFiles.forEach((f) =>
+  test(`${f} compiles`, () => {
+    new vm.Script(fs.readFileSync(path.join(ROOT, f), "utf8"), { filename: f });
+  }),
+);
 
 // ───────────────────────────────────────────────────────────────────────────
 // Reference model of the dashboard rules (written independently of script.js).
@@ -555,7 +565,7 @@ if (!hasJsdom) {
 suite("10. Repo's own regression scripts");
 ["issuer_detection_regression_test.js", "shorthand-regression-test.js"].forEach((f) => {
   test(`${f}`, () => {
-    const p = spawnSync(process.execPath, [path.join(ROOT, f)], { encoding: "utf8", timeout: 60000 });
+    const p = spawnSync(process.execPath, [path.join(__dirname, f)], { encoding: "utf8", timeout: 60000 });
     assert.equal(p.status, 0, "exit code " + p.status + " " + (p.stderr || "").slice(0, 200));
     const lines = (p.stdout || "").split("\n").filter((l) => l.startsWith("{"));
     const failed = lines.filter((l) => /"pass":false/.test(l));

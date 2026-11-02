@@ -1,0 +1,217 @@
+GRV Expense v28 reorganization QA
+===================================
+
+Command: node tests/run-all.js
+Exit code: 1
+
+--- FULL TEST OUTPUT ---
+
+1. Syntax of every script
+  PASS  frontend/ai-entry.js compiles
+  PASS  frontend/ai-orb.js compiles
+  PASS  frontend/animation.js compiles
+  PASS  frontend/card-fix.js compiles
+  PASS  frontend/developer-dashboard.js compiles
+  PASS  frontend/developer-monitor.js compiles
+  PASS  frontend/dropdown.js compiles
+  PASS  frontend/export.js compiles
+  PASS  frontend/go-to-table.js compiles
+  PASS  frontend/history.js compiles
+  PASS  frontend/mobile-fix.js compiles
+  PASS  frontend/script.js compiles
+  PASS  frontend/summary-plus.js compiles
+  PASS  frontend/sw.js compiles
+  PASS  frontend/theme-switcher.js compiles
+  PASS  backend/ai-sheet/developer-analyzer.gs compiles
+  PASS  backend/ai-sheet/developer-engine.gs compiles
+  PASS  backend/ai-sheet/developer-source-analyzer.gs compiles
+  PASS  backend/ai-sheet/grv-ai-learning.gs compiles
+  PASS  backend/expense-sheet/code.js compiles
+  PASS  backend/expense-sheet/history.gs compiles
+  PASS  backend/shared/ai.gs compiles
+  PASS  backend/shared/code.gs compiles
+  PASS  backend/shared/developer-dashboard.gs compiles
+  PASS  backend/shared/grv-final-signoff.gs compiles
+  PASS  backend/shared/grv-financial-intelligence.gs compiles
+  PASS  backend/shared/grv-production-readiness.gs compiles
+  PASS  tests/issuer_detection_regression_test.js compiles
+  PASS  tests/shorthand-regression-test.js compiles
+
+2. App loads cleanly
+  PASS  no script errors while loading script.js + ai-entry.js + animation.js
+  PASS  AI internals exposed for testing
+
+3. Dashboard calculations
+  PASS  empty month
+  PASS  empty month — Remaining equals the pre-change formula
+  PASS  salary only
+  PASS  salary only — Remaining equals the pre-change formula
+  PASS  mixed month
+  PASS  mixed month — Remaining equals the pre-change formula
+  PASS  only savings (SIP + Sweetie Saving)
+  PASS  only savings (SIP + Sweetie Saving) — Remaining equals the pre-change formula
+  PASS  only Sweetie Borrow
+  PASS  only Sweetie Borrow — Remaining equals the pre-change formula
+  PASS  only Received
+  PASS  only Received — Remaining equals the pre-change formula
+  PASS  rounding 0.1 + 0.2
+  PASS  rounding 0.1 + 0.2 — Remaining equals the pre-change formula
+  PASS  zero amount rows
+  PASS  zero amount rows — Remaining equals the pre-change formula
+  PASS  refund style negative amount
+  PASS  refund style negative amount — Remaining equals the pre-change formula
+  PASS  expenses exceed salary (negative remaining)
+  PASS  expenses exceed salary (negative remaining) — Remaining equals the pre-change formula
+  PASS  large paise values
+  PASS  large paise values — Remaining equals the pre-change formula
+  PASS  every category once
+  PASS  every category once — Remaining equals the pre-change formula
+  PASS  Total Expenses excludes SIP and Sweetie Saving but keeps Sweetie Borrow
+  PASS  Remaining card shows this month's Sweetie Borrow (rows + Sweetie ledger DEBIT), not deducted
+  PASS  Sweetie Borrow does not reduce Remaining
+  PASS  saving still reduces Remaining (Remaining unchanged by the card change)
+  PASS  Sweetie ledger DEBIT rows count as expense/borrow; Sweetie Balance = Sweetie tab running balance
+  PASS  month boundary: Dec-26 and Jan-27 do not leak into each other
+
+4. Total Saving / This Month Saving cards
+  PASS  six cards in the expected order with unique ids
+  PASS  Total Saving adds every cached month; This Month Saving follows the selected month
+  PASS  full history fills months not cached locally; cached months win over stale history
+  PASS  Total Saving ignores non-saving categories, Received and Sweetie Borrow
+  PASS  empty data shows zero savings, not NaN
+  PASS  saving classifier agrees with the cards (GRV analysis uses the same rule)
+
+5. Mask / reveal amounts
+  PASS  toggle hides then reveals all six cards without touching the numbers
+  PASS  choice is remembered across reload (new key, existing keys untouched)
+  PASS  masking uses CSS only; stylesheet defines the blur and a compact 2-column mobile grid
+  PASS  storage keys used by the app are unchanged
+
+6. AI Smart Entry — local parser (no AI call)
+  PASS  card + person + merchant + amount
+  PASS  'yesterday' sets yesterday's date; fuzzy card words resolve HDFC-TATA NEU
+  PASS  ₹ and thousands separators: ₹1,250.50
+  PASS  explicit day+month: 5oct
+  PASS  remark keywords go to remarks, not description
+  PASS  Sweetie saving / borrow / credit types
+  PASS  ambiguous inputs are NOT guessed (returns null → falls back to AI)
+  PASS  two cards matching equally is a tie → no guess
+
+7. AI Smart Entry — bank SMS amount, hints, shorthand
+  PASS  bankAmount: Rs 1,234.50 spent on card XX1234 at AMAZON. Avl  → 1234.5
+  PASS  bankAmount: Avl limit INR 90000. INR 450 debited → 450
+  PASS  bankAmount: OTP 123456 Rs.99 txn → 99
+  PASS  bankAmount: balance Rs 5000. spent Rs 300 at X → 300
+  FIXED bankAmount: Rs 10 reward points. Rs 250 charged on your card → 250
+  PASS  bankAmount: no money here → 0
+  PASS  isBankSms recognises bank text and rejects chit-chat
+  PASS  smsParse (no network): amount, date, merchant, card
+  FAIL  labelHint: explicit labels win
+        → Expected values to be strictly deep-equal:
+[32m+ actual[39m [31m- expected[39m
+
+[39m  {
+[39m    body: 'Rs 450 spent on card 1234',
+[39m    desc: 'SWIGGY DINNER',
+[39m    rem: 'ALREADY PAID',
+[32m+[39m   who: 'GRV'
+[31m-[39m   who: 'Grv'
+[39m  }
+
+  PASS  labelHint: plain single line → null
+  PASS  splitHint: 'person, item' line under an SMS
+  PASS  userLine: 'Grv Chaypatti and Pyaj' → person GRV, remark CHAYPATTI - PYAJ
+  PASS  userLine: 'Grv Grocery: dudh dahi egg'
+  PASS  userLine ignores lines that look like SMS/links/questions
+  PASS  shorthand: 'Grv, flpkrt axs, meethae from swiggy'
+  PASS  shorthand: 'me' maps to GRV; unknown first word is rejected
+  PASS  shorthand: inline 'remarks:' is captured
+  FIXED shorthand: remark on a separate line ('already paid in kotak')
+
+8. AI query engine (exact math in the browser)
+  PASS  date range + source filter + total
+  PASS  'Received' is left out of totals unless asked by category
+  PASS  category filter is partial and case-insensitive
+  PASS  card filter and status filter
+  PASS  person filter: cards match person; 'grv' includes self sources
+  PASS  group by month, card, category are exact
+  PASS  sweetie type filter keeps sign (DEBIT negative)
+  PASS  free-text search across desc/remarks/card/category/person
+  PASS  rows are returned newest first; empty result is total 0
+  PASS  extraRows summary: salary + received − spent equals dashboard Remaining
+  PASS  extraRows summary 'Spent' excludes SIP/Sweetie Saving like the new Total Expenses card
+
+9. Apps Script ai.gs helpers + client/server parity
+  PASS  aiNum_ handles numbers, numeric strings and junk
+  PASS  aiMonthToDate_: 'Oct-26' → 2026-10-01, bad input → ''
+  PASS  server non-spend categories include both saving categories (matches dashboard)
+  PASS  aiBankFields_: SMS fields
+  PASS  aiBankFields_: non-SMS text is not flagged
+  PASS  parity client bankAmount == server aiBankFields_: Rs 1,234.50 spent on card XX1234 at AMAZ
+  PASS  parity client bankAmount == server aiBankFields_: Avl limit INR 90000. INR 450 debited
+  PASS  parity client bankAmount == server aiBankFields_: OTP 123456 Rs.99 txn
+  PASS  parity client bankAmount == server aiBankFields_: balance Rs 5000. spent Rs 300 at X
+  PASS  parity client bankAmount == server aiBankFields_: Rs 10 reward points. Rs 250 charged on y
+
+9a. Sweetie Balance, Total Saving timing, summary popup
+  PASS  Sweetie Balance is the running ledger balance across ALL months (not this month only)
+  PASS  with no Sweetie ledger loaded the old monthly figure is the fallback
+  PASS  Total Saving shows '…' (not a this-month-only number) until the full history arrives
+  PASS  …or the last known total from the previous visit
+  PASS  summary popup: SIP + Sweetie Saving are not 'spent', category list or biggest; reported as Saved
+  PASS  if the history fetch fails the card falls back to the local total (no endless '…')
+  FAIL  when history arrives the dashboard refreshes by itself (no other action needed)
+        → Expected values to be strictly equal:
+[32mactual[39m [31mexpected[39m
+
+[39m'[39m[39m₹[39m[39m1[39m[39m,[39m[39m6[39m[32m6[39m[31m0[39m[39m,[39m[31m0[39m[39m7[39m[32m2[39m[39m0[39m[39m.[39m[39m0[39m[39m0[39m[39m'[39m
+
+
+9b. Monthly expense rules (GRV CC monthly overview)
+  PASS  SIP and Sweetie Saving are NOT actual spending; they are shown as savings
+  PASS  credit-card purchases count as actual expense (billing month)
+  PASS  other people's card spend is not counted as GRV's expense
+  PASS  Bill Repayment is cash flow only: never added to actual spending (no double count)
+  PASS  cash remaining = salary + received − (expense + bill paid + saving + borrow)
+  PASS  pending (unpaid) card bills are shown separately from cash remaining
+  PASS  saving rate = savings / cash-in
+  PASS  overview saving for the month equals the This Month Saving card
+  PASS  overall saving = sum of every month's overview saving (once history is loaded)
+
+9c. Existing data and history are preserved
+  PASS  render() never mutates expenses, salaries or Sweetie data
+  PASS  old saved data (exp_v3 / sal_v3 / sweetie_v1) still loads and renders
+  PASS  saving rows are still listed in the transactions table (history not hidden)
+  PASS  no element id or top-level function was removed from index.html / script.js
+
+10. Repo's own regression scripts
+  PASS  issuer_detection_regression_test.js
+  KNOWN shorthand-regression-test.js
+
+11. Duplicate-entry fix (server + client write order)
+  FAIL  server-dup-test.js passes
+        → Expected values to be strictly equal:
+FAIL deleteCard removes ALL rows with the id, keeps others 
+   Expected values to be strictly equal:
+PASS findDuplicateIds logs but never deletes
+FAIL client: update writes are sequential (delete finishes before add) 
+   The input did not match the regular expression /sheetWriteSeq\(\[\s*apiUrl\(`action=deleteSweetie[\s\S]*?action=addSweetie/. Input:
+5 failed
+
+
+1 !== 0
+
+  PASS  smsParse: amount, date, merchant, kind
+  PASS  smsParse: OTP/non-transaction text is not parsed
+
+==== 137 passed, 3 failed, 1 known issue(s), 2 fixed-but-still-flagged, 0 skipped (total 143) ====
+KNOWN ISSUE: shorthand-regression-test.js
+   Pre-existing (same as the remark-on-separate-line bug above); that script exits 0 even when a case says pass:false.
+NOW PASSING (remove knownBug flag): bankAmount: Rs 10 reward points. Rs 250 charged on your card → 250
+NOW PASSING (remove knownBug flag): shorthand: remark on a separate line ('already paid in kotak')
+
+--- END TEST OUTPUT ---
+
+Optional browser check: node tests/browser-check.js
+SKIPPED: playwright not installed
+

@@ -152,8 +152,19 @@ function doGet(e) {
     const expSheet = ss.getSheetByName("Expenses");
     const salSheet = ss.getSheetByName("Salary");
     const action = e.parameter.action || "";
+
     const _ai = aiHandle(action, e);
     if (_ai) return _ai;
+
+    const _dev = grvDevHandle(action, e);
+    if (_dev) return _dev;
+
+    const _devAnalysis = grvDevAnalyzeHandle(action, e);
+    if (_devAnalysis) return _devAnalysis;
+
+    const _devDashboard = grvDevDashboardHandle(action, e);
+    if (_devDashboard) return _devDashboard;
+
     // Serialize all mutating routes. This prevents double-taps / concurrent
     // requests from interleaving delete+recalc, status updates, bill payment,
     // settlement, and other multi-step writes. Read-only routes remain unlocked.
@@ -394,6 +405,30 @@ function doGet(e) {
       return textOut("NotFound");
     }
 
+    if (action === "updateExpense") {
+      const id = String(e.parameter.id || "").trim();
+      const date = String(e.parameter.date || "").trim();
+      const month = String(e.parameter.month || "").trim();
+      const category = String(e.parameter.category || "").trim();
+      const description = String(e.parameter.description || "").trim();
+      const amount = parseFloat(e.parameter.amount || "0");
+      if (!id || !date || !month || !category || !Number.isFinite(amount))
+        return textOut("ERROR: missing fields");
+      const rows = expSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0] || "").trim() !== id) continue;
+        const oldMonth = toMonthKey(rows[i][2]);
+        expSheet.getRange(i + 1, 1, 1, 6).setValues([[id, date, month, category, description, amount]]);
+        forceText(expSheet, i + 1, 3);
+        recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), oldMonth);
+        if (month !== oldMonth) recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+        const learningMeta = grvAiLearningPayload_(e);
+        if (learningMeta) grvAiLearnSaved_({ id:id, kind:"expense", category:category, description:description, amount:amount, date:date }, learningMeta.sourceHints, learningMeta.suggested);
+        return textOut("Updated");
+      }
+      return textOut("NotFound");
+    }
+
     if (action === "add") {
       const id = String(e.parameter.id || Date.now()).trim();
       const date = String(e.parameter.date || "").trim();
@@ -417,6 +452,11 @@ function doGet(e) {
       expSheet.appendRow([id, date, month, category, description, amount]);
       forceText(expSheet, expSheet.getLastRow(), 3);
       recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+      const learningMeta = grvAiLearningPayload_(e);
+      // Only an AI-assisted, user-confirmed save can teach the personal model.
+      // Manual entries remain normal finance writes and must not create learning events.
+      if (learningMeta) grvAiLearnSaved_({ id:id, kind:"expense", category:category, description:description, amount:amount, date:date },
+        learningMeta.sourceHints, learningMeta.suggested);
       return textOut("Added");
     }
 
@@ -519,6 +559,10 @@ function doGet(e) {
         status,
         billingMonth,
       ]);
+      const learningMeta = grvAiLearningPayload_(e);
+      if (learningMeta) grvAiLearnSaved_({ id:id, kind:"card", card:card, usedBy:usedBy, description:description,
+        remarks:remarks, amount:amount, date:txnDate, category:"Credit Card" },
+        learningMeta.sourceHints, learningMeta.suggested);
       return textOut("Added");
     }
 
@@ -551,6 +595,14 @@ function doGet(e) {
           const billingMonth = calcBillingMonth(savedTxnDate, cutoff);
           if (!billingMonth) return textOut("ERROR: invalid transaction date");
           cardSheet.getRange(i + 1, 9).setValue(billingMonth);
+          const learningMeta = grvAiLearningPayload_(e);
+          if (learningMeta) grvAiLearnSaved_({ id:id, kind:"card", card:savedCard,
+            usedBy:String(e.parameter.usedBy || "").trim(),
+            description:String(e.parameter.description || "").trim(),
+            remarks:String(e.parameter.remarks || "").trim(),
+            amount:parseFloat(e.parameter.amount || rows[i][6] || "0") || 0,
+            date:savedTxnDate, category:"Credit Card" },
+            learningMeta.sourceHints, learningMeta.suggested);
           return textOut("Updated");
         }
       }
@@ -913,7 +965,32 @@ function doGet(e) {
       // Remaining Amount column written as 0 here — recalcSweetieBalances() fixes it below
       sweetieSheet.appendRow([id, type, amount, 0, date, description]);
       recalcSweetieBalances(sweetieSheet);
+      const learningMeta = grvAiLearningPayload_(e);
+      if (learningMeta) grvAiLearnSaved_({ id:id, kind:"sweetie", type:type, description:description,
+        amount:amount, date:date, category:"Sweetie" },
+        learningMeta.sourceHints, learningMeta.suggested);
       return textOut("Added");
+    }
+
+    if (action === "updateSweetie") {
+      const id = String(e.parameter.id || "").trim();
+      const type = String(e.parameter.type || "").trim();
+      const amount = parseFloat(e.parameter.amount || "0");
+      const date = String(e.parameter.date || "").trim();
+      const description = String(e.parameter.description || "").trim();
+      if (!id || !type || !date || !Number.isFinite(amount) || amount <= 0)
+        return textOut("ERROR: missing or invalid fields");
+      const sweetieSheet = getOrCreateSweetieSheet(ss);
+      const rows = sweetieSheet.getDataRange().getValues();
+      for (let i = 1; i < rows.length; i++) {
+        if (String(rows[i][0] || "").trim() !== id) continue;
+        sweetieSheet.getRange(i + 1, 1, 1, 6).setValues([[id, type, amount, 0, date, description]]);
+        recalcSweetieBalances(sweetieSheet);
+        const learningMeta = grvAiLearningPayload_(e);
+        if (learningMeta) grvAiLearnSaved_({ id:id, kind:"sweetie", type:type, description:description, amount:amount, date:date, category:"Sweetie" }, learningMeta.sourceHints, learningMeta.suggested);
+        return textOut("Updated");
+      }
+      return textOut("NotFound");
     }
 
     if (action === "deleteSweetie") {
@@ -1284,7 +1361,6 @@ function recalcMonth(expSheet, salSheet, sumSheet, month) {
 //Logger.log("Password set successfully.");
 //}
 
-
 // Read-only helper: run manually from the Apps Script editor.
 // Logs rows in Sweetie / Cards sheets that share the same ID. Deletes nothing.
 function findDuplicateIds() {
@@ -1293,10 +1369,13 @@ function findDuplicateIds() {
     const sh = ss.getSheetByName(name);
     if (!sh) return;
     const seen = {};
-    sh.getDataRange().getValues().slice(1).forEach((r, i) => {
-      const id = String(r[0] || "").trim();
-      if (id) (seen[id] = seen[id] || []).push(i + 2);
-    });
+    sh.getDataRange()
+      .getValues()
+      .slice(1)
+      .forEach((r, i) => {
+        const id = String(r[0] || "").trim();
+        if (id) (seen[id] = seen[id] || []).push(i + 2);
+      });
     Object.keys(seen).forEach((id) => {
       if (seen[id].length > 1)
         Logger.log(name + ": ID " + id + " in rows " + seen[id].join(", "));

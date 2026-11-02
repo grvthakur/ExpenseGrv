@@ -13,7 +13,20 @@ const path = require("path");
 const vm = require("vm");
 
 const ROOT = path.resolve(__dirname, "..");
-const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
+const FRONTEND_ROOT = path.join(ROOT, "frontend");
+const BACKEND_ROOT = path.join(ROOT, "backend");
+const read = (f) => {
+  const candidates = [
+    path.join(ROOT, f),
+    path.join(FRONTEND_ROOT, f),
+    path.join(BACKEND_ROOT, "expense-sheet", f),
+    path.join(BACKEND_ROOT, "ai-sheet", f),
+    path.join(BACKEND_ROOT, "shared", f)
+  ];
+  const target = candidates.find((p) => fs.existsSync(p));
+  if (!target) throw new Error("Source file not found after reorganization: " + f);
+  return fs.readFileSync(target, "utf8");
+};
 
 let JSDOM = null;
 try {

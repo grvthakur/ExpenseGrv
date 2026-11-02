@@ -146,7 +146,8 @@ function grvDevSanitizeMessage_(value) {
 
 function grvDevRecordEvent_(event) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(5000);
+  // Best-effort diagnostics: never queue behind financial writes for long.
+  if (!lock.tryLock(500)) return false;
   try {
     const ss = grvDevSpreadsheet_();
     const events = grvDevEnsureSheet_(ss, GRV_DEV_EVENTS_SHEET, [

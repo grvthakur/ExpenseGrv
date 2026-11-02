@@ -296,10 +296,21 @@
       localStorage.setItem(ALIAS_KEY, JSON.stringify(L));
     } catch (_) {}
   }
+  // Keep the original transaction input only in memory until the user confirms.
+  // It is sent transiently with the save request; the backend stores only a safe fingerprint.
+  let currentAiSourceText = "";
   function preview(r) {
     const m = M[r.kind] || M.expense,
       kind = M[r.kind] ? r.kind : "expense";
     if (r.desc) r.desc = normDesc(r.desc);
+    // Preserve the parser's suggestion before the user edits preview fields.
+    const originalSuggestion = {
+      kind: String(r.kind || kind), card: String(r.card || ""),
+      usedBy: String(r.usedBy || ""), desc: String(r.desc || ""),
+      remarks: String(r.remarks || ""), category: String(r.category || ""),
+      amount: Number(r.amount || 0), date: String(r.date || ""),
+      type: String(r.type || "")
+    };
     // Remarks are a separate personal note. Never silently merge them into Description.
     const origDesc = String(r.desc || "");
     const rows = m.f
@@ -348,6 +359,13 @@
               (e.dataset.k === "card" ? "a card" : e.dataset.k),
             true,
           );
+      // This payload is created only on explicit preview confirmation. The backend
+      // records it only after a successful transaction write/recalculation.
+      // Never persist the raw source text: grvAiLearningPayload_ fingerprints it server-side.
+      window.__grvAiLearningPending = currentAiSourceText ? {
+        sourceText: String(currentAiSourceText).slice(0, 1500),
+        suggested: originalSuggestion
+      } : null;
       pv.style.display = "none";
       $("aiTxt").value = "";
       switchTab(m.tab);
@@ -1066,7 +1084,7 @@
       .filter(
         (x) =>
           x !== line &&
-          /\\b(?:already\\s+paid|paid\\s+in|will\\s+get\\s+refund|refund|split\\s+with|pending|settled|due)\\b/i.test(
+          /\b(?:already\s+paid|paid\s+in|will\s+get\s+refund|refund|split\s+with|pending|settled|due)\b/i.test(
             x,
           ),
       )
@@ -1146,12 +1164,12 @@
       )
         continue;
       if (!first) first = v;
-      if (
-        /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(
-          before,
-        )
-      )
-        return v;
+      const after = t.slice(m.index + m[0].length, m.index + m[0].length + 48).toLowerCase();
+      const transactionLabelBefore =
+        /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(before);
+      const transactionLabelAfter =
+        /^\s*(?:is\s+)?(?:spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(after);
+      if (transactionLabelBefore || transactionLabelAfter) return v;
     }
     return first;
   }
@@ -2285,6 +2303,9 @@
       ) && !isBankSms(text);
     if (!fp && (qLike || (isQuestion(text) && !localParse(text))))
       return askData(text);
+    currentAiSourceText = text.slice(0, 1500);
+    // Clear any stale payload before starting a new transaction parse.
+    window.__grvAiLearningPending = null;
     const lab = labelHint(text) || tailLab(text);
     const body0 = lab ? lab.body : text;
     const applyLab = (o) => {

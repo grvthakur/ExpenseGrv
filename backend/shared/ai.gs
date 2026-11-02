@@ -271,6 +271,7 @@ function aiQuery_(e) {
     "Today is " + today + ".",
     AI_RULES,
     "DATA PROFILE:\n" + aiProfile_(R),
+    (typeof grvFinancialIntelligenceContext_ === "function" ? grvFinancialIntelligenceContext_(R, q, today) : ""),
     "RECENT SAMPLE (src|date|cat/card|person|desc|amount):\n" + sample,
     hist
       ? "Previous turns (JSON; for follow-ups like 'isme se', 'aur', 'same', reuse and modify that code): " +
@@ -435,8 +436,12 @@ function aiBankFields_(text) {
     if (!(v > 0)) continue;
     const before = t.slice(Math.max(0, m.index - 34), m.index).toLowerCase();
     if (/(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(before)) continue;
+    // Prefer a transaction-labelled amount over an earlier unlabelled value.
     if (!first) first = v;
-    if (/(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(before)) { first = v; break; }
+    const after = t.slice(m.index + m[0].length, m.index + m[0].length + 48).toLowerCase();
+    const transactionLabel = /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(before) ||
+      /^\s*(?:is\s+)?(?:spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(after);
+    if (transactionLabel) { first = v; break; }
   }
   out.amount = first;
   const lm = t.match(/\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i);
@@ -480,6 +485,16 @@ function aiParse_(e) {
     "TYPE (kind=sweetie): SAVING | CREDIT | DEBIT.",
     "TEXT:\n" + text,
   ].join("\n");
+  // Provider-independent personal learning context: same prompt reaches the
+  // shared Groq -> Cerebras -> OpenRouter gateway. Context is advisory only.
+  const learning = grvAiLearningContext_(text);
+  if (learning && learning.enabled && learning.patterns && learning.patterns.length) {
+    prompt += "\nPERSONAL LEARNING (user-approved historical patterns; use only when relevant, never override explicit text or deterministic bank-SMS fields. For kind \"correction:FIELD\", source is the prior incorrect suggestion and target is the user-approved value for that same FIELD): " +
+      JSON.stringify(learning.patterns.map(p => ({
+        kind: p.kind, source: p.source, target: p.target,
+        confidence: p.confidence, examples: p.count
+      })));
+  }
   const bf = aiBankFields_(text);
   let plan;
   try {
