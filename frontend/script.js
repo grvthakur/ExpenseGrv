@@ -115,6 +115,7 @@ let cardSearch = "";
 let cardStatusFilter = "ALL"; // ALL, PAID, UNPAID
 let cardMonthFilter = "3"; // "1" = current month only, "3" = last 3 months
 let cardCardFilter = "ALL"; // ALL or specific card name
+let selectedCardTxnIds = new Set(); // Desktop Credit Cards bulk selection
 let cardUsedByFilter = "ALL"; // ALL or a normalised "used by" name
 
 // GRV CC personal-view state (uses the same cardTxns / Cards sheet)
@@ -1254,6 +1255,7 @@ async function syncFromSheet(isManual = false, isInitial = false) {
       return;
     }
 
+    const _before = JSON.stringify([expenses, salaries]);
     expenses = [...expenses.filter((e) => e.month !== key), ...fromSheet];
 
     if (Array.isArray(salRes) && salRes.length > 1) {
@@ -1262,8 +1264,13 @@ async function syncFromSheet(isManual = false, isInitial = false) {
       });
     }
 
-    saveLocal();
-    render();
+    // Background poll: skip re-render when nothing changed (stops flicker)
+    const _changed =
+      isManual || isInitial || _before !== JSON.stringify([expenses, salaries]);
+    if (_changed) {
+      saveLocal();
+      render();
+    }
     setStatus("");
     markLastSynced("lastSyncedExpenses");
     finishInitialSkeleton();
@@ -1511,7 +1518,25 @@ function renderCards() {
       /REFUND OF/i.test(String(t.description || "")) ||
       /REFUND OF/i.test(String(t.remarks || ""));
 
-    tr.insertCell(0).textContent = formatDisplayDate(t.txnDate);
+    const dateCell = tr.insertCell(0);
+    if (t.status === "UNPAID") {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "card-row-check";
+      cb.dataset.transactionId = String(t.id);
+      cb.checked = selectedCardTxnIds.has(String(t.id));
+      cb.setAttribute(
+        "aria-label",
+        "Select " + (t.description || "transaction"),
+      );
+      cb.onchange = () => {
+        if (cb.checked) selectedCardTxnIds.add(String(t.id));
+        else selectedCardTxnIds.delete(String(t.id));
+        updateCardSelectionUI();
+      };
+      dateCell.appendChild(cb);
+    }
+    dateCell.appendChild(document.createTextNode(formatDisplayDate(t.txnDate)));
     tr.insertCell(1).innerHTML =
       `<span class="table-data-pill table-card-pill grv-card-tone-${getCardTone(t.card)}">${esc(t.card)}</span>`;
     tr.insertCell(2).innerHTML =
@@ -1568,6 +1593,91 @@ function renderCards() {
     actCell.appendChild(cloneCardBtn);
     actCell.appendChild(delBtn);
   });
+  updateCardSelectionUI();
+}
+
+// ── Desktop bulk PAID selection (visible UNPAID rows only) ──
+function updateCardSelectionUI() {
+  const boxes = [...document.querySelectorAll("#cardTable .card-row-check")];
+  const visible = new Set(boxes.map((b) => b.dataset.transactionId));
+  selectedCardTxnIds = new Set(
+    [...selectedCardTxnIds].filter((id) => visible.has(id)),
+  );
+  const selected = [...selectedCardTxnIds]
+    .map((id) => cardTxns.find((t) => String(t.id) === id))
+    .filter((t) => t && t.status === "UNPAID");
+  const total = selected.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+  const totalEl = document.getElementById("cardSelectedTotal");
+  if (totalEl)
+    totalEl.textContent = selected.length
+      ? `Selected ${money(total)} (${selected.length})`
+      : "";
+  const btn = document.getElementById("markSelectedCardsPaidBtn");
+  if (btn) {
+    btn.disabled = !selected.length;
+    btn.style.display = selected.length ? "" : "none";
+  }
+  const all = document.getElementById("cardSelectAll");
+  if (all) {
+    const n = boxes.filter((b) => b.checked).length;
+    all.checked = boxes.length > 0 && n === boxes.length;
+    all.indeterminate = n > 0 && n < boxes.length;
+  }
+}
+
+function toggleSelectAllCards(checked) {
+  document.querySelectorAll("#cardTable .card-row-check").forEach((cb) => {
+    cb.checked = checked;
+    if (checked) selectedCardTxnIds.add(cb.dataset.transactionId);
+    else selectedCardTxnIds.delete(cb.dataset.transactionId);
+  });
+  updateCardSelectionUI();
+}
+
+async function markSelectedCardsPaid() {
+  if (window.__cardBulkBusy) return;
+  const selected = [...selectedCardTxnIds]
+    .map((id) => cardTxns.find((t) => String(t.id) === id))
+    .filter((t) => t && t.status === "UNPAID");
+  if (!selected.length) return toast("No unpaid transactions selected", true);
+  const total = selected.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+  if (
+    !confirm(
+      `Mark ${selected.length} selected transactions as PAID?\n\nTotal: ${money(total)}`,
+    )
+  )
+    return;
+  const btn = document.getElementById("markSelectedCardsPaidBtn");
+  window.__cardBulkBusy = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
+  try {
+    const ids = selected.map((t) => String(t.id));
+    const res = await fetch(
+      apiUrl(
+        `action=updateCardStatusBulk&ids=${enc(ids.join(","))}&status=PAID`,
+      ),
+    );
+    const text = (await res.text()).trim();
+    if (text !== "Updated") throw new Error(text || "Server did not confirm");
+    selected.forEach((t) => {
+      t.status = "PAID";
+      selectedCardTxnIds.delete(String(t.id));
+    });
+    saveLocal();
+    renderCards();
+    if (typeof renderGrvCC === "function") renderGrvCC();
+    toast(`✓ ${selected.length} transactions marked PAID`);
+  } catch (err) {
+    toast("Could not confirm update: " + err.message, true, 6000);
+    await syncCardsFromSheet(false);
+  } finally {
+    window.__cardBulkBusy = false;
+    if (btn) btn.textContent = "✓ Mark Selected Paid";
+    updateCardSelectionUI();
+  }
 }
 
 // Refund entries use a negative amount and link to an explicitly selected UNPAID purchase.
@@ -1926,6 +2036,7 @@ async function syncCardsFromSheet(isManual = false) {
       fetch(apiUrl(`action=getCardConfig`)).then((r) => r.json()),
     ]);
 
+    const _cBefore = JSON.stringify([cardTxns, cardConfig]);
     if (Array.isArray(cardRes)) {
       const fromSheet = cardRes
         .map((row) => ({
@@ -1972,6 +2083,7 @@ async function syncCardsFromSheet(isManual = false) {
 
     // Always refresh card config
     if (Array.isArray(cfgRes) && cfgRes.length > 1) {
+      const _oldCfg = JSON.stringify(cardConfig);
       cardConfig = cfgRes
         .slice(1)
         .filter((row) => row[0])
@@ -1982,11 +2094,15 @@ async function syncCardsFromSheet(isManual = false) {
           dueDay: parseInt(row[3]) || 0,
           dueMonthOffset: parseInt(row[4]) || 0,
         }));
-      populateCardDropdown();
+      if (isManual || _oldCfg !== JSON.stringify(cardConfig))
+        populateCardDropdown();
     }
 
-    saveLocal();
-    renderCards();
+    if (isManual || _cBefore !== JSON.stringify([cardTxns, cardConfig])) {
+      saveLocal();
+      renderCards();
+      if (activeTab === "grvcc") renderGrvCC();
+    }
     markLastSynced("lastSyncedCards");
     if (isManual) toast(`Cards synced ✓ for ${bMonth}`);
   } catch (err) {
@@ -2761,7 +2877,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (activeTab === "cards" || activeTab === "grvcc")
       syncCardsFromSheet(false);
     if (activeTab === "sweetie") syncSweetieFromSheet(false);
-    if (activeTab === "grvcc") renderGrvCC();
   }, 60000);
 });
 
