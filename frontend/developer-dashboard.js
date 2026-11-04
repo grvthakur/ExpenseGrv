@@ -1,36 +1,308 @@
 /* Isolated GRV Developer Dashboard UI. Uses API_BASE from existing script.js. */
-(function(){"use strict";
- const $=id=>document.getElementById(id); let dataCache=null,busy=false;
- const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
- function pill(v){const s=String(v||"unknown").toLowerCase(),k=["critical","high","medium","low","error","warning","info"].includes(s)?s:"neutral";return `<span class="dev-pill ${k}">${esc(v||"Unknown")}</span>`;}
- function notice(s,bad){const e=$("devDashboardNotice");if(e){e.textContent=s;e.classList.toggle("is-error",!!bad);}}
- function list(a){return Array.isArray(a)&&a.length?`<ul>${a.map(x=>`<li>${esc(typeof x==="string"?x:JSON.stringify(x))}</li>`).join("")}</ul>`:'<p class="dev-muted">No items recorded.</p>';}
- function confidence(v){return Number.isFinite(Number(v))?Math.round(Number(v)*100)+"%":"—";}
- function renderAnalysis(a){const h=$("devAnalysisBody");if(!a){h.className="dev-empty";h.textContent="No analysis saved yet.";$("devAnalysisSeverity").textContent="NOT RUN";return;}$("devAnalysisSeverity").innerHTML=pill(a.severity||a.status);h.className="dev-rich-content";h.innerHTML=`<div class="dev-meta-row"><span>${esc(a.provider)}</span><span>${esc(a.createdAt)}</span><span>Confidence ${confidence(a.confidence)}</span></div><h4>Summary</h4><p>${esc(a.summary||"Not supplied")}</p><h4>Likely cause</h4><p>${esc(a.likelyCause||"Not established")}</p><h4>Evidence</h4>${list(a.evidence)}<h4>Recommended checks</h4>${list(a.recommendedChecks)}<h4>Suggested fix · Human review only</h4><p>${esc(a.suggestedFix||"Not supplied")}</p>`;}
- function renderSource(a){const h=$("devSourceBody");if(!a){h.className="dev-empty";h.textContent="No source analysis saved yet.";$("devSourceSeverity").textContent="NOT RUN";return;}$("devSourceSeverity").innerHTML=pill(a.severity||a.status);const fs=Array.isArray(a.findings)?a.findings:[];h.className="dev-rich-content";h.innerHTML=`<div class="dev-meta-row"><span>${esc(a.repository)} / ${esc(a.branch)}</span><span>${esc(a.provider)}</span><span>${esc(a.createdAt)}</span></div><p>${esc(a.summary||"")}</p><div class="dev-source-stats"><b>${Number(a.fileCount)||0} files reviewed</b><b>Confidence ${confidence(a.confidence)}</b><b>${fs.length} findings</b></div>${fs.length?fs.map((f,i)=>`<div class="dev-finding"><div>${pill(f.severity||f.priority||"review")} <b>${esc(f.id||"Finding "+(i+1))} · ${esc(f.title||f.file||"Source finding")}</b></div><p>${esc(f.description||f.finding||f.message||"")}</p>${f.recommendation?`<small>Recommendation: ${esc(f.recommendation)}</small>`:""}</div>`).join(""):'<p class="dev-muted">No finding details stored.</p>'}`;}
- function renderIssues(rows){const f=$("devIssueFilter")?.value||"all",items=(rows||[]).filter(x=>{const s=String(x.status||"").toLowerCase(),v=String(x.severity||"").toLowerCase();if(f==="open")return !["closed","resolved","ignored"].includes(s);if(f==="closed")return ["closed","resolved","ignored"].includes(s);if(f==="high")return ["high","critical"].includes(v);return true;});$("devIssuesBody").innerHTML=items.length?items.map(x=>`<tr><td>${pill(x.severity)}</td><td><b>${esc(x.errorCode||x.eventType||"Issue")}</b><small>${esc(x.latestMessage)}</small></td><td>${esc(x.source)}<small>${esc(x.file)} ${esc(x.functionName)}</small></td><td class="dev-number">${Number(x.occurrences)||0}</td><td>${esc(x.lastSeen)}</td><td>${pill(x.status)}</td></tr>`).join(""):'<tr><td colspan="6" class="dev-empty">No issues match this filter.</td></tr>';}
- function renderEvents(rows){$("devEventsBody").innerHTML=rows&&rows.length?rows.map(x=>`<tr><td>${esc(x.timestamp)}</td><td>${pill(x.severity)}</td><td>${esc(x.eventType)}</td><td>${esc(x.source)}</td><td>${esc(x.file)}<small>${esc(x.functionName)}</small></td><td class="dev-message">${esc(x.message)}</td></tr>`).join(""):'<tr><td colspan="6" class="dev-empty">No runtime events recorded.</td></tr>';}
- function renderLearning(d){
-  const patterns=Array.isArray(d.patterns)?d.patterns:[],events=Array.isArray(d.events)?d.events:[];
-  const pc=$("devLearningPatternCount"),ec=$("devLearningEventCount");
-  if(pc)pc.textContent=patterns.length+" patterns";if(ec)ec.textContent=(d.counts?.events||0)+" events";
-  const pb=$("devLearningPatternsBody"),eb=$("devLearningEventsBody");
-  if(pb)pb.innerHTML=patterns.length?patterns.map(x=>`<tr><td>${esc(x.kind)}</td><td>${esc(x.source)}</td><td>${esc(x.target)}</td><td class="dev-number">${Number(x.count)||0}</td><td>${confidence(x.confidence)}</td></tr>`).join(""):'<tr><td colspan="5" class="dev-empty">No learned patterns yet.</td></tr>';
-  const changes=[];events.forEach(x=>{(x.corrections||[]).forEach(c=>changes.push({date:x.createdAt,kind:x.kind,field:c.field,suggested:c.suggested,approved:c.approved}));});
-  if(eb)eb.innerHTML=changes.length?changes.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.kind)}</td><td>${esc(x.field)}</td><td>${esc(x.suggested)}</td><td><b>${esc(x.approved)}</b></td></tr>`).join(""):'<tr><td colspan="5" class="dev-empty">No user corrections recorded yet.</td></tr>';
- }
- async function refreshLearning(){try{const d=await request("devLearningReview");if(!d.enabled)throw Error("Learning is disabled");renderLearning(d);}catch(e){const pb=$("devLearningPatternsBody"),eb=$("devLearningEventsBody");if(pb)pb.innerHTML=`<tr><td colspan="5" class="dev-empty">Learning review unavailable: ${esc(e.message)}</td></tr>`;if(eb)eb.innerHTML='<tr><td colspan="5" class="dev-empty">Could not load learning history.</td></tr>';}}
- function renderHealth(d){
-  const summary=$("devHealthSummary"),body=$("devHealthChecksBody");if(!summary||!body)return;
-  summary.innerHTML=`<span class="dev-health-state ${d.status==="healthy"?"is-good":"is-warn"}">${d.status==="healthy"?"ALL CHECKS PASSED":"ATTENTION REQUIRED"}</span><b>${Number(d.passed)||0}/${Number(d.total)||0} checks passed</b><small>Read-only check · ${esc(d.generatedAt||"")}</small>`;
-  const groups={};(d.checks||[]).forEach(x=>(groups[x.group||"Other"]||(groups[x.group||"Other"]=[])).push(x));
-  body.innerHTML=Object.keys(groups).map(group=>`<tr class="dev-health-group"><td colspan="3">${esc(group)}</td></tr>`+groups[group].map(x=>`<tr><td>${x.ok?'<span class="dev-health-mark ok">✓</span>':'<span class="dev-health-mark bad">!</span>'}</td><td><b>${esc(x.name)}</b></td><td>${esc(x.detail)}</td></tr>`).join("")).join("");
- }
- async function refreshHealth(){const body=$("devHealthChecksBody");if(body)body.innerHTML='<tr><td colspan="3" class="dev-empty">Checking system configuration…</td></tr>';try{renderHealth(await request("systemHealth"));}catch(e){if(body)body.innerHTML=`<tr><td colspan="3" class="dev-empty">System health unavailable: ${esc(e.message)}</td></tr>`;}}
- function render(d){dataCache=d;const c=d.counts||{};const lf=d.learningFeedback||{};$("devLearningEvents").textContent=Number(lf.events)||0;$("devCorrectedEvents").textContent=Number(lf.correctedEvents)||0;$("devCorrectedFields").textContent=Number(lf.correctedFields)||0;$("devLearningStatus").textContent=lf.events==null?"Unavailable":"Active";$("devTotalEvents").textContent=Number(c.totalEvents)||0;$("devOpenIssues").textContent=Number(c.openIssues)||0;$("devCriticalIssues").textContent=Number(c.criticalIssues)||0;$("devHighIssues").textContent=Number(c.highIssues)||0;$("devLastUpdated").textContent="Updated "+(d.generatedAt||"just now");renderAnalysis(d.latestAnalysis);renderSource(d.latestSourceAnalysis);renderIssues(d.issues||[]);renderEvents(d.events||[]);refreshLearning();refreshHealth();}
- async function request(action){const r=await fetch(`${API_BASE}?action=${encodeURIComponent(action)}&_=${Date.now()}`,{method:"GET",cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);const d=await r.json();if(!d||d.ok!==true)throw Error(d?.error||"Request failed");return d;}
- async function refresh(){if(busy)return;busy=true;const b=$("devRefreshBtn");if(b){b.disabled=true;b.textContent="↻ Loading…";}notice("Fetching read-only diagnostic data…");try{render(await request("devDashboard"));notice("Dashboard refreshed. No app or transaction data changed.");}catch(e){notice("Dashboard load failed: "+e.message+". Check Apps Script route and deployment.",true);}finally{busy=false;if(b){b.disabled=false;b.textContent="↻ Refresh";}}}
- async function analyze(){if(busy)return;if(!confirm("Run AI analysis on latest diagnostic logs? This creates a DeveloperAnalysis row only; it does not change app code or transactions."))return;busy=true;const b=$("devAnalyzeBtn");if(b){b.disabled=true;b.textContent="✦ Analyzing…";}notice("Running log analysis…");try{const d=await request("devAnalyze");notice("Analysis saved. Refreshing dashboard…");busy=false;await refresh();}catch(e){notice("Analysis failed: "+e.message,true);}finally{busy=false;if(b){b.disabled=false;b.textContent="✦ Run Log Analysis";}}}
- function init(){const t=$("tabDeveloper");if(t)t.addEventListener("click",()=>{if(typeof window.switchTab==="function")window.switchTab("developer");refresh();});$("devRefreshBtn")?.addEventListener("click",refresh);$("devAnalyzeBtn")?.addEventListener("click",analyze);$("devIssueFilter")?.addEventListener("change",()=>{if(dataCache)renderIssues(dataCache.issues||[]);});}
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();window.grvDeveloperDashboardRefresh=refresh;
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  let dataCache = null,
+    busy = false;
+  const esc = (v) =>
+    String(v == null ? "" : v).replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c],
+    );
+  function pill(v) {
+    const s = String(v || "unknown").toLowerCase(),
+      k = [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "error",
+        "warning",
+        "info",
+      ].includes(s)
+        ? s
+        : "neutral";
+    return `<span class="dev-pill ${k}">${esc(v || "Unknown")}</span>`;
+  }
+  function notice(s, bad) {
+    const e = $("devDashboardNotice");
+    if (e) {
+      e.textContent = s;
+      e.classList.toggle("is-error", !!bad);
+    }
+  }
+  function list(a) {
+    return Array.isArray(a) && a.length
+      ? `<ul>${a.map((x) => `<li>${esc(typeof x === "string" ? x : JSON.stringify(x))}</li>`).join("")}</ul>`
+      : '<p class="dev-muted">No items recorded.</p>';
+  }
+  function confidence(v) {
+    return Number.isFinite(Number(v)) ? Math.round(Number(v) * 100) + "%" : "—";
+  }
+  function renderAnalysis(a) {
+    const h = $("devAnalysisBody");
+    if (!a) {
+      h.className = "dev-empty";
+      h.textContent = "No analysis saved yet.";
+      $("devAnalysisSeverity").textContent = "NOT RUN";
+      return;
+    }
+    $("devAnalysisSeverity").innerHTML = pill(a.severity || a.status);
+    h.className = "dev-rich-content";
+    h.innerHTML = `<div class="dev-meta-row"><span>${esc(a.provider)}</span><span>${esc(a.createdAt)}</span><span>Confidence ${confidence(a.confidence)}</span></div><h4>Summary</h4><p>${esc(a.summary || "Not supplied")}</p><h4>Likely cause</h4><p>${esc(a.likelyCause || "Not established")}</p><h4>Evidence</h4>${list(a.evidence)}<h4>Recommended checks</h4>${list(a.recommendedChecks)}<h4>Suggested fix · Human review only</h4><p>${esc(a.suggestedFix || "Not supplied")}</p>`;
+  }
+  function renderSource(a) {
+    const h = $("devSourceBody");
+    if (!a) {
+      h.className = "dev-empty";
+      h.textContent = "No source analysis saved yet.";
+      $("devSourceSeverity").textContent = "NOT RUN";
+      return;
+    }
+    $("devSourceSeverity").innerHTML = pill(a.severity || a.status);
+    const fs = Array.isArray(a.findings) ? a.findings : [];
+    h.className = "dev-rich-content";
+    h.innerHTML = `<div class="dev-meta-row"><span>${esc(a.repository)} / ${esc(a.branch)}</span><span>${esc(a.provider)}</span><span>${esc(a.createdAt)}</span></div><p>${esc(a.summary || "")}</p><div class="dev-source-stats"><b>${Number(a.fileCount) || 0} files reviewed</b><b>Confidence ${confidence(a.confidence)}</b><b>${fs.length} findings</b></div>${fs.length ? fs.map((f, i) => `<div class="dev-finding"><div>${pill(f.severity || f.priority || "review")} <b>${esc(f.id || "Finding " + (i + 1))} · ${esc(f.title || f.file || "Source finding")}</b></div><p>${esc(f.description || f.finding || f.message || "")}</p>${f.recommendation ? `<small>Recommendation: ${esc(f.recommendation)}</small>` : ""}</div>`).join("") : '<p class="dev-muted">No finding details stored.</p>'}`;
+  }
+  function renderIssues(rows) {
+    const f = $("devIssueFilter")?.value || "all",
+      items = (rows || []).filter((x) => {
+        const s = String(x.status || "").toLowerCase(),
+          v = String(x.severity || "").toLowerCase();
+        if (f === "open") return !["closed", "resolved", "ignored"].includes(s);
+        if (f === "closed")
+          return ["closed", "resolved", "ignored"].includes(s);
+        if (f === "high") return ["high", "critical"].includes(v);
+        return true;
+      });
+    $("devIssuesBody").innerHTML = items.length
+      ? items
+          .map(
+            (x) =>
+              `<tr><td>${pill(x.severity)}</td><td><b>${esc(x.errorCode || x.eventType || "Issue")}</b><small>${esc(x.latestMessage)}</small></td><td>${esc(x.source)}<small>${esc(x.file)} ${esc(x.functionName)}</small></td><td class="dev-number">${Number(x.occurrences) || 0}</td><td>${esc(x.lastSeen)}</td><td>${pill(x.status)}</td></tr>`,
+          )
+          .join("")
+      : '<tr><td colspan="6" class="dev-empty">No issues match this filter.</td></tr>';
+  }
+  function renderEvents(rows) {
+    $("devEventsBody").innerHTML =
+      rows && rows.length
+        ? rows
+            .map(
+              (x) =>
+                `<tr><td>${esc(x.timestamp)}</td><td>${pill(x.severity)}</td><td>${esc(x.eventType)}</td><td>${esc(x.source)}</td><td>${esc(x.file)}<small>${esc(x.functionName)}</small></td><td class="dev-message">${esc(x.message)}</td></tr>`,
+            )
+            .join("")
+        : '<tr><td colspan="6" class="dev-empty">No runtime events recorded.</td></tr>';
+  }
+  function renderLearning(d) {
+    const patterns = Array.isArray(d.patterns) ? d.patterns : [],
+      events = Array.isArray(d.events) ? d.events : [];
+    const pc = $("devLearningPatternCount"),
+      ec = $("devLearningEventCount");
+    if (pc) pc.textContent = patterns.length + " patterns";
+    if (ec) ec.textContent = (d.counts?.events || 0) + " events";
+    const pb = $("devLearningPatternsBody"),
+      eb = $("devLearningEventsBody");
+    if (pb)
+      pb.innerHTML = patterns.length
+        ? patterns
+            .map(
+              (x) =>
+                `<tr><td>${esc(x.kind)}</td><td>${esc(x.source)}</td><td>${esc(x.target)}</td><td class="dev-number">${Number(x.count) || 0}</td><td>${confidence(x.confidence)}</td></tr>`,
+            )
+            .join("")
+        : '<tr><td colspan="5" class="dev-empty">No learned patterns yet.</td></tr>';
+    const changes = [];
+    events.forEach((x) => {
+      (x.corrections || []).forEach((c) =>
+        changes.push({
+          date: x.createdAt,
+          kind: x.kind,
+          field: c.field,
+          suggested: c.suggested,
+          approved: c.approved,
+        }),
+      );
+    });
+    if (eb)
+      eb.innerHTML = changes.length
+        ? changes
+            .map(
+              (x) =>
+                `<tr><td>${esc(x.date)}</td><td>${esc(x.kind)}</td><td>${esc(x.field)}</td><td>${esc(x.suggested)}</td><td><b>${esc(x.approved)}</b></td></tr>`,
+            )
+            .join("")
+        : '<tr><td colspan="5" class="dev-empty">No user corrections recorded yet.</td></tr>';
+  }
+  async function refreshLearning() {
+    try {
+      const d = await request("devLearningReview");
+      if (!d.enabled) throw Error("Learning is disabled");
+      renderLearning(d);
+    } catch (e) {
+      const pb = $("devLearningPatternsBody"),
+        eb = $("devLearningEventsBody");
+      if (pb)
+        pb.innerHTML = `<tr><td colspan="5" class="dev-empty">Learning review unavailable: ${esc(e.message)}</td></tr>`;
+      if (eb)
+        eb.innerHTML =
+          '<tr><td colspan="5" class="dev-empty">Could not load learning history.</td></tr>';
+    }
+  }
+  function renderHealth(d) {
+    const summary = $("devHealthSummary"),
+      body = $("devHealthChecksBody");
+    if (!summary || !body) return;
+    summary.innerHTML = `<span class="dev-health-state ${d.status === "healthy" ? "is-good" : "is-warn"}">${d.status === "healthy" ? "ALL CHECKS PASSED" : "ATTENTION REQUIRED"}</span><b>${Number(d.passed) || 0}/${Number(d.total) || 0} checks passed</b><small>Read-only check · ${esc(d.generatedAt || "")}</small>`;
+    const groups = {};
+    (d.checks || []).forEach((x) =>
+      (groups[x.group || "Other"] || (groups[x.group || "Other"] = [])).push(x),
+    );
+    body.innerHTML = Object.keys(groups)
+      .map(
+        (group) =>
+          `<tr class="dev-health-group"><td colspan="3">${esc(group)}</td></tr>` +
+          groups[group]
+            .map(
+              (x) =>
+                `<tr><td>${x.ok ? '<span class="dev-health-mark ok">✓</span>' : '<span class="dev-health-mark bad">!</span>'}</td><td><b>${esc(x.name)}</b></td><td>${esc(x.detail)}</td></tr>`,
+            )
+            .join(""),
+      )
+      .join("");
+  }
+  async function refreshHealth() {
+    const body = $("devHealthChecksBody");
+    if (body)
+      body.innerHTML =
+        '<tr><td colspan="3" class="dev-empty">Checking system configuration…</td></tr>';
+    try {
+      renderHealth(await request("systemHealth"));
+    } catch (e) {
+      if (body)
+        body.innerHTML = `<tr><td colspan="3" class="dev-empty">System health unavailable: ${esc(e.message)}</td></tr>`;
+    }
+  }
+  function render(d) {
+    dataCache = d;
+    const c = d.counts || {};
+    const lf = d.learningFeedback || {};
+    $("devLearningEvents").textContent = Number(lf.events) || 0;
+    $("devCorrectedEvents").textContent = Number(lf.correctedEvents) || 0;
+    $("devCorrectedFields").textContent = Number(lf.correctedFields) || 0;
+    $("devLearningStatus").textContent =
+      lf.events == null ? "Unavailable" : "Active";
+    $("devTotalEvents").textContent = Number(c.totalEvents) || 0;
+    $("devOpenIssues").textContent = Number(c.openIssues) || 0;
+    $("devCriticalIssues").textContent = Number(c.criticalIssues) || 0;
+    $("devHighIssues").textContent = Number(c.highIssues) || 0;
+    $("devLastUpdated").textContent =
+      "Updated " + (d.generatedAt || "just now");
+    renderAnalysis(d.latestAnalysis);
+    renderSource(d.latestSourceAnalysis);
+    renderIssues(d.issues || []);
+    renderEvents(d.events || []);
+    refreshLearning();
+    refreshHealth();
+  }
+  async function request(action) {
+    const r = await fetch(
+      `${API_BASE}?action=${encodeURIComponent(action)}&_=${Date.now()}`,
+      { method: "GET", cache: "no-store" },
+    );
+    if (!r.ok) throw Error("HTTP " + r.status);
+    const d = await r.json();
+    if (!d || d.ok !== true) throw Error(d?.error || "Request failed");
+    return d;
+  }
+  async function refresh() {
+    if (busy) return;
+    busy = true;
+    const b = $("devRefreshBtn");
+    if (b) {
+      b.disabled = true;
+      b.textContent = "↻ Loading…";
+    }
+    notice("Fetching read-only diagnostic data…");
+    try {
+      render(await request("devDashboard"));
+      notice("Dashboard refreshed. No app or transaction data changed.");
+    } catch (e) {
+      notice(
+        "Dashboard load failed: " +
+          e.message +
+          ". Check Apps Script route and deployment.",
+        true,
+      );
+    } finally {
+      busy = false;
+      if (b) {
+        b.disabled = false;
+        b.textContent = "↻ Refresh";
+      }
+    }
+  }
+  async function analyze() {
+    if (busy) return;
+    if (
+      !confirm(
+        "Run AI analysis on latest diagnostic logs? This creates a DeveloperAnalysis row only; it does not change app code or transactions.",
+      )
+    )
+      return;
+    busy = true;
+    const b = $("devAnalyzeBtn");
+    if (b) {
+      b.disabled = true;
+      b.textContent = "✦ Analyzing…";
+    }
+    notice("Running log analysis…");
+    try {
+      const d = await request("devAnalyze");
+      notice("Analysis saved. Refreshing dashboard…");
+      busy = false;
+      await refresh();
+    } catch (e) {
+      notice("Analysis failed: " + e.message, true);
+    } finally {
+      busy = false;
+      if (b) {
+        b.disabled = false;
+        b.textContent = "✦ Run Log Analysis";
+      }
+    }
+  }
+  function init() {
+    const t = $("tabDeveloper");
+
+    if (t) {
+      t.addEventListener("click", () => {
+        const section = $("developerSection");
+        const isOpen = !!section && section.style.display !== "none";
+
+        if (typeof window.switchTab === "function") {
+          window.switchTab(isOpen ? "expenses" : "developer");
+        }
+
+        if (!isOpen) refresh();
+      });
+    }
+    $("devRefreshBtn")?.addEventListener("click", refresh);
+    $("devAnalyzeBtn")?.addEventListener("click", analyze);
+    $("devIssueFilter")?.addEventListener("change", () => {
+      if (dataCache) renderIssues(dataCache.issues || []);
+    });
+  }
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", init);
+  else init();
+  window.grvDeveloperDashboardRefresh = refresh;
 })();
