@@ -4164,9 +4164,14 @@ async function saveGrvBillPayment() {
       true,
       6000,
     );
+  // The bank bill is the FULL statement (paid + unpaid rows), the same total the
+  // Bills screen compares against when it enables the Record Bill Payment button.
+  const statementFullTotal = cycle
+    ? rowsForCycle(card, cycle).reduce((s, t) => s + (+t.amount || 0), 0)
+    : total;
   if (
     statementMatch == null ||
-    Math.abs((+statementMatch || 0) - total) >= 0.01
+    Math.abs((+statementMatch || 0) - statementFullTotal) >= 0.01
   )
     return toast(
       "Enter the actual bank bill and make sure it matches the statement total before paying.",
