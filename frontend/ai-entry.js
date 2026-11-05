@@ -734,6 +734,13 @@
   // Put the hint-line note into Remarks. It only becomes the Description when the SMS had no merchant.
   function hintToRemarks(o, ul, sh, remLabelled) {
     if (!o || !ul) return o;
+    // A user-supplied item/purpose belongs with the merchant in Description,
+    // never in Used by or Remarks.
+    if (ul.item) {
+      appendDescriptionHint(o, ul.item);
+      if (ul.remarks) o.remarks = String(ul.remarks).trim().toUpperCase();
+      return o;
+    }
     const rem = String(ul.rem || "").trim();
     const more = String(ul.remarks || "").trim();
     // An explicit "Remarks:" label owns the Remarks, so the free text after the name is the Description.
@@ -777,11 +784,82 @@
     /\b(otps?|one[-\s]?time|passwords?|secret|disclose|confidential|never\s+share|do\s+not\s+share|not\s+you|dispute|helpline|customer\s*care|toll[-\s]?free|fraud|block\s+(your\s+)?card|t\s*&\s*c|tnc|dear|regards|thank(s|\s*you)?)\b/i;
   // User's own hint line under a pasted SMS ("hdfc tata neu mummy 9oct2026"): card + person + date + remarks, no AI needed.
   function userLine(text) {
-    const lines = text
+    const lines = String(text || "")
       .split(/\n+/)
       .map((l) => l.trim())
       .filter(Boolean);
     if (lines.length < 2) return null;
+
+    // Bank-generated footer / metadata must never be treated as the user's
+    // purchase note. This is intentionally bank-agnostic: it does not depend
+    // on an issuer name or a particular SMS template.
+    const isBankNoiseLine = (line) =>
+      line.length > 140 ||
+      /(?:https?:|www\.|\b(?:call|dispute|otp|one[- ]time|available|avl\s*(?:limit|balance)|not you|customer care|helpline|reference|ref(?:erence)?\s*(?:no|number|id)?|txn\s*(?:id|ref)|transaction\s*id|time\s*:|date\s*:|do not share|never share|block your card)\b|\b(?:[a-z0-9]*bank|sfb|small finance bank)\b)/i.test(
+        line,
+      ) ||
+      BOILER.test(line);
+
+    // Explicit natural-language identity, with or without punctuation:
+    //   Used by Grv / Used by: Grv / Used by = Grv
+    // Everything after that label is user context, not a candidate person name.
+    const usedByIndex = lines.findIndex((line) =>
+      /^used\s*by\s*[:=\-]?\s*[A-Za-z][A-Za-z' -]*$/i.test(line),
+    );
+    if (usedByIndex >= 0) {
+      const whoMatch = lines[usedByIndex].match(
+        /^used\s*by\s*[:=\-]?\s*([A-Za-z][A-Za-z' -]*)$/i,
+      );
+      const whoToken = whoMatch ? whoMatch[1].trim().replace(/\s+/g, " ") : "";
+      const safeWho =
+        whoToken &&
+        whoToken.length <= 50 &&
+        whoToken.split(/\s+/).length <= 4 &&
+        !BOILER.test(whoToken);
+      if (safeWho) {
+        const itemLines = [];
+        const explicitRemarks = [];
+        const consumedLines = [lines[usedByIndex]];
+        lines.slice(usedByIndex + 1).forEach((line) => {
+          if (isBankNoiseLine(line)) return;
+          const remarkMatch = line.match(
+            /^(?:remarks?|note)\s*[:=\-]\s*(.+)$/i,
+          );
+          if (remarkMatch) {
+            explicitRemarks.push(remarkMatch[1].trim());
+            consumedLines.push(line);
+            return;
+          }
+          const descMatch = line.match(
+            /^(?:desc(?:ription)?|item|purpose)\s*[:=\-]\s*(.+)$/i,
+          );
+          if (descMatch) {
+            itemLines.push(descMatch[1].trim());
+            consumedLines.push(line);
+            return;
+          }
+          // Another explicit field starts a new block; don't absorb it as an item.
+          if (/^(?:used\s*by|date|amount|card|merchant)\s*[:=]/i.test(line))
+            return;
+          itemLines.push(line);
+          consumedLines.push(line);
+        });
+        return {
+          card: "",
+          who: /^(?:me|self)$/i.test(whoToken) ? "GRV" : cap(whoToken),
+          rem: "",
+          item: itemLines.join(" ").replace(/\s+/g, " ").trim(),
+          remarks: explicitRemarks.join(" ").trim().toUpperCase(),
+          date: "",
+          sure: true,
+          line: consumedLines[consumedLines.length - 1],
+          lines: consumedLines,
+          body: lines
+            .filter((line) => !consumedLines.includes(line))
+            .join("\n"),
+        };
+      }
+    }
     const bad =
       /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\d{1,2}:\d{2}|[x*]{2,}\s*\d{2,4}|\b(ist|call|dispute|click|link|otps?|available|avl|limit|bank|merchant|name|amount|date|time|dear|hi|hello|thank|regards|team|please|kindly|sincerely|secret|disclose|password|one-time|confidential|fraud|helpline|never|share|not you)\b/i;
     let line = "";
@@ -2378,13 +2456,21 @@
         .join(" | ");
       // 0) PATTERN FIRST: complete bank SMS (+ clear hint line) => instant, no AI. Anything doubtful falls through to AI below.
       try {
-        const ul0 = lab && lab.who ? null : userLine(lab ? lab.body : text);
-        const bodyP = ul0
-          ? (lab ? lab.body : text)
-              .split(/\n+/)
-              .filter((l) => l.trim() !== ul0.line)
-              .join("\n")
-          : body0;
+        // Parse user context from the ORIGINAL pasted text, not the reduced
+        // label body. This preserves explicit "Used by Grv" + item lines even
+        // when labelHint() has already extracted another labelled field.
+        const ul0 = userLine(text);
+        const bodyP =
+          ul0 && ul0.body
+            ? ul0.body
+            : ul0
+              ? (lab ? lab.body : text)
+                  .split(/\n+/)
+                  .filter(
+                    (line) => !(ul0.lines || [ul0.line]).includes(line.trim()),
+                  )
+                  .join("\n")
+              : body0;
         const sm = await smsParse(bodyP);
         if (sm && sm.amount > 0 && sm.desc && (!ul0 || ul0.sure)) {
           const sh = shorthandHint(text, sm);
@@ -2463,7 +2549,7 @@
         if (sh.usedBy && r.kind === "card") r.usedBy = sh.usedBy;
         if (sh.desc) r.desc = sh.desc;
       }
-      const ul = lab && lab.who ? null : userLine(lab ? lab.body : text);
+      const ul = userLine(text);
       if (ul) {
         if (ul.card) {
           r.card = ul.card;
