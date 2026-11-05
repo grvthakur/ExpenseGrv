@@ -869,7 +869,9 @@
         lines[k].length <= 80 &&
         !bad.test(lines[k]) &&
         !/[*&@]/.test(lines[k]) &&
-        !(k > 0 && /:\s*$/.test(lines[k - 1]))
+        // a lone known person ("grv") after a line ending in ":" is still the user's own line
+        (peopleSet().has(lines[k].toLowerCase()) ||
+          !(k > 0 && /:\s*$/.test(lines[k - 1])))
       ) {
         line = lines[k];
         break;
@@ -1513,6 +1515,16 @@
       /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(
         t,
       ));
+  // App is debit-only: a bank SMS that is a credit/refund or only an OTP for a pending txn is never a transaction.
+  const isNonDebitSms = (t) =>
+    isBankSms(t) &&
+    ((!/\b(spent|debited|purchase[d]?|paid|charged|withdrawn)\b/i.test(t) &&
+      /\b(credited|refund(?:ed)?|reversed|reversal|received|otp|one[-\s]?time\s+password)\b/i.test(
+        t,
+      )) ||
+      // UPI / VPA / IMPS / NEFT account debits are not card transactions (ignored).
+      (/(?:\b(?:upi|vpa|imps|neft)\b|\w@\w{2,})/i.test(t) &&
+        !/\bcard\b/i.test(t)));
   let forceParse = false;
   const isQuestion = (t) => {
     if (isBankSms(t)) return false;
@@ -2407,6 +2419,15 @@
       );
       return;
     }
+    if (isNonDebitSms(text)) {
+      showAiError(
+        "Not a debit",
+        new Error(
+          "Credit, refund, OTP or UPI message ignored. Only card debit transactions are supported.",
+        ),
+      );
+      return;
+    }
     const qLike =
       /\b(kitna|kitne|kitni|kharcha|kharch|expenses? (of|on|for)|how (much|many)|total|average|avg|last \d+ (day|week|month|year)s?|pichle|pichhle|is (mahine|saal|month|year)|this (month|year|week)|show|list|compare|sabse|highest|lowest|biggest|smallest|count|batao|btao|bata|dikhao|kya|kab|kaun|which|what)\b/i.test(
         text,
@@ -2556,8 +2577,11 @@
           r.kind = "card";
         }
         if (ul.date) r.date = ul.date;
-        if (r.kind === "card" && ul.who) r.usedBy = ul.who;
-        hintToRemarks(r, ul, null, !!(lab && lab.rem));
+        // Unsure guess (unknown first word, e.g. "Sarso tel and chini") must never become Used By / Remarks.
+        if (ul.sure) {
+          if (r.kind === "card" && ul.who) r.usedBy = ul.who;
+          hintToRemarks(r, ul, null, !!(lab && lab.rem));
+        }
       }
       // Never keep SMS boilerplate ("OTPs are SECRET") as a remark/description.
       if (r.remarks && BOILER.test(r.remarks)) r.remarks = "";

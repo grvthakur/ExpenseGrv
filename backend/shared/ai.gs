@@ -532,6 +532,20 @@ function aiParse_(e) {
       );
   }
   const bf = aiBankFields_(text);
+  // Debit-only app: credit/refund/OTP-only bank text is never turned into a transaction.
+  if (
+    bf.sms &&
+    ((!/\b(spent|debited|purchase[d]?|paid|charged|withdrawn)\b/i.test(text) &&
+      /\b(credited|refund(?:ed)?|reversed|reversal|received|otp|one[-\s]?time\s+password)\b/i.test(
+        text,
+      )) ||
+      (/(?:\b(?:upi|vpa|imps|neft)\b|\w@\w{2,})/i.test(text) &&
+        !/\bcard\b/i.test(text)))
+  )
+    return jsonOut({
+      error:
+        "Credit, refund, OTP or UPI message ignored. Only card debit transactions are supported.",
+    });
   let plan;
   try {
     plan = JSON.parse(llmJson(prompt, { effort: "low" }).getContent());
