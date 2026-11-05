@@ -271,7 +271,9 @@ function aiQuery_(e) {
     "Today is " + today + ".",
     AI_RULES,
     "DATA PROFILE:\n" + aiProfile_(R),
-    (typeof grvFinancialIntelligenceContext_ === "function" ? grvFinancialIntelligenceContext_(R, q, today) : ""),
+    typeof grvFinancialIntelligenceContext_ === "function"
+      ? grvFinancialIntelligenceContext_(R, q, today)
+      : "",
     "RECENT SAMPLE (src|date|cat/card|person|desc|amount):\n" + sample,
     hist
       ? "Previous turns (JSON; for follow-ups like 'isme se', 'aur', 'same', reuse and modify that code): " +
@@ -425,30 +427,53 @@ function aiBankFields_(text) {
   const out = { sms: false, amount: 0, desc: "", date: "" };
   const money = /(?:\b(?:inr|rs\.?)|₹)\s*[\d,]+/i.test(t);
   const sig =
-    /\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited)\b/i.test(t) ||
-    /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(t);
+    /\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited)\b/i.test(
+      t,
+    ) ||
+    /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(
+      t,
+    );
   out.sms = money && sig;
   if (!out.sms) return out;
   const re = /(?:\b(?:inr|rs\.?)|₹)\s*([\d,]+(?:\.\d+)?)/gi;
-  let m, first = 0;
+  let m,
+    first = 0;
   while ((m = re.exec(t))) {
     const v = parseFloat(m[1].replace(/,/g, ""));
     if (!(v > 0)) continue;
     const before = t.slice(Math.max(0, m.index - 34), m.index).toLowerCase();
-    if (/(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(before)) continue;
+    if (
+      /(avail|avl|limit|balance|bal\b|outstanding|min(imum)?\s*due|total\s*due|reward)[^.]{0,22}$/.test(
+        before,
+      )
+    )
+      continue;
     // Prefer a transaction-labelled amount over an earlier unlabelled value.
     if (!first) first = v;
-    const after = t.slice(m.index + m[0].length, m.index + m[0].length + 48).toLowerCase();
-    const transactionLabel = /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(before) ||
-      /^\s*(?:is\s+)?(?:spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(after);
-    if (transactionLabel) { first = v; break; }
+    const after = t
+      .slice(m.index + m[0].length, m.index + m[0].length + 48)
+      .toLowerCase();
+    const transactionLabel =
+      /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(
+        before,
+      ) ||
+      /^\s*(?:is\s+)?(?:spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(
+        after,
+      );
+    if (transactionLabel) {
+      first = v;
+      break;
+    }
   }
   out.amount = first;
-  const lm = t.match(/\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i);
+  const lm = t.match(
+    /\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i,
+  );
   if (lm) out.desc = lm[1].trim();
   const d = t.match(/\b(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})\b/);
   if (d) {
-    const dd = +d[1], mo = +d[2];
+    const dd = +d[1],
+      mo = +d[2];
     if (mo >= 1 && mo <= 12 && dd >= 1 && dd <= 31)
       out.date = d[3] + "-" + ("0" + mo).slice(-2) + "-" + ("0" + dd).slice(-2);
   }
@@ -462,7 +487,7 @@ function aiParse_(e) {
   const cats = String(e.parameter.cats || "");
   const people = String(e.parameter.people || "");
   const text = String(e.parameter.text || "").slice(0, 1500);
-  const prompt = [
+  let prompt = [
     "Today is " +
       today +
       ". Extract ONE transaction from the user's text. The text may be a bank SMS/email, or casual Hinglish typing, or voice-typed (spelling errors like 'Roarbank' for a bank name).",
@@ -487,25 +512,49 @@ function aiParse_(e) {
   ].join("\n");
   // Provider-independent personal learning context: same prompt reaches the
   // shared Groq -> Cerebras -> OpenRouter gateway. Context is advisory only.
-  const learning = grvAiLearningContext_(text);
-  if (learning && learning.enabled && learning.patterns && learning.patterns.length) {
-    prompt += "\nPERSONAL LEARNING (user-approved historical patterns; use only when relevant, never override explicit text or deterministic bank-SMS fields. For kind \"correction:FIELD\", source is the prior incorrect suggestion and target is the user-approved value for that same FIELD): " +
-      JSON.stringify(learning.patterns.map(p => ({
-        kind: p.kind, source: p.source, target: p.target,
-        confidence: p.confidence, examples: p.count
-      })));
+  const learning = grvAiLearningContext_(text, { skipFeedback: true });
+  if (
+    learning &&
+    learning.enabled &&
+    learning.patterns &&
+    learning.patterns.length
+  ) {
+    prompt +=
+      '\nPERSONAL LEARNING (user-approved historical patterns; use only when relevant, never override explicit text or deterministic bank-SMS fields. For kind "correction:FIELD", source is the prior incorrect suggestion and target is the user-approved value for that same FIELD): ' +
+      JSON.stringify(
+        learning.patterns.map((p) => ({
+          kind: p.kind,
+          source: p.source,
+          target: p.target,
+          confidence: p.confidence,
+          examples: p.count,
+        })),
+      );
   }
   const bf = aiBankFields_(text);
   let plan;
   try {
-    plan = JSON.parse(llmJson(prompt).getContent());
+    plan = JSON.parse(llmJson(prompt, { effort: "low" }).getContent());
   } catch (x) {
     plan = null;
   }
   if (!plan || plan.error) {
     // AI down/limited: a bank SMS is still parsed deterministically
-    if (!bf.sms) return jsonOut({ error: (plan && plan.error) || "AI could not parse this text" });
-    plan = { kind: "card", card: "", usedBy: "", desc: "", remarks: "", amount: 0, date: "", category: "", type: "" };
+    if (!bf.sms)
+      return jsonOut({
+        error: (plan && plan.error) || "AI could not parse this text",
+      });
+    plan = {
+      kind: "card",
+      card: "",
+      usedBy: "",
+      desc: "",
+      remarks: "",
+      amount: 0,
+      date: "",
+      category: "",
+      type: "",
+    };
   }
   if (bf.sms) {
     // hard overrides: these fields are exact in a bank SMS, never trust the model over them

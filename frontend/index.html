@@ -8382,6 +8382,23 @@
             color: rgb(244, 114, 182)
         }
 
+        /* Remaining card: stand out for readability (same idea as Sweetie Current Balance). Visual only. */
+        #expenseSection .stats .stat-split {
+            border-color: rgba(var(--sc), .6);
+            background: color-mix(in srgb, rgb(var(--sc)) 10%, var(--surface));
+            box-shadow: 0 0 0 1px rgba(var(--sc), .25), 0 8px 22px -10px rgba(var(--sc), .55)
+        }
+
+        #expenseSection .stats .stat-half:first-child .stat-label {
+            font-weight: 800;
+            letter-spacing: 1.2px
+        }
+
+        #expenseSection .stats .stat-half:first-child .stat-value {
+            font-weight: 700;
+            text-shadow: 0 0 18px rgba(var(--sc), .35)
+        }
+
         #expenseSection .stats .stat-sub {
             font-size: .72rem;
             margin-top: 3px;

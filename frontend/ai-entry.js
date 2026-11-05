@@ -305,11 +305,15 @@
     if (r.desc) r.desc = normDesc(r.desc);
     // Preserve the parser's suggestion before the user edits preview fields.
     const originalSuggestion = {
-      kind: String(r.kind || kind), card: String(r.card || ""),
-      usedBy: String(r.usedBy || ""), desc: String(r.desc || ""),
-      remarks: String(r.remarks || ""), category: String(r.category || ""),
-      amount: Number(r.amount || 0), date: String(r.date || ""),
-      type: String(r.type || "")
+      kind: String(r.kind || kind),
+      card: String(r.card || ""),
+      usedBy: String(r.usedBy || ""),
+      desc: String(r.desc || ""),
+      remarks: String(r.remarks || ""),
+      category: String(r.category || ""),
+      amount: Number(r.amount || 0),
+      date: String(r.date || ""),
+      type: String(r.type || ""),
     };
     // Remarks are a separate personal note. Never silently merge them into Description.
     const origDesc = String(r.desc || "");
@@ -362,10 +366,12 @@
       // This payload is created only on explicit preview confirmation. The backend
       // records it only after a successful transaction write/recalculation.
       // Never persist the raw source text: grvAiLearningPayload_ fingerprints it server-side.
-      window.__grvAiLearningPending = currentAiSourceText ? {
-        sourceText: String(currentAiSourceText).slice(0, 1500),
-        suggested: originalSuggestion
-      } : null;
+      window.__grvAiLearningPending = currentAiSourceText
+        ? {
+            sourceText: String(currentAiSourceText).slice(0, 1500),
+            suggested: originalSuggestion,
+          }
+        : null;
       pv.style.display = "none";
       $("aiTxt").value = "";
       switchTab(m.tab);
@@ -1164,11 +1170,17 @@
       )
         continue;
       if (!first) first = v;
-      const after = t.slice(m.index + m[0].length, m.index + m[0].length + 48).toLowerCase();
+      const after = t
+        .slice(m.index + m[0].length, m.index + m[0].length + 48)
+        .toLowerCase();
       const transactionLabelBefore =
-        /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(before);
+        /(spent|debited|txn|transaction|purchase|paid|payment|charged|towards|of)\s*(?:of\s*)?$/.test(
+          before,
+        );
       const transactionLabelAfter =
-        /^\s*(?:is\s+)?(?:spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(after);
+        /^\s*(?:is\s+)?(?:spent|debited|txn|transaction|purchase|paid|payment|charged|towards)\b/.test(
+          after,
+        );
       if (transactionLabelBefore || transactionLabelAfter) return v;
     }
     return first;
@@ -1293,12 +1305,32 @@
     const fm = t.match(
       /\bfor\s+([A-Z][A-Z0-9 &.\-*']{2,40}?)(?=\s*(?:\.|,|\s+(?:click|on|ref|via|using|pls|please)\b|$))/,
     );
-    const mm =
+    let mm =
       lm ||
       (fm && !/\b(at|towards|@)\s+[A-Za-z0-9]/i.test(t) ? fm : null) ||
       t.match(
         /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+using\b|\s+via\b|\s+from\b|\s+with\b|\s+credit\b|\s+debit\b|\s+card\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
       );
+    // Last resort only (every existing merchant pattern above found nothing): "... on 04-Nov-26 on MERCHANT."
+    // (ICICI style). Skips dates and "on <bank> card/account" so it can never replace an existing match.
+    if (!mm) {
+      const onRe =
+        /\bon\s+([A-Za-z][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+using\b|\s+via\b|\s+from\b|\s+with\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/gi;
+      let om;
+      while ((om = onRe.exec(t))) {
+        const w = om[1];
+        if (
+          /\b(card|bank|a\/c|acct?|account|credit|debit|limit|ending)\b/i.test(
+            w,
+          ) ||
+          (/^[A-Za-z]{3,9}\.?\s*\d{0,4}$/.test(w) &&
+            MON.includes(w.slice(0, 3).toLowerCase()))
+        )
+          continue;
+        mm = om;
+        break;
+      }
+    }
     // Fast local card resolution: merchant + issuer + last-four hint; no server call.
     if (!card) {
       const merchantText = String((mm && mm[1]) || t).toLowerCase();

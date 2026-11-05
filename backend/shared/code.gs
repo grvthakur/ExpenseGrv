@@ -418,12 +418,27 @@ function doGet(e) {
       for (let i = 1; i < rows.length; i++) {
         if (String(rows[i][0] || "").trim() !== id) continue;
         const oldMonth = toMonthKey(rows[i][2]);
-        expSheet.getRange(i + 1, 1, 1, 6).setValues([[id, date, month, category, description, amount]]);
+        expSheet
+          .getRange(i + 1, 1, 1, 6)
+          .setValues([[id, date, month, category, description, amount]]);
         forceText(expSheet, i + 1, 3);
         recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), oldMonth);
-        if (month !== oldMonth) recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
+        if (month !== oldMonth)
+          recalcMonth(expSheet, salSheet, getOrCreateSummarySheet(ss), month);
         const learningMeta = grvAiLearningPayload_(e);
-        if (learningMeta) grvAiLearnSaved_({ id:id, kind:"expense", category:category, description:description, amount:amount, date:date }, learningMeta.sourceHints, learningMeta.suggested);
+        if (learningMeta)
+          grvAiLearnSaved_(
+            {
+              id: id,
+              kind: "expense",
+              category: category,
+              description: description,
+              amount: amount,
+              date: date,
+            },
+            learningMeta.sourceHints,
+            learningMeta.suggested,
+          );
         return textOut("Updated");
       }
       return textOut("NotFound");
@@ -455,8 +470,19 @@ function doGet(e) {
       const learningMeta = grvAiLearningPayload_(e);
       // Only an AI-assisted, user-confirmed save can teach the personal model.
       // Manual entries remain normal finance writes and must not create learning events.
-      if (learningMeta) grvAiLearnSaved_({ id:id, kind:"expense", category:category, description:description, amount:amount, date:date },
-        learningMeta.sourceHints, learningMeta.suggested);
+      if (learningMeta)
+        grvAiLearnSaved_(
+          {
+            id: id,
+            kind: "expense",
+            category: category,
+            description: description,
+            amount: amount,
+            date: date,
+          },
+          learningMeta.sourceHints,
+          learningMeta.suggested,
+        );
       return textOut("Added");
     }
 
@@ -560,9 +586,22 @@ function doGet(e) {
         billingMonth,
       ]);
       const learningMeta = grvAiLearningPayload_(e);
-      if (learningMeta) grvAiLearnSaved_({ id:id, kind:"card", card:card, usedBy:usedBy, description:description,
-        remarks:remarks, amount:amount, date:txnDate, category:"Credit Card" },
-        learningMeta.sourceHints, learningMeta.suggested);
+      if (learningMeta)
+        grvAiLearnSaved_(
+          {
+            id: id,
+            kind: "card",
+            card: card,
+            usedBy: usedBy,
+            description: description,
+            remarks: remarks,
+            amount: amount,
+            date: txnDate,
+            category: "Credit Card",
+          },
+          learningMeta.sourceHints,
+          learningMeta.suggested,
+        );
       return textOut("Added");
     }
 
@@ -596,13 +635,23 @@ function doGet(e) {
           if (!billingMonth) return textOut("ERROR: invalid transaction date");
           cardSheet.getRange(i + 1, 9).setValue(billingMonth);
           const learningMeta = grvAiLearningPayload_(e);
-          if (learningMeta) grvAiLearnSaved_({ id:id, kind:"card", card:savedCard,
-            usedBy:String(e.parameter.usedBy || "").trim(),
-            description:String(e.parameter.description || "").trim(),
-            remarks:String(e.parameter.remarks || "").trim(),
-            amount:parseFloat(e.parameter.amount || rows[i][6] || "0") || 0,
-            date:savedTxnDate, category:"Credit Card" },
-            learningMeta.sourceHints, learningMeta.suggested);
+          if (learningMeta)
+            grvAiLearnSaved_(
+              {
+                id: id,
+                kind: "card",
+                card: savedCard,
+                usedBy: String(e.parameter.usedBy || "").trim(),
+                description: String(e.parameter.description || "").trim(),
+                remarks: String(e.parameter.remarks || "").trim(),
+                amount:
+                  parseFloat(e.parameter.amount || rows[i][6] || "0") || 0,
+                date: savedTxnDate,
+                category: "Credit Card",
+              },
+              learningMeta.sourceHints,
+              learningMeta.suggested,
+            );
           return textOut("Updated");
         }
       }
@@ -966,9 +1015,20 @@ function doGet(e) {
       sweetieSheet.appendRow([id, type, amount, 0, date, description]);
       recalcSweetieBalances(sweetieSheet);
       const learningMeta = grvAiLearningPayload_(e);
-      if (learningMeta) grvAiLearnSaved_({ id:id, kind:"sweetie", type:type, description:description,
-        amount:amount, date:date, category:"Sweetie" },
-        learningMeta.sourceHints, learningMeta.suggested);
+      if (learningMeta)
+        grvAiLearnSaved_(
+          {
+            id: id,
+            kind: "sweetie",
+            type: type,
+            description: description,
+            amount: amount,
+            date: date,
+            category: "Sweetie",
+          },
+          learningMeta.sourceHints,
+          learningMeta.suggested,
+        );
       return textOut("Added");
     }
 
@@ -984,10 +1044,25 @@ function doGet(e) {
       const rows = sweetieSheet.getDataRange().getValues();
       for (let i = 1; i < rows.length; i++) {
         if (String(rows[i][0] || "").trim() !== id) continue;
-        sweetieSheet.getRange(i + 1, 1, 1, 6).setValues([[id, type, amount, 0, date, description]]);
+        sweetieSheet
+          .getRange(i + 1, 1, 1, 6)
+          .setValues([[id, type, amount, 0, date, description]]);
         recalcSweetieBalances(sweetieSheet);
         const learningMeta = grvAiLearningPayload_(e);
-        if (learningMeta) grvAiLearnSaved_({ id:id, kind:"sweetie", type:type, description:description, amount:amount, date:date, category:"Sweetie" }, learningMeta.sourceHints, learningMeta.suggested);
+        if (learningMeta)
+          grvAiLearnSaved_(
+            {
+              id: id,
+              kind: "sweetie",
+              type: type,
+              description: description,
+              amount: amount,
+              date: date,
+              category: "Sweetie",
+            },
+            learningMeta.sourceHints,
+            learningMeta.suggested,
+          );
         return textOut("Updated");
       }
       return textOut("NotFound");
@@ -1061,7 +1136,7 @@ function extractJsonText(value) {
 }
 
 // Shared LLM provider chain (Groq -> Cerebras -> OpenRouter). Returns JSON output.
-function llmJson(prompt) {
+function llmJson(prompt, opts) {
   const P = PropertiesService.getScriptProperties();
   const post = (url, headers, body) =>
     JSON.parse(
@@ -1102,7 +1177,7 @@ function llmJson(prompt) {
         "https://api.groq.com/openai/v1/chat/completions",
         G,
         "openai/gpt-oss-120b",
-        { reasoning_effort: "medium" },
+        { reasoning_effort: (opts && opts.effort) || "medium" },
       ),
     ]);
     providers.push([
@@ -1111,7 +1186,7 @@ function llmJson(prompt) {
         "https://api.groq.com/openai/v1/chat/completions",
         G,
         "openai/gpt-oss-20b",
-        { reasoning_effort: "medium" },
+        { reasoning_effort: (opts && opts.effort) || "medium" },
       ),
     ]);
   }
