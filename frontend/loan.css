@@ -345,3 +345,401 @@
 #lnCancelEdit[hidden]{display:none!important}
 @media(max-width:900px){.ln-form-actions{grid-column:1/-1;grid-template-columns:minmax(145px,1fr) minmax(105px,auto)}}
 @media(max-width:600px){.ln-form-actions{grid-column:1/-1;grid-template-columns:minmax(0,1fr) minmax(0,.8fr)}.ln-form-actions button{padding:0 8px!important;font-size:12px}.ln-form-actions #lnS,.ln-form-actions #lnCancelEdit{min-width:0}}
+
+/* Mobile-first Loans polish (scoped to the Loans dialog; desktop remains unchanged). */
+@media (max-width: 600px) {
+  .ln-ov {
+    box-sizing: border-box;
+    align-items: flex-start;
+    justify-content: center;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ln-box {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    margin: auto 0;
+    padding: 16px 12px 14px;
+    border-radius: 16px;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .ln-title { font-size: 1.12rem; margin-right: 42px; }
+  .ln-tot { font-size: 1.42rem; line-height: 1.2; margin: 8px 0; }
+  .ln-chips { margin-bottom: 12px; }
+  .ln-chips span { font-size: .76rem; padding: 6px 10px; }
+
+  /* Two balanced columns; all native inputs are constrained to their own card. */
+  .ln-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin: 12px 0 16px;
+    width: 100%;
+    min-width: 0;
+  }
+  .ln-field {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    min-height: 96px;
+    height: auto;
+    padding: 10px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: var(--s2);
+  }
+  .ln-field span {
+    display: block;
+    min-height: 32px;
+    padding: 0;
+    font-size: .72rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .ln-form input,
+  .ln-field input,
+  .ln-field input[type="date"],
+  .ln-field input[type="number"],
+  .ln-field input[type="text"] {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 42px;
+    margin: 0;
+    padding: 8px 9px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .ln-field input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+  }
+  .ln-field input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+  .ln-field input[type="date"]::-webkit-calendar-picker-indicator { margin: 0 0 0 2px; padding: 0; }
+
+  .ln-form-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, .75fr);
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
+  }
+  .ln-form-actions #lnS,
+  .ln-form-actions #lnCancelEdit,
+  .ln-form-actions button {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 8px !important;
+    font-size: 13px;
+    white-space: nowrap !important;
+  }
+  .ln-form-actions:not(:has(#lnCancelEdit:not([hidden]))) { grid-template-columns: minmax(0, 1fr); }
+
+  /* Loan records become compact, readable cards instead of a squeezed table. */
+  .ln-tw { width: 100%; max-width: 100%; overflow: visible; border-radius: 13px; }
+  .ln-box table,
+  .ln-box tbody { display: block; width: 100% !important; min-width: 0 !important; }
+  .ln-box thead { display: none !important; }
+  .ln-box tbody tr {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 12px;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--s2) 68%, var(--surface)) !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,.10);
+  }
+  .ln-box tbody td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 5px;
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 2px 0;
+    border: 0;
+    font-size: .78rem;
+    overflow-wrap: anywhere;
+  }
+  .ln-box tbody td::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted, #9ba3b4);
+    font-size: .65rem;
+    font-weight: 850;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: .045em;
+  }
+  .ln-box tbody td .ln-cell,
+  .ln-box tbody td .ln-status { max-width: 100%; box-sizing: border-box; }
+  .ln-box tbody td.ln-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    padding-top: 5px;
+    border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  }
+  .ln-box tbody td.ln-actions::before { width: 100%; margin-bottom: 1px; }
+  .ln-actions .ln-action,
+  .ln-actions .ln-b {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 11px;
+    border-radius: 11px;
+    font-size: .78rem;
+    line-height: 1;
+  }
+  .ln-actions .ln-b { width: 40px; padding: 0; }
+  .ln-box tbody td.ln-empty { display: block; grid-column: 1 / -1; text-align: center; }
+  .ln-box tbody td.ln-empty::before { display: none; }
+  .ln-box tbody tr.ln-cleared { box-shadow: inset 3px 0 0 rgba(25,183,123,.72), 0 4px 14px rgba(25,183,123,.08); }
+}
+
+@media (max-width: 360px) {
+  .ln-form { grid-template-columns: minmax(0, 1fr); }
+  .ln-form-actions { grid-column: 1; }
+  .ln-box tbody tr { grid-template-columns: minmax(0, 1fr); }
+  .ln-box tbody td.ln-actions { grid-column: 1; }
+}
+
+/* Mobile parity with the Expenses / Add Transaction panel. */
+@media (max-width: 600px) {
+  .ln-box,
+  .ln-box * { box-sizing: border-box; }
+
+  /* Match the single-column, full-width Expenses form on phones. */
+  .ln-form {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+  .ln-field {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 12px !important;
+    gap: 8px !important;
+  }
+  .ln-field span {
+    min-height: 0 !important;
+    height: auto !important;
+    font-size: .78rem !important;
+    line-height: 1.35 !important;
+  }
+  .ln-form input,
+  .ln-field input,
+  .ln-form select,
+  .ln-form textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 46px !important;
+    margin-top: 0 !important;
+    font-size: 16px !important;
+  }
+  .ln-form-actions {
+    grid-column: 1 / -1 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    width: 100% !important;
+    gap: 9px !important;
+  }
+  .ln-form-actions button {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+    height: auto !important;
+    padding: 10px 7px !important;
+    white-space: normal !important;
+    font-size: .82rem !important;
+  }
+
+  /* Keep the loan list aligned to the same full-width content column. */
+  .ln-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    padding: 14px 12px !important;
+    border-radius: 16px !important;
+    overflow-x: hidden !important;
+  }
+  .ln-tw { width: 100% !important; max-width: 100% !important; }
+  .ln-box tbody tr {
+    width: 100% !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px 12px !important;
+    padding: 13px !important;
+    margin-bottom: 12px !important;
+    border-radius: 14px !important;
+  }
+  .ln-box tbody td {
+    min-width: 0 !important;
+    font-size: .8rem !important;
+    overflow-wrap: anywhere !important;
+  }
+  .ln-box tbody td::before { font-size: .67rem !important; }
+  .ln-box tbody td.ln-actions {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding-top: 10px !important;
+  }
+  .ln-actions .ln-action,
+  .ln-actions .ln-b {
+    min-height: 42px !important;
+    height: 42px !important;
+    font-size: .8rem !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .ln-form-actions { grid-template-columns: minmax(0, 1fr) !important; }
+  .ln-form-actions button { width: 100% !important; }
+  .ln-box tbody tr { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+/* ===== Mobile: tabular (Expenses-style) loans ===== */
+@media (max-width:760px){
+ .ln-ov .ln-box{padding:12px 8px!important}
+ .ln-ov .ln-form{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+ .ln-ov .ln-field{padding:7px 8px!important;gap:4px!important;min-height:0!important}
+ .ln-ov .ln-field span{font-size:.66rem!important;min-height:0!important}
+ .ln-ov .ln-form input{height:38px!important;font-size:16px!important}
+ .ln-ov .ln-form-actions{grid-column:1/-1!important}
+ .ln-ov .ln-form-actions button{min-height:42px!important;height:42px!important}
+ .ln-ov .ln-tw{display:block!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch;border:1px solid var(--border)!important;border-radius:12px!important}
+ .ln-ov .ln-box table{display:table!important;width:max-content!important;min-width:820px!important;table-layout:auto!important}
+ .ln-ov .ln-box thead{display:table-header-group!important;position:static!important}
+ .ln-ov .ln-box tbody{display:table-row-group!important}
+ .ln-ov .ln-box tbody tr{display:table-row!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+ .ln-ov .ln-box tbody tr:nth-child(even){background:rgba(167,139,250,.05)!important}
+ .ln-ov .ln-box th,.ln-ov .ln-box td{display:table-cell!important;width:auto!important;padding:9px 8px!important;font-size:.72rem!important;white-space:nowrap!important;vertical-align:middle!important;border-bottom:1px solid var(--border)!important}
+ .ln-ov .ln-box td::before{display:none!important}
+ .ln-ov .ln-box th{font-size:.62rem!important}
+ .ln-ov .ln-box th:first-child,.ln-ov .ln-box td:first-child{position:sticky;left:0;z-index:1;background:var(--surface)!important;box-shadow:2px 0 4px rgba(0,0,0,.18)}
+ .ln-ov .ln-box td.ln-actions{display:table-cell!important;border-top:0!important;padding-top:9px!important}
+ .ln-ov .ln-actions .ln-action,.ln-ov .ln-actions .ln-b{height:32px!important;min-height:32px!important;font-size:.68rem!important;margin-right:3px}
+ .ln-ov .ln-actions .ln-b{width:32px!important}
+ .ln-ov .ln-box td.ln-empty{display:table-cell!important;text-align:center!important}
+}
+
+/* ===== Mobile v2: no horizontal scroll, key columns, ⋮ menu ===== */
+.ln-dots{display:none}
+@media (max-width:760px){
+ .ln-ov .ln-tw{overflow:visible!important}
+ .ln-ov .ln-box table{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important}
+ .ln-ov .ln-box th:nth-child(2),.ln-ov .ln-box td:nth-child(2),
+ .ln-ov .ln-box th:nth-child(3),.ln-ov .ln-box td:nth-child(3),
+ .ln-ov .ln-box th:nth-child(4),.ln-ov .ln-box td:nth-child(4){display:none!important}
+ .ln-ov .ln-box th,.ln-ov .ln-box td{padding:9px 4px!important;font-size:.68rem!important;overflow:hidden;text-overflow:ellipsis}
+ .ln-ov .ln-box th:nth-child(1){width:25%}
+ .ln-ov .ln-box th:nth-child(5),.ln-ov .ln-box th:nth-child(6),.ln-ov .ln-box th:nth-child(7){width:17%}
+ .ln-ov .ln-box th:nth-child(8){width:17%}
+ .ln-ov .ln-box th:nth-child(9){width:34px}
+ .ln-ov .ln-box th:first-child,.ln-ov .ln-box td:first-child{position:static;box-shadow:none;background:transparent!important}
+ .ln-ov .ln-box td{text-align:right}.ln-ov .ln-box td:first-child{text-align:left}
+ .ln-ov .ln-box td .ln-status{font-size:.58rem!important;padding:2px 5px!important}
+ .ln-ov .ln-box td.ln-actions{position:relative;overflow:visible!important;text-align:center;padding:4px 0!important}
+ .ln-dots{display:inline-flex!important;align-items:center;justify-content:center;width:30px;height:32px;border:0;background:transparent;color:var(--muted);font-size:1.2rem;font-weight:700}
+ .ln-ov .ln-menu{display:none!important;position:absolute;right:30px;top:2px;z-index:20;flex-direction:column;gap:4px;padding:6px;background:var(--s2);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
+ .ln-ov .ln-actions.open .ln-menu{display:flex!important}
+ .ln-ov .ln-menu .ln-action,.ln-ov .ln-menu .ln-b{width:auto!important;min-width:96px;margin:0!important;white-space:nowrap}
+}
+
+/* ===== Mobile v3: clean flat table ===== */
+@media (max-width:760px){
+ .ln-ov .ln-tw{border-radius:12px!important;overflow:visible!important;background:var(--surface)!important}
+ .ln-ov .ln-box table{border-collapse:collapse!important;table-layout:fixed!important;width:100%!important}
+ .ln-ov .ln-box thead th{background:var(--s2)!important;color:var(--muted)!important;font-size:.56rem!important;letter-spacing:.03em!important;text-transform:uppercase;padding:9px 3px!important;text-align:right;border-bottom:1px solid var(--border)!important}
+ .ln-ov .ln-box thead th:first-child{text-align:left;padding-left:9px!important;width:23%}
+ .ln-ov .ln-box thead th:nth-child(5),.ln-ov .ln-box thead th:nth-child(6),.ln-ov .ln-box thead th:nth-child(7){width:auto}
+ .ln-ov .ln-box thead th:nth-child(8){width:34px;text-align:center;font-size:0!important}
+ .ln-ov .ln-box thead th:nth-child(8)::after{content:"Sts";font-size:.56rem}
+ .ln-ov .ln-box thead th:nth-child(9){width:30px;font-size:0!important}
+ .ln-ov .ln-box tbody td{padding:10px 3px!important;font-size:.66rem!important;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)!important;white-space:nowrap;text-overflow:clip!important}
+ .ln-ov .ln-box tbody td:first-child{padding-left:9px!important}
+ .ln-ov .ln-box tbody tr:last-child td{border-bottom:0!important}
+ .ln-ov .ln-box .ln-cell{display:block!important;min-height:0!important;padding:0!important;border:0!important;background:none!important;box-shadow:none!important;text-shadow:none!important;max-width:100%!important;font-size:.66rem!important;overflow:hidden;text-overflow:ellipsis}
+ .ln-ov .ln-box .ln-person{font-size:.74rem!important;font-weight:800}
+ .ln-ov .ln-box td[data-label="Status"]{text-align:center!important}
+ .ln-ov .ln-box .ln-status{display:inline-block!important;min-width:0!important;width:10px!important;height:10px!important;padding:0!important;border-radius:50%!important;font-size:0!important;background:currentColor!important;border:0!important;vertical-align:middle}
+}
+
+/* ===== Mobile v4 fixes ===== */
+.ln-dec{font-style:normal}
+@media (max-width:760px){
+ .ln-ov .ln-box .ln-dec{display:none}
+ .ln-ov .ln-box .ln-status{overflow:hidden!important;text-indent:200%!important;white-space:nowrap!important;line-height:10px!important}
+ .ln-ov .ln-box .ln-status-pending{background:#d99a21!important}
+ .ln-ov .ln-box .ln-status-partial{background:#3999e6!important}
+ .ln-ov .ln-box .ln-status-cleared{background:#19b77b!important}
+ .ln-ov .ln-box .ln-status-overdue{background:#ef6262!important}
+ .ln-ov .ln-box .ln-person{white-space:normal!important;word-break:break-word;line-height:1.15}
+ .ln-ov .ln-box .ln-cell:not(.ln-person){overflow:visible!important;text-overflow:clip!important}
+ .ln-ov .ln-box thead th{font-size:.54rem!important}
+ .ln-ov .ln-box thead th:nth-child(6)::after{content:"";}
+ .ln-ov .ln-menu{flex-direction:row!important;gap:5px!important;right:32px!important;top:50%!important;transform:translateY(-50%)}
+ .ln-ov .ln-menu .ln-action,.ln-ov .ln-menu .ln-b{min-width:34px!important;width:auto!important;padding:0 9px!important;height:30px!important;min-height:30px!important}
+}
+
+/* ===== Mobile v5 polish ===== */
+@media (max-width:760px){
+ .ln-ov .ln-box thead th:first-child{background:var(--s2)!important;width:26%!important}
+ .ln-ov .ln-box thead th:nth-child(8){width:42px!important}
+ .ln-ov .ln-box thead th:nth-child(8)::after{content:"Status"!important;font-size:.5rem!important}
+ .ln-ov .ln-box .ln-person{word-break:normal!important;overflow-wrap:anywhere;padding:0 0 0 2px!important;overflow:visible!important}
+ .ln-ov .ln-box tbody td{padding-top:11px!important;padding-bottom:11px!important}
+}
+@media (max-width:760px){
+ .ln-ov .ln-box thead th:nth-child(6){font-size:0!important}
+ .ln-ov .ln-box thead th:nth-child(6)::after{content:"Returned"!important;font-size:.5rem}
+}
+.ln-sub{display:none}
+@media (max-width:760px){
+ .ln-ov .ln-box .ln-sub{display:block;margin-top:3px;font-size:.54rem;font-weight:500;color:var(--muted);white-space:nowrap;letter-spacing:0}
+ .ln-ov .ln-box thead th:first-child{width:31%!important}
+ .ln-ov .ln-box thead th:nth-child(5),.ln-ov .ln-box thead th:nth-child(6),.ln-ov .ln-box thead th:nth-child(7){width:auto}
+}
+@media (max-width:760px){.ln-ov .ln-box thead th:first-child{width:25%!important}.ln-ov .ln-box .ln-sub{line-height:1.3}}
+.ln-box tbody tr.ln-noterow{display:none}
+@media (max-width:760px){
+ .ln-ov .ln-box tbody tr:nth-child(even){background:transparent!important}
+ .ln-ov .ln-box tbody tr.ln-noterow{display:table-row!important}
+ .ln-ov .ln-box tbody tr.ln-noterow td{display:table-cell!important;text-align:left!important;white-space:normal!important;padding:0 9px 10px!important;font-size:.62rem!important;color:var(--muted);font-style:italic;line-height:1.35;word-break:break-word}
+ .ln-ov .ln-box tbody tr:has(+ .ln-noterow) td{border-bottom:0!important;padding-bottom:4px!important}
+}

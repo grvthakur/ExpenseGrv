@@ -130,7 +130,7 @@
         : '<span class="ln-done">✓ Paid</span>';
       const statusClass = r.pending <= 0 ? 'ln-status-cleared' : (r.returned > 0 ? 'ln-status-partial' : (overdue ? 'ln-status-overdue' : 'ln-status-pending'));
       const statusLabel = r.pending <= 0 ? 'PAID' : (r.returned > 0 ? 'PARTIAL' : (overdue ? 'OVERDUE' : 'PENDING'));
-      return `<tr class="${[overdue ? 'ln-od' : '', r.pending <= 0 ? 'ln-cleared' : ''].filter(Boolean).join(' ')}"><td data-label="Person"><span class="ln-cell ln-person">${esc(r.person)}</span></td><td data-label="Given"><span class="ln-cell ln-date">${displayDate(r.date)}</span></td><td data-label="Expected"><span class="ln-cell ln-expected">${displayDate(r.expected)}</span></td><td data-label="Note"><span class="ln-cell ln-note-pill">${esc(r.note || '—')}</span></td><td data-label="Amount"><span class="ln-cell ln-money">${formatMoney(r.amount)}</span></td><td data-label="Returned"><span class="ln-cell ln-returned">${formatMoney(r.returned)}</span></td><td data-label="Pending"><span class="ln-cell ln-pending">${formatMoney(r.pending)}</span></td><td data-label="Status"><span class="ln-status ${statusClass}">${statusLabel}</span></td><td data-label="Actions" class="ln-actions">${actions}<button class="ln-b" data-a="edit" data-i="${esc(r.id)}" type="button" title="Edit loan" aria-label="Edit loan">✏️</button><button class="ln-b ln-delete" data-a="delete" data-i="${esc(r.id)}" type="button" title="Delete loan" aria-label="Delete loan">🗑</button></td></tr>`;
+      return `<tr class="${[overdue ? 'ln-od' : '', r.pending <= 0 ? 'ln-cleared' : ''].filter(Boolean).join(' ')}"><td data-label="Person"><span class="ln-cell ln-person">${esc(r.person)}</span><small class="ln-sub">${displayDate(r.date).replace(/-(\d\d)(\d\d)$/,'-$2')}${r.expected ? '<br>Due ' + displayDate(r.expected).replace(/-(\d\d)(\d\d)$/,'-$2') : ''}</small></td><td data-label="Given"><span class="ln-cell ln-date">${displayDate(r.date)}</span></td><td data-label="Expected"><span class="ln-cell ln-expected">${displayDate(r.expected)}</span></td><td data-label="Note"><span class="ln-cell ln-note-pill">${esc(r.note || '—')}</span></td><td data-label="Amount"><span class="ln-cell ln-money">${formatMoney(r.amount).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Returned"><span class="ln-cell ln-returned">${formatMoney(r.returned).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Pending"><span class="ln-cell ln-pending">${formatMoney(r.pending).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Status"><span class="ln-status ${statusClass}">${statusLabel}</span></td><td data-label="Actions" class="ln-actions"><button class="ln-dots" type="button" aria-label="More actions">⋮</button><span class="ln-menu">${actions}<button class="ln-b" data-a="edit" data-i="${esc(r.id)}" type="button" title="Edit loan" aria-label="Edit loan">✏️</button><button class="ln-b ln-delete" data-a="delete" data-i="${esc(r.id)}" type="button" title="Delete loan" aria-label="Delete loan">🗑</button></span></td></tr>${r.note ? `<tr class="ln-noterow"><td colspan="6">📝 ${esc(r.note)}</td></tr>` : ''}`;
     }).join('') || '<tr><td colspan="9" class="ln-empty">No loans yet</td></tr>';
   }
 
@@ -237,6 +237,13 @@
     } finally { setBusy(false); }
   });
 
+  $('lnB').addEventListener('click', (event) => {
+    const d = event.target.closest('.ln-dots');
+    const open = $('lnB').querySelector('.ln-actions.open');
+    if (open && open !== (d && d.parentNode)) open.classList.remove('open');
+    if (d) d.parentNode.classList.toggle('open');
+    else if (!event.target.closest('.ln-menu')) return;
+  });
   $('lnB').addEventListener('click', async (event) => {
     const button = event.target.closest('[data-a]');
     if (!button || busy) return;
