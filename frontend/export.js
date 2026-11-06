@@ -26,7 +26,7 @@
     const headers = keep.map((i) =>
       headCells[i].textContent.replace(/[↑↓↕]/g, "").trim(),
     );
-    const rows = [...table.querySelectorAll("tbody tr")].map((tr) => {
+    const rows = [...table.querySelectorAll("tbody tr:not(.ra-group)")].map((tr) => {
       const cells = [...tr.children];
       return keep.map((i) => (cells[i] ? cells[i].textContent.trim() : ""));
     });
