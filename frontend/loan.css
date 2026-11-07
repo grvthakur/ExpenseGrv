@@ -763,3 +763,33 @@
 .ln-ov .ln-box .ln-form .ln-field{min-height:0!important;justify-content:flex-end!important;gap:6px!important}
 .ln-ov .ln-box .ln-form .ln-form-actions{align-self:end!important}
 .ln-ov .ln-box .ln-form .ln-field>span{min-height:0!important;margin:0!important}
+
+/* ===== Desktop: long text wraps inside its column ===== */
+@media (min-width:761px){
+ .ln-ov .ln-box table{table-layout:fixed!important;width:100%!important}
+ .ln-ov .ln-box th:nth-child(1){width:15%}.ln-ov .ln-box th:nth-child(2){width:9%}.ln-ov .ln-box th:nth-child(3){width:9%}
+ .ln-ov .ln-box th:nth-child(4){width:19%}.ln-ov .ln-box th:nth-child(5),.ln-ov .ln-box th:nth-child(6),.ln-ov .ln-box th:nth-child(7){width:10%}
+ .ln-ov .ln-box th:nth-child(8){width:9%}.ln-ov .ln-box th:nth-child(9){width:15%}
+ .ln-ov .ln-box tbody td{overflow:hidden;vertical-align:middle}
+ .ln-ov .ln-box td[data-label="Person"] .ln-cell,.ln-ov .ln-box td[data-label="Note"] .ln-cell{display:-webkit-box!important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal!important;word-break:break-word;max-width:100%!important;box-sizing:border-box;line-height:1.25;height:auto}
+ .ln-ov .ln-box td .ln-cell{max-width:100%!important}
+ .ln-ov .ln-box td.ln-actions{overflow:visible;white-space:normal}
+ .ln-ov .ln-box td.ln-actions .ln-action,.ln-ov .ln-box td.ln-actions .ln-b{margin:2px}
+}
+@media (min-width:761px){
+ .ln-ov .ln-box th:nth-child(1){width:14%}.ln-ov .ln-box th:nth-child(2),.ln-ov .ln-box th:nth-child(3){width:8%}
+ .ln-ov .ln-box th:nth-child(4){width:15%}.ln-ov .ln-box th:nth-child(8){width:9%}.ln-ov .ln-box th:nth-child(9){width:18%}
+ .ln-ov .ln-box td.ln-actions .ln-menu{display:flex!important;flex-wrap:wrap;gap:4px;align-items:center}
+ .ln-ov .ln-box td.ln-actions .ln-action,.ln-ov .ln-box td.ln-actions .ln-b{margin:0!important}
+}
+@media (min-width:761px){
+ .ln-ov .ln-box td.ln-actions .ln-menu{display:contents!important}
+ .ln-ov .ln-box td.ln-actions{white-space:nowrap!important;display:table-cell!important}
+ .ln-ov .ln-box td.ln-actions .ln-action,.ln-ov .ln-box td.ln-actions .ln-b{margin:0 3px 0 0!important}
+ .ln-ov .ln-box th:nth-child(1){width:13%}.ln-ov .ln-box th:nth-child(4){width:14%}.ln-ov .ln-box th:nth-child(9){width:19%}
+}
+@media (min-width:761px){
+ .ln-ov .ln-box td[data-label="Person"] .ln-cell,.ln-ov .ln-box td[data-label="Note"] .ln-cell{padding-top:0!important;padding-bottom:0!important;min-height:0!important;box-sizing:content-box;padding-block:6px!important;max-height:2.5em;line-height:1.25}
+}
+@media (min-width:761px){.ln-ov .ln-box td[data-label="Person"] .ln-cell,.ln-ov .ln-box td[data-label="Note"] .ln-cell{max-height:2.5em!important;line-height:1.25!important;font-size:.7rem!important;overflow:hidden!important}.ln-ov .ln-box td[data-label="Note"] .ln-cell::after{content:none}}
+@media (min-width:761px){.ln-ov .ln-box td[data-label="Person"] .ln-cell,.ln-ov .ln-box td[data-label="Note"] .ln-cell{padding-block:0!important;border-block:6px solid transparent!important;background-clip:border-box}}
