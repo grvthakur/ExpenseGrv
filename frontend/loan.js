@@ -130,7 +130,7 @@
         : '<span class="ln-done">✓ Paid</span>';
       const statusClass = r.pending <= 0 ? 'ln-status-cleared' : (r.returned > 0 ? 'ln-status-partial' : (overdue ? 'ln-status-overdue' : 'ln-status-pending'));
       const statusLabel = r.pending <= 0 ? 'PAID' : (r.returned > 0 ? 'PARTIAL' : (overdue ? 'OVERDUE' : 'PENDING'));
-      return `<tr class="${[overdue ? 'ln-od' : '', r.pending <= 0 ? 'ln-cleared' : ''].filter(Boolean).join(' ')}"><td data-label="Person"><span class="ln-cell ln-person">${esc(r.person)}</span><small class="ln-sub">${displayDate(r.date).replace(/-(\d\d)(\d\d)$/,'-$2')}${r.expected ? '<br>Due ' + displayDate(r.expected).replace(/-(\d\d)(\d\d)$/,'-$2') : ''}</small></td><td data-label="Given"><span class="ln-cell ln-date">${displayDate(r.date)}</span></td><td data-label="Expected"><span class="ln-cell ln-expected">${displayDate(r.expected)}</span></td><td data-label="Note"><span class="ln-cell ln-note-pill">${esc(r.note || '—')}</span></td><td data-label="Amount"><span class="ln-cell ln-money">${formatMoney(r.amount).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Returned"><span class="ln-cell ln-returned">${formatMoney(r.returned).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Pending"><span class="ln-cell ln-pending">${formatMoney(r.pending).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Status"><span class="ln-status ${statusClass}">${statusLabel}</span></td><td data-label="Actions" class="ln-actions"><button class="ln-dots" type="button" aria-label="More actions">⋮</button><span class="ln-menu">${actions}<button class="ln-b" data-a="edit" data-i="${esc(r.id)}" type="button" title="Edit loan" aria-label="Edit loan">✏️</button><button class="ln-b ln-delete" data-a="delete" data-i="${esc(r.id)}" type="button" title="Delete loan" aria-label="Delete loan">🗑</button></span></td></tr>${r.note ? `<tr class="ln-noterow"><td colspan="6">📝 ${esc(r.note)}</td></tr>` : ''}`;
+      return `<tr class="${[overdue ? 'ln-od' : '', r.pending <= 0 ? 'ln-cleared' : ''].filter(Boolean).join(' ')}"><td data-label="Person"><span class="ln-cell ln-person">${esc(r.person)}</span><small class="ln-sub">${displayDate(r.date).replace(/-(\d\d)(\d\d)$/,'-$2')}${r.expected ? '<br><span class="ln-due">Due ' + displayDate(r.expected).replace(/-(\d\d)(\d\d)$/,'-$2') + '</span>' : ''}</small></td><td data-label="Given"><span class="ln-cell ln-date">${displayDate(r.date)}</span></td><td data-label="Expected"><span class="ln-cell ln-expected">${displayDate(r.expected)}</span></td><td data-label="Note"><span class="ln-cell ln-note-pill">${esc(r.note || '—')}</span></td><td data-label="Amount"><span class="ln-cell ln-money">${formatMoney(r.amount).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Returned"><span class="ln-cell ln-returned">${formatMoney(r.returned).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Pending"><span class="ln-cell ln-pending">${formatMoney(r.pending).replace(/\.00$/,'<i class="ln-dec">.00</i>')}</span></td><td data-label="Status"><span class="ln-status ${statusClass}">${statusLabel}</span></td><td data-label="Actions" class="ln-actions"><button class="ln-dots" type="button" aria-label="More actions">⋮</button><span class="ln-menu">${actions}<button class="ln-b" data-a="edit" data-i="${esc(r.id)}" type="button" title="Edit loan" aria-label="Edit loan">✏️</button><button class="ln-b ln-delete" data-a="delete" data-i="${esc(r.id)}" type="button" title="Delete loan" aria-label="Delete loan">🗑</button></span></td></tr>${r.note ? `<tr class="ln-noterow"><td colspan="6">📝 ${esc(r.note)}</td></tr>` : ''}`;
     }).join('') || '<tr><td colspan="9" class="ln-empty">No loans yet</td></tr>';
   }
 
@@ -341,4 +341,21 @@
   const cachedLoans = readLoanCache();
   if (cachedLoans) { loans = cachedLoans; draw(); }
   load({ silent: true });
+})();
+
+/* swipe-left on a loan row opens its action menu */
+(function () {
+  const b = document.getElementById('lnB');
+  if (!b) return;
+  let x0, y0, tr;
+  const rowOf = (t) => { let r = t.closest('tr'); if (r && r.classList.contains('ln-noterow')) r = r.previousElementSibling; return r; };
+  b.addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; tr = e.target.closest('.ln-menu,.ln-dots') ? null : rowOf(e.target); }, { passive: true });
+  b.addEventListener('touchend', (e) => {
+    if (!tr) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const a = tr.querySelector('.ln-actions'); if (!a) return;
+    b.querySelectorAll('.ln-actions.open').forEach((o) => { if (o !== a) o.classList.remove('open'); });
+    a.classList.toggle('open', dx < 0);
+  }, { passive: true });
 })();

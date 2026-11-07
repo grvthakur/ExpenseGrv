@@ -743,3 +743,11 @@
  .ln-ov .ln-box tbody tr.ln-noterow td{display:table-cell!important;text-align:left!important;white-space:normal!important;padding:0 9px 10px!important;font-size:.62rem!important;color:var(--muted);font-style:italic;line-height:1.35;word-break:break-word}
  .ln-ov .ln-box tbody tr:has(+ .ln-noterow) td{border-bottom:0!important;padding-bottom:4px!important}
 }
+@media (max-width:760px){
+ .ln-ov .ln-box tbody tr{touch-action:pan-y}
+ .ln-ov .ln-box tbody tr.ln-noterow td{color:#ffd27a!important;font-style:normal!important;font-weight:600;font-size:.66rem!important;opacity:1}
+}
+@media (max-width:760px){
+ .ln-ov .ln-box .ln-sub{font-size:.64rem!important;font-weight:600!important;color:#9fd8ff!important;line-height:1.4!important;margin-top:3px!important}
+ .ln-ov .ln-box .ln-sub .ln-due{color:#ffb86b}
+}
