@@ -123,9 +123,7 @@
     loans.forEach((r) => { if (r.pending > 0) byPerson[r.person] = (byPerson[r.person] || 0) + r.pending; });
     $('lnTot').textContent = `Pending ${formatMoney(pendingTotal)}`;
     $('lnChips').innerHTML = Object.entries(byPerson).map(([name, amount]) => `<span>${esc(name)}: ${formatMoney(amount)}</span>`).join('') || '<span>No pending loans</span>';
-    let dl = $('lnNames');
-    if (!dl) { dl = document.createElement('datalist'); dl.id = 'lnNames'; document.body.appendChild(dl); $('lnP').setAttribute('list', 'lnNames'); }
-    dl.innerHTML = [...new Set(loans.map((r) => r.person).filter(Boolean))].map((n) => `<option value="${esc(n)}">`).join('');
+    window.__lnNames = [...new Set(loans.map((r) => r.person).filter(Boolean))];
     $('lnB').innerHTML = loans.map((r, i) => ({ r, i })).sort((a, b) => String(b.r.date || '').localeCompare(String(a.r.date || '')) || b.i - a.i).map((x) => x.r).map((r) => {
       const overdue = r.pending > 0 && r.expected && r.expected < localToday();
       const actions = r.pending > 0
