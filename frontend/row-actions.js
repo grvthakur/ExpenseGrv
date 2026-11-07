@@ -134,6 +134,27 @@
     if (e.target.closest && e.target.closest("tr.ra-row")) e.preventDefault();
   });
 
+  // Swipe-left on a row opens the same action sheet (phones only).
+  // Skipped when the table scrolls sideways, so horizontal scrolling still works.
+  var sw = null;
+  function scrollsX(el) {
+    for (; el && el !== document.body; el = el.parentElement) if (el.scrollWidth > el.clientWidth + 2 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true;
+    return false;
+  }
+  document.addEventListener("touchstart", function (e) {
+    var tr = window.innerWidth <= 760 && e.target.closest && e.target.closest("tr.ra-row");
+    if (!tr || e.target.closest("button,a,input,select,textarea") || scrollsX(tr)) { sw = null; return; }
+    var cfg = TABLES.filter(function (c) { return tr.closest("#" + c.id); })[0];
+    var p = e.touches[0];
+    sw = cfg ? { tr: tr, cfg: cfg, x: p.clientX, y: p.clientY } : null;
+  }, { passive: true });
+  document.addEventListener("touchend", function (e) {
+    if (!sw) return;
+    var s = sw; sw = null;
+    var p = e.changedTouches[0], dx = p.clientX - s.x, dy = p.clientY - s.y;
+    if (dx < -50 && Math.abs(dx) > Math.abs(dy) * 1.5) openSheet(s.tr, s.cfg);
+  }, { passive: true });
+
   TABLES.forEach(function (cfg) {
     wrapDelete(cfg);
     var tb = document.querySelector("#" + cfg.id + " tbody");

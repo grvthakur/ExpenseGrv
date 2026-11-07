@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07 — Loans modal mobile/desktop UI, swipe actions, form autocomplete
+
+- Loans modal: real table on phones (no horizontal scroll, key columns only, dates and note under the name, status dot, ⋮ menu); desktop layout unchanged apart from wrapping long names/notes inside their column.
+- Loans: rows sorted newest first by given date; all form fields share one common background card (phone and desktop); borrower autocomplete.
+- Swipe-left on table rows (phones only) opens the row action sheet in Expenses, Credit Cards and Sweetie (`row-actions.js`).
+- New `frontend/autocomplete.js` (datalist suggestions for Expenses, Credit Cards and Sweetie forms), loaded from `index.html` after `summary-plus.js`.
+- `sw.js` cache bumped to `expense-tracker-v23` and `autocomplete.js` added to the app shell.
+- No backend, data or business-logic changes. `docs/` evidence files (FILE-MAP, SHA256-MANIFEST, diffs) describe the v28 reorganization snapshot and are intentionally not edited.
+
 ## 2026-11-02 — v28 repository reorganization
 
 - Reorganized frontend runtime files into `frontend/`, preserving relative script, stylesheet, manifest, icon and service-worker paths.
