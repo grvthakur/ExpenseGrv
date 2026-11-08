@@ -102,7 +102,167 @@
             .join("")
         : '<tr><td colspan="6" class="dev-empty">No runtime events recorded.</td></tr>';
   }
+  /* ── Learning fix helpers: suggest local-parser enhancement + mark Fixed ── */
+  let lastChanges = [];
+  const FIX_LS = "grvDevFixedLearning";
+  const fixKey = (x) => [x.date, x.kind, x.field, x.suggested, x.approved].join("|");
+  function fixedSet() {
+    try { return JSON.parse(localStorage.getItem(FIX_LS) || "{}"); } catch (e) { return {}; }
+  }
+  function saveFixed(s) {
+    try { localStorage.setItem(FIX_LS, JSON.stringify(s)); } catch (e) {}
+  }
+  let aiSrc = null;
+  function loadSrc() {
+    if (aiSrc !== null) return;
+    aiSrc = "";
+    fetch("ai-entry.js?t=" + Date.now()).then((r) => r.text()).then((t) => { aiSrc = t.toLowerCase(); if (lastD && lastD.events) renderLearning(lastD); }).catch(() => {});
+  }
+  function inCode(x) {
+    const ap = String(x.approved || "").trim().toLowerCase();
+    return ap.length >= 3 && aiSrc && aiSrc.includes(ap);
+  }
+  function isLearned(x) {
+    const ap = String(x.approved || "").trim().toLowerCase();
+    return (lastD.patterns || []).some(
+      (p) => String(p.target || "").trim().toLowerCase() === ap,
+    );
+  }
+  function fixCell(x, i) {
+    if (fixedSet()[fixKey(x)]) return '<span class="dev-muted">✅ FIXED</span>';
+    loadSrc();
+    const st = inCode(x)
+      ? '<span class="dev-muted" title="Approved value found in ai-entry.js (local parser)">📝 In code</span> '
+      : isLearned(x)
+      ? '<span class="dev-muted" title="Cloud AI already has this as a learned pattern">🧠 Learned</span> '
+      : '<span class="dev-muted" title="Local parser not updated yet">⚠ Open</span> ';
+    return st + `<button type="button" class="dev-btn dev-btn-ghost" data-fix-suggest="${i}"title="Suggest local-parser fix">💡 Fix</button> <button type="button" class="dev-btn dev-btn-ghost" data-fix-done="${i}"title="Mark as fixed">✓ Fixed</button>`;
+  }
+  const reEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  function buildSuggestion(x) {
+    const s = String(x.suggested || "").trim(), a = String(x.approved || "").trim();
+    const generic = x.field === "description" && /^(txn|rs\.?|inr|upi|payment|debit)/i.test(s);
+    const same = (lastChanges || []).filter((c) => c.field === x.field && c.kind === x.kind);
+    const rel = same.slice(0, 8).map((c, n) => `  ${n + 1}. AI: "${c.suggested}"  →  User approved: "${c.approved}"  (${c.date})`).join("\n");
+    return `ROLE
+You are a senior engineer working on the GRV Expense Tracker (github.com/grvthakur/ExpenseGrv, branch main). It is a vanilla JS/HTML/CSS PWA on GitHub Pages with a Google Apps Script backend. Use read-only GitHub access and return changed files; do not push.
+
+PROBLEM
+The cloud AI parser produced a wrong "${x.field}" for a "${x.kind}" entry. The user corrected it, so the LOCAL parser (frontend/ai-entry.js -> localParse and the SMS/merchant helpers) should handle this case by itself without calling the cloud AI.
+  AI suggested : "${s}"
+  User approved: "${a}"
+  Field        : ${x.field}
+  Entry type   : ${x.kind}
+  Logged at    : ${x.date}
+${generic ? `  Note         : the suggested value is a generic transaction string (TXN / amount / UPI text), not a merchant. Never accept such text as a description; extract the merchant from the SMS instead.\n` : ""}
+RELATED CORRECTIONS (same type + field, for pattern context)
+${rel || "  (none)"}
+
+TASKS
+1. First check whether ai-entry.js already handles this (search for "${a}" and for generic-text guards). If it already does, reply "ALREADY IMPLEMENTED" with the file/line and stop.
+2. Otherwise make the smallest backward-compatible change in the local parser so the approved value is produced locally. Prefer a general rule over a one-off hardcode; use an alias/rule only if the value is user-specific.
+3. Do not change financial calculations, stored data formats, existing field names or any other module.
+4. Add or run a quick node test with several realistic inputs: the case above, 3+ similar inputs, and 3+ unrelated inputs that must stay unchanged. Run node --check on every edited file.
+
+DELIVERABLE
+- A ZIP of only the changed files.
+- A short report: root cause, what changed (file + function), tests run with results, and any risk.
+- Keep it concise.`;
+  }
+  function buildAllPrompt() {
+    const open = lastChanges.filter((x) => !fixedSet()[fixKey(x)] && !inCode(x));
+    if (!open.length) return "No open corrections. Everything is marked Fixed or already found in ai-entry.js.";
+    const groups = {};
+    open.forEach((x) => ((groups[x.kind + " / " + x.field] = groups[x.kind + " / " + x.field] || []).push(x)));
+    let n = 0;
+    const body = Object.keys(groups).map((g) => `[${g}]\n` + groups[g].map((x) => `  ${++n}. AI: "${x.suggested}"  ->  Approved: "${x.approved}"  (${x.date})${isLearned(x) ? "  [cloud AI already learned]" : ""}`).join("\n")).join("\n\n");
+    return `ROLE
+You are a senior engineer on the GRV Expense Tracker (github.com/grvthakur/ExpenseGrv, branch main): vanilla JS/HTML/CSS PWA on GitHub Pages, Google Apps Script backend. Use read-only GitHub access and return changed files; do not push.
+
+GOAL
+The cloud AI parser made ${open.length} mistake(s) that the user corrected. Upgrade the LOCAL parser (frontend/ai-entry.js: localParse and the SMS/merchant/person/category helpers) so these are handled locally, without calling the cloud AI, and so SIMILAR future inputs work too. Fix ALL items below in ONE pass.
+
+OPEN CORRECTIONS (grouped by entry type / field)
+${body}
+
+IMPORTANT LIMITS
+- Raw SMS text is not stored (privacy). You only see the AI value and the approved value, so do not invent SMS formats. If an item cannot be solved reliably from this information, do not guess: list it under "NEEDS INPUT" with the exact extra example you need.
+
+METHOD
+1. For each item first check whether ai-entry.js already handles it. Mark it ALREADY IMPLEMENTED (with file/line) and skip it.
+2. Study all items together and find shared root causes (for example generic "TXN/amount/UPI" text accepted as a description, or a wrong field being reused). Fix each root cause with ONE general rule instead of one patch per item.
+3. Anything that is only the user's personal preference (a person name, a card-to-person mapping, a custom remark) is a small alias/lookup entry, kept separate from the general rules and easy to edit.
+4. Keep the change minimal and backward compatible. Do not touch financial calculations, stored data formats, existing field names or unrelated modules.
+
+TESTS (run them, do not just describe them)
+- A node test with at least one realistic input per item above, expecting the approved value.
+- 3+ similar inputs per root cause to prove the rule generalizes.
+- 5+ unrelated existing-style inputs that must produce exactly the same result as before (regression).
+- node --check on every edited file.
+
+DELIVERABLE
+- A ZIP containing only the changed files.
+- A short report with a table: item # | status (FIXED / ALREADY IMPLEMENTED / NEEDS INPUT) | rule used (general or alias) | file + function.
+- Then: root causes found, test results, risks. Keep it concise.`;
+  }
+  function addFixAllBtn() {
+    if ($("devFixAllBtn")) return;
+    const wrap = $("devLearningEventsBody")?.closest(".dev-table-wrap");
+    if (!wrap) return;
+    const b = document.createElement("button");
+    b.id = "devFixAllBtn";
+    b.type = "button";
+    b.className = "dev-btn dev-btn-primary";
+    b.style.margin = "0 0 10px";
+    b.onclick = () => showFix(buildAllPrompt());
+    wrap.parentNode.insertBefore(b, wrap);
+  }
+  function updFixAllBtn() {
+    addFixAllBtn();
+    const b = $("devFixAllBtn");
+    if (!b) return;
+    const n = lastChanges.filter((x) => !fixedSet()[fixKey(x)] && !inCode(x)).length;
+    b.textContent = `✦ Fix all open (${n}) — one prompt`;
+    b.disabled = !n;
+  }
+  function showFix(text) {
+    let p = $("devFixPanel");
+    if (!p) {
+      p = document.createElement("div");
+      p.id = "devFixPanel";
+      p.className = "dev-panel";
+      p.style.margin = "12px 0";
+      p.innerHTML =
+        '<div class="dev-panel-head"><h3>Prompt for Claude (copy &amp; send)</h3><button type="button" class="dev-btn dev-btn-ghost" id="devFixCopy">Copy</button> <button type="button" class="dev-btn dev-btn-ghost" id="devFixHide">✕</button></div><pre id="devFixText" style="white-space:pre-wrap;word-break:break-word;font-size:.75rem;margin:0"></pre>';
+      const tbl = $("devLearningEventsBody").closest(".dev-table-wrap");
+      tbl.parentNode.insertBefore(p, tbl);
+      $("devFixCopy").onclick = () => {
+        navigator.clipboard?.writeText($("devFixText").textContent);
+        $("devFixCopy").textContent = "Copied ✓";
+      };
+      $("devFixHide").onclick = () => (p.style.display = "none");
+    }
+    $("devFixText").textContent = text;
+    $("devFixCopy").textContent = "Copy";
+    p.style.display = "";
+    p.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  document.addEventListener("click", (e) => {
+    const sb = e.target.closest("[data-fix-suggest]"),
+      db = e.target.closest("[data-fix-done]");
+    if (sb) showFix(buildSuggestion(lastChanges[+sb.dataset.fixSuggest]));
+    if (db) {
+      const x = lastChanges[+db.dataset.fixDone];
+      const s = fixedSet();
+      s[fixKey(x)] = 1;
+      saveFixed(s);
+      renderLearning(lastD);
+    }
+  });
+  let lastD = {};
   function renderLearning(d) {
+    lastD = d;
+    try { if (d && !d._cached) localStorage.setItem("grvDevLearnCache", JSON.stringify(d)); } catch (e) {}
     const patterns = Array.isArray(d.patterns) ? d.patterns : [],
       events = Array.isArray(d.events) ? d.events : [];
     const pc = $("devLearningPatternCount"),
@@ -132,15 +292,17 @@
         }),
       );
     });
+    lastChanges = changes;
+    setTimeout(updFixAllBtn, 0);
     if (eb)
       eb.innerHTML = changes.length
         ? changes
             .map(
-              (x) =>
-                `<tr><td>${esc(x.date)}</td><td>${esc(x.kind)}</td><td>${esc(x.field)}</td><td>${esc(x.suggested)}</td><td><b>${esc(x.approved)}</b></td></tr>`,
+              (x, i) =>
+                `<tr${fixedSet()[fixKey(x)] ? ' style="opacity:.55"' : ""}><td>${esc(x.date)}</td><td>${esc(x.kind)}</td><td>${esc(x.field)}</td><td>${esc(x.suggested)}</td><td><b>${esc(x.approved)}</b></td><td>${fixCell(x, i)}</td></tr>`,
             )
             .join("")
-        : '<tr><td colspan="5" class="dev-empty">No user corrections recorded yet.</td></tr>';
+        : '<tr><td colspan="6" class="dev-empty">No user corrections recorded yet.</td></tr>';
   }
   async function refreshLearning() {
     try {
@@ -281,6 +443,7 @@
     }
   }
   function init() {
+    try { const c = JSON.parse(localStorage.getItem("grvDevLearnCache") || "null"); if (c) renderLearning({ ...c, _cached: 1 }); } catch (e) {}
     const t = $("tabDeveloper");
 
     if (t) {

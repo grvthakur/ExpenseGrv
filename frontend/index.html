@@ -6580,9 +6580,6 @@
             <button onclick="toggleVersionInfo()" id="versionBtn" title="Build info"
                 style="background:transparent;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;color:var(--muted);font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;">ⓘ</button>
 
-            <!-- Developer Dashboard -->
-            <button type="button" id="tabDeveloper" class="dev-toolbar-btn" title="Developer Dashboard">🛠️
-                Developer</button>
         </div>
 
     </div>
@@ -6622,6 +6619,7 @@
     <!-- ═══ EXPENSES STATS (shown when Expenses tab active) ═══ -->
     <div id="expenseSection">
         <div class="stats-tools">
+            <button type="button" id="tabDeveloper" class="amount-mask-btn dev-toolbar-btn" title="Developer Dashboard" aria-label="Developer Dashboard" style="margin-right:6px">🛠️</button>
             <button type="button" class="amount-mask-btn" id="amountMaskBtn" aria-pressed="false"
                 aria-label="Hide amounts" title="Hide / show amounts">👁️</button>
         </div>
@@ -7440,6 +7438,7 @@
             </div>
 
             <div class="dev-head-actions">
+                <button class="dev-btn dev-btn-ghost" id="devCloseBtn" type="button" aria-label="Close Developer" onclick="window.switchTab&&window.switchTab('expenses');window.scrollTo(0,0)">✕ Close</button>
                 <button class="dev-btn dev-btn-ghost" id="devRefreshBtn" type="button">
                     ↻ Refresh
                 </button>
@@ -7547,8 +7546,7 @@
                     </div>
                     <span class="dev-muted" id="devLearningPatternCount">Not loaded</span>
                 </div>
-                <p class="dev-muted">Rules learned from successfully saved and approved transactions. Read-only; no
-                    financial records are changed here.</p>
+                <p class="dev-muted">Hints sent to the cloud AI as examples when it parses a similar SMS (improves AI accuracy; the local parser does not use them). Read-only.</p>
                 <div class="dev-table-wrap">
                     <table class="dev-table dev-learning-table">
                         <thead>
@@ -7577,8 +7575,7 @@
                     </div>
                     <span class="dev-muted" id="devLearningEventCount">Not loaded</span>
                 </div>
-                <p class="dev-muted">Original AI suggestion compared with the final approved value. Only correction
-                    fields are shown.</p>
+                <p class="dev-muted">Original AI suggestion compared with the final approved value. Status: ⚠ Open = not in local parser yet · 📝 In code = approved value found in ai-entry.js · 🧠 Learned = cloud AI already remembers it · ✅ Fixed = you marked the parser fixed.</p>
                 <div class="dev-table-wrap">
                     <table class="dev-table dev-learning-table">
                         <thead>
@@ -7588,11 +7585,12 @@
                                 <th>Field</th>
                                 <th>AI suggested</th>
                                 <th>Approved value</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="devLearningEventsBody">
                             <tr>
-                                <td colspan="5" class="dev-empty">No learning history loaded.</td>
+                                <td colspan="6" class="dev-empty">No learning history loaded.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -8847,41 +8845,10 @@
         }
 
 
-        /* GRV Developer Dashboard toolbar button — isolated from existing controls */
-        .topbar .controls>#tabDeveloper {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            min-height: 36px;
-            padding: 0 12px;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            background: var(--surface);
-            color: var(--text);
-            font: inherit;
-            font-size: .78rem;
-            font-weight: 700;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: border-color .2s ease, background .2s ease;
-        }
-
-        .topbar .controls>#tabDeveloper:hover {
+        /* Developer button now lives in .stats-tools, sized by .amount-mask-btn */
+        #tabDeveloper.tab-active {
             border-color: var(--accent);
-            background: var(--s2);
-        }
-
-        @media (max-width: 600px) {
-            html body .topbar .controls>#tabDeveloper {
-                grid-column: 1 / -1 !important;
-                order: 6 !important;
-                justify-self: stretch !important;
-                width: 100% !important;
-                min-height: 40px !important;
-                padding: 0 10px !important;
-                font-size: .78rem !important;
-            }
+            color: var(--text, inherit)
         }
     </style>
     <style>

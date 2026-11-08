@@ -6,3 +6,29 @@
 
 /* System health review */
 .dev-health-summary{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.dev-health-summary b{font-size:.82rem;font-variant-numeric:tabular-nums}.dev-health-summary small{color:var(--muted);font-size:.68rem}.dev-health-state{font-size:.65rem;font-weight:850;letter-spacing:.07em;padding:5px 8px;border-radius:6px}.dev-health-state.is-good{color:#16a34a;background:#16a34a12}.dev-health-state.is-warn{color:#d97706;background:#d9770612}.dev-health-table{min-width:560px}.dev-health-table td:first-child{width:52px;text-align:center}.dev-health-mark{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:900}.dev-health-mark.ok{color:#16a34a;background:#16a34a15}.dev-health-mark.bad{color:#d97706;background:#d9770615}.dev-health-group td{background:var(--surface);font-size:.64rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding:8px 9px}
+
+/* Learning History: compact row actions */
+#devLearningEventsBody td:nth-child(1){white-space:nowrap;overflow-wrap:normal}
+#devLearningEventsBody td:nth-child(2),#devLearningEventsBody td:nth-child(3){white-space:nowrap;overflow-wrap:normal;width:1%}
+#devLearningEventsBody td:last-child{white-space:nowrap;width:1%;text-align:right}
+#devLearningEventsBody td:last-child .dev-btn{padding:3px 8px;min-height:0;height:26px;font-size:.72rem;border-radius:8px;display:inline-flex;align-items:center;gap:4px;margin-left:4px}
+
+/* Each table scrolls inside its own panel so long data never stretches the page */
+.dev-panel-grid{align-items:stretch}
+.dev-learning-review-grid{align-items:stretch}
+.dev-panel-grid>.dev-panel{display:flex;flex-direction:column;min-width:0}
+.dev-table-wrap{max-height:360px;overflow:auto;overscroll-behavior:contain}
+.dev-panel-grid>.dev-panel>.dev-table-wrap{flex:1 1 auto}
+.dev-table-wrap thead th{position:sticky;top:0;z-index:2;background:var(--surface,#111)}
+.dev-learning-table td:nth-child(2),.dev-learning-table td:nth-child(3){width:auto}
+.dev-table td{overflow-wrap:anywhere}
+.dev-learning-table td{padding-right:16px}
+.dev-table td,.dev-table th{overflow-wrap:anywhere;word-break:break-word}
+.dev-table td:not(:last-child){max-width:260px}
+
+.dev-learning-table{min-width:0!important;width:100%;table-layout:auto}
+.dev-table{max-width:100%}
+.dev-table td,.dev-table th{white-space:normal;min-width:0}
+#devLearningEventsBody td:nth-child(1),#devLearningEventsBody td:nth-child(2),#devLearningEventsBody td:nth-child(3),#devLearningEventsBody td:last-child{white-space:nowrap}
+.dev-table td *{max-width:100%}
+.dev-table th{white-space:nowrap;word-break:normal;overflow-wrap:normal}.dev-learning-table td.dev-number,.dev-learning-table td:nth-last-child(1):not(:only-child){white-space:nowrap}
