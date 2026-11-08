@@ -21,6 +21,7 @@
     ".ra-sheet h4{margin:4px 0 12px;font-size:.95rem;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
     ".ra-sheet button{display:block;width:100%;min-height:48px;margin:6px 0;border:1px solid rgba(148,163,184,.25);border-radius:12px;background:transparent;color:inherit;font:600 1rem inherit;cursor:pointer}",
     ".ra-sheet .ra-del{color:#f87171;border-color:rgba(248,113,113,.5);margin-top:16px}",
+    "@media (min-width:761px){.ra-pop-ov{background:transparent}.ra-sheet.ra-pop{left:auto;right:auto;bottom:auto;width:220px;padding:8px;border-radius:12px;border:1px solid rgba(148,163,184,.25);box-shadow:0 10px 30px rgba(0,0,0,.45);transform:scale(.96);opacity:0;transform-origin:top right;transition:opacity .12s,transform .12s}.ra-sheet.ra-pop.ra-in{transform:none;opacity:1}.ra-sheet.ra-pop h4{font-size:.78rem;margin:2px 0 6px;opacity:.8}.ra-sheet.ra-pop button{min-height:38px;margin:4px 0;font-size:.85rem;text-align:left;padding:0 12px}.ra-sheet.ra-pop .ra-del{margin-top:8px}}",
     "@media (prefers-reduced-motion:reduce){.ra-sheet,.ra-row.ra-holding td{transition:none}}"
   ].join("\n");
   document.head.appendChild(css);
@@ -50,7 +51,7 @@
         var b = document.createElement("button");
         b.type = "button"; b.className = "ra-more"; 
         b.setAttribute("aria-label", "Row actions");
-        b.addEventListener("click", function () { openSheet(tr, cfg); });
+        b.addEventListener("click", function () { openSheet(tr, cfg, b); });
         act.appendChild(b);
       }
     });
@@ -85,7 +86,7 @@
     s.sh.classList.remove("ra-in");
     setTimeout(function () { s.ov.remove(); s.sh.remove(); }, 200);
   }
-  function openSheet(tr, cfg) {
+  function openSheet(tr, cfg, anchor) {
     if (sheet) return;
     var ov = document.createElement("div"); ov.className = "ra-ov";
     var sh = document.createElement("div"); sh.className = "ra-sheet";
@@ -108,6 +109,17 @@
     ov.addEventListener("click", closeSheet);
     document.body.appendChild(ov); document.body.appendChild(sh);
     sheet = { ov: ov, sh: sh };
+    if (anchor && window.innerWidth > 760) {
+      // Laptop: small popover right next to the ⋮ button instead of a bottom sheet.
+      sh.classList.add("ra-pop"); ov.classList.add("ra-pop-ov");
+      var r = anchor.getBoundingClientRect(), w = 220, hh = sh.offsetHeight;
+      var left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8);
+      var top = r.bottom + 4;
+      if (top + hh > window.innerHeight - 8) top = Math.max(8, r.top - hh - 4);
+      sh.style.left = left + "px"; sh.style.top = top + "px";
+      var cl = function () { closeSheet(); window.removeEventListener("scroll", cl, true); window.removeEventListener("resize", cl); };
+      window.addEventListener("scroll", cl, true); window.addEventListener("resize", cl);
+    }
     requestAnimationFrame(function () { sh.classList.add("ra-in"); });
     if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) {}
   }
