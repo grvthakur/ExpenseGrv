@@ -4072,6 +4072,53 @@ async function markBillPaid(card, ids) {
   }
 }
 
+async function markBillAlreadyPaid(card, ids) {
+  // For bills the user already paid outside the app (and logged any expense themselves):
+  // flips every UNPAID row of the statement to PAID (no OWED). Creates NO expense row.
+  if (window.__grvActionBusy)
+    return toast("⏳ Another bill action is already being saved", true);
+  const rows = (ids || [])
+    .map((id) => cardTxns.find((x) => String(x.id) === String(id)))
+    .filter((t) => t && String(t.status || "").toUpperCase() === "UNPAID");
+  if (!rows.length) return toast("No UNPAID transactions found", true);
+  const total = rows.reduce((s, t) => s + (+t.amount || 0), 0);
+  if (
+    !confirm(
+      `Mark ${card} bill (${money(total)}) as ALREADY PAID?\n\n• All ${rows.length} row(s) → PAID\n• No expense entry is created.`,
+    )
+  )
+    return;
+  const prev = rows.map((t) => [t.id, t.status]);
+  rows.forEach((t) => (t.status = "PAID"));
+  saveLocal();
+  renderCards();
+  renderGrvCC();
+  renderGrvBills();
+  const send = (list, status) =>
+    list.length &&
+    sheetWrite(
+      apiUrl(
+        `action=updateCardStatusBulk&ids=${enc(list.map((t) => t.id).join(","))}&status=${enc(status)}`,
+      ),
+    );
+  send(rows, "PAID");
+  toast(`✓ ${card} marked paid`, false, 7000, {
+    label: "Undo",
+    fn: () => {
+      prev.forEach(([id, st]) => {
+        const x = cardTxns.find((z) => String(z.id) === String(id));
+        if (x) x.status = st;
+      });
+      saveLocal();
+      send(rows, "UNPAID");
+      renderCards();
+      renderGrvCC();
+      renderGrvBills();
+      toast("↩️ Bill status undone");
+    },
+  });
+}
+
 function openGrvBillPayment(
   card,
   cycleStart,
@@ -4439,7 +4486,7 @@ function renderGrvBills() {
             : c.due.days === 0
               ? "Due today"
               : `${c.due.days} days left`;
-        return `<div class="grv-bill-card ${overdue ? "grv-bill-overdue " : ""}${paid ? "grv-bill-paid" : ""}"><div class="grv-bill-head"><div><div class="grv-bill-card-name">${esc(c.cfg.card)}</div><div style="color:var(--muted);font-size:.68rem;margin-top:3px">Last statement · ${FULL_MONTHS[c.cycles.last.billingMonth]} ${c.cycles.last.billingYear}</div></div><span class="grv-bill-badge ${overdue ? "overdue" : ""}">${paid ? "All paid" : esc(dueText)}</span></div><div class="grv-bill-section"><div class="grv-bill-section-title">${isLive ? "Last statement" : statementClosed ? "Selected statement" : "Selected / open cycle"}</div><div class="grv-bill-total">${money(c.lastTotal)}</div><div class="grv-bill-unpaid">Unpaid ${money(unpaidAmt)}</div><div class="grv-bill-split"><div>My share<strong>${money(c.lastSplit.my)}</strong></div><div>Others / owed to me<strong>${money(c.lastSplit.others)}</strong></div></div><div class="grv-bill-meta"><div>Cycle<strong>${esc(formatCycleRange(c.cycles.last))}</strong></div><div>Due<strong>${c.due ? `${c.due.date.getDate()} ${MONTHS[c.due.date.getMonth()]} ${c.due.date.getFullYear()}` : "Not set"}</strong></div></div></div>${isLive ? `<div class="grv-bill-section grv-open-cycle"><div class="grv-bill-section-title">Open cycle</div><div class="grv-bill-total">${money(c.openTotal)}</div><div class="grv-bill-split"><div>My share<strong>${money(c.openSplit.my)}</strong></div><div>Others / owed to me<strong>${money(c.openSplit.others)}</strong></div></div><div class="grv-bill-meta"><div>Closes<strong>${c.cycles.open.end.getDate()} ${MONTHS[c.cycles.open.end.getMonth()]} ${c.cycles.open.end.getFullYear()}</strong></div><div>Days to close<strong>${Math.max(0, Math.ceil((c.cycles.open.end - today) / 86400000))}</strong></div></div></div>` : ""}${c.cfg.limit ? `<div class="grv-bill-util"><div class="grv-bill-util-label"><span>Card utilisation</span><b>${util.toFixed(0)}% · ${money(c.openTotal)} / ${money(c.cfg.limit)}</b></div><div class="grv-bill-util-track"><div class="grv-bill-util-bar" style="width:${util}%"></div></div></div>` : ""}${statementClosed ? `<div class="grv-statement-match"><div class="grv-actual-bill-head"><span>Actual bank bill</span><strong>${c.statementMatch != null ? money(c.statementMatch) : "Not entered"}</strong></div><div class="grv-actual-bill-row"><input type="number" min="0" step="0.01" placeholder="Enter actual bank bill" value="${c.statementMatch != null ? esc(c.statementMatch) : ""}" onchange="setGrvStatementMatch(${JSON.stringify(c.cfg.card)},this.value)"><span class="grv-match-result ${c.statementMatch == null ? "neutral" : Math.abs((+c.statementMatch || 0) - c.lastTotal) < 0.01 ? "ok" : "bad"}">${c.statementMatch == null ? "Enter bank amount" : Math.abs((+c.statementMatch || 0) - c.lastTotal) < 0.01 ? "✓ Match" : "⚠ Difference " + money((+c.statementMatch || 0) - c.lastTotal)}</span></div></div><div class="grv-bill-actions"><button class="grv-bill-mark grv-bill-pay-primary" ${!unpaidAmt || c.statementMatch == null || Math.abs((+c.statementMatch || 0) - c.lastTotal) >= 0.01 ? "disabled" : ""} onclick='openGrvBillPayment(${JSON.stringify(c.cfg.card)},${JSON.stringify(formatCycleRange(c.cycles.last).split(" – ")[0])},${JSON.stringify(formatCycleRange(c.cycles.last).split(" – ")[1])},${c.unpaid.reduce((s, t) => s + (+t.amount || 0), 0)},${c.unpaid.filter((t) => isGrvUsedBy(t.usedBy)).reduce((s, t) => s + (+t.amount || 0), 0)},${c.unpaid.filter((t) => !isGrvUsedBy(t.usedBy)).reduce((s, t) => s + (+t.amount || 0), 0)},${JSON.stringify(c.unpaid.map((t) => t.id))})'>💳 Record Bill Payment</button></div>` : `<div class="grv-statement-match grv-statement-pending"><div class="grv-actual-bill-head"><span>Actual bank bill</span><strong>Available after statement closes</strong></div><div class="grv-actual-bill-row"><span class="grv-match-result neutral">Statement closes ${c.cycles.last.end.getDate()} ${MONTHS[c.cycles.last.end.getMonth()]}</span></div></div>`}</div>`;
+        return `<div class="grv-bill-card ${overdue ? "grv-bill-overdue " : ""}${paid ? "grv-bill-paid" : ""}"><div class="grv-bill-head"><div><div class="grv-bill-card-name">${esc(c.cfg.card)}</div><div style="color:var(--muted);font-size:.68rem;margin-top:3px">Last statement · ${FULL_MONTHS[c.cycles.last.billingMonth]} ${c.cycles.last.billingYear}</div></div><span class="grv-bill-badge ${overdue ? "overdue" : ""}">${paid ? "All paid" : esc(dueText)}</span></div><div class="grv-bill-section"><div class="grv-bill-section-title">${isLive ? "Last statement" : statementClosed ? "Selected statement" : "Selected / open cycle"}</div><div class="grv-bill-total">${money(c.lastTotal)}</div><div class="grv-bill-unpaid">Unpaid ${money(unpaidAmt)}</div><div class="grv-bill-split"><div>My share<strong>${money(c.lastSplit.my)}</strong></div><div>Others / owed to me<strong>${money(c.lastSplit.others)}</strong></div></div><div class="grv-bill-meta"><div>Cycle<strong>${esc(formatCycleRange(c.cycles.last))}</strong></div><div>Due<strong>${c.due ? `${c.due.date.getDate()} ${MONTHS[c.due.date.getMonth()]} ${c.due.date.getFullYear()}` : "Not set"}</strong></div></div></div>${isLive ? `<div class="grv-bill-section grv-open-cycle"><div class="grv-bill-section-title">Open cycle</div><div class="grv-bill-total">${money(c.openTotal)}</div><div class="grv-bill-split"><div>My share<strong>${money(c.openSplit.my)}</strong></div><div>Others / owed to me<strong>${money(c.openSplit.others)}</strong></div></div><div class="grv-bill-meta"><div>Closes<strong>${c.cycles.open.end.getDate()} ${MONTHS[c.cycles.open.end.getMonth()]} ${c.cycles.open.end.getFullYear()}</strong></div><div>Days to close<strong>${Math.max(0, Math.ceil((c.cycles.open.end - today) / 86400000))}</strong></div></div></div>` : ""}${c.cfg.limit ? `<div class="grv-bill-util"><div class="grv-bill-util-label"><span>Card utilisation</span><b>${util.toFixed(0)}% · ${money(c.openTotal)} / ${money(c.cfg.limit)}</b></div><div class="grv-bill-util-track"><div class="grv-bill-util-bar" style="width:${util}%"></div></div></div>` : ""}${statementClosed ? `<div class="grv-statement-match"><div class="grv-actual-bill-head"><span>Actual bank bill</span><strong>${c.statementMatch != null ? money(c.statementMatch) : "Not entered"}</strong></div><div class="grv-actual-bill-row"><input type="number" min="0" step="0.01" placeholder="Enter actual bank bill" value="${c.statementMatch != null ? esc(c.statementMatch) : ""}" onchange="setGrvStatementMatch(${JSON.stringify(c.cfg.card)},this.value)"><span class="grv-match-result ${c.statementMatch == null ? "neutral" : Math.abs((+c.statementMatch || 0) - c.lastTotal) < 0.01 ? "ok" : "bad"}">${c.statementMatch == null ? "Enter bank amount" : Math.abs((+c.statementMatch || 0) - c.lastTotal) < 0.01 ? "✓ Match" : "⚠ Difference " + money((+c.statementMatch || 0) - c.lastTotal)}</span></div></div><div class="grv-bill-actions"><button class="grv-bill-mark grv-bill-pay-primary" ${!unpaidAmt || c.statementMatch == null || Math.abs((+c.statementMatch || 0) - c.lastTotal) >= 0.01 ? "disabled" : ""} onclick='openGrvBillPayment(${JSON.stringify(c.cfg.card)},${JSON.stringify(formatCycleRange(c.cycles.last).split(" – ")[0])},${JSON.stringify(formatCycleRange(c.cycles.last).split(" – ")[1])},${c.unpaid.reduce((s, t) => s + (+t.amount || 0), 0)},${c.unpaid.filter((t) => isGrvUsedBy(t.usedBy)).reduce((s, t) => s + (+t.amount || 0), 0)},${c.unpaid.filter((t) => !isGrvUsedBy(t.usedBy)).reduce((s, t) => s + (+t.amount || 0), 0)},${JSON.stringify(c.unpaid.map((t) => t.id))})'>💳 Record Bill Payment</button>${unpaidAmt ? `<button type="button" class="grv-bill-mark" title="Already paid outside the app: marks all rows PAID without creating an expense" onclick='markBillAlreadyPaid(${JSON.stringify(c.cfg.card)},${JSON.stringify(c.unpaid.map((t) => t.id))})'>✓ Already paid</button>` : ""}</div>` : `<div class="grv-statement-match grv-statement-pending"><div class="grv-actual-bill-head"><span>Actual bank bill</span><strong>Available after statement closes</strong></div><div class="grv-actual-bill-row"><span class="grv-match-result neutral">Statement closes ${c.cycles.last.end.getDate()} ${MONTHS[c.cycles.last.end.getMonth()]}</span></div></div>`}</div>`;
       })
       .join("") ||
     '<div class="grv-empty-analysis">No card configuration found.</div>';
