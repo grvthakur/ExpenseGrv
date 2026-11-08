@@ -158,6 +158,11 @@ ${generic ? `  Note         : the suggested value is a generic transaction strin
 RELATED CORRECTIONS (same type + field, for pattern context)
 ${rel || "  (none)"}
 
+PARSING.MD RULES (MANDATORY)
+- Read parsing.md (repo root) FIRST. It documents the current parsing behaviour and the user's intended rules.
+- Every change to ai-entry.js MUST follow those rules and MUST NOT break or contradict any of them. If a requested fix conflicts with a rule in parsing.md, do not apply it: report the conflict under "NEEDS INPUT".
+- If your change adds or alters parsing behaviour (new rule, alias, guard, priority or fallback), also update parsing.md to match, in the same style, and include the updated parsing.md in the ZIP.
+
 TASKS
 1. First check whether ai-entry.js already handles this (search for "${a}" and for generic-text guards). If it already does, reply "ALREADY IMPLEMENTED" with the file/line and stop.
 2. Otherwise make the smallest backward-compatible change in the local parser so the approved value is produced locally. Prefer a general rule over a one-off hardcode; use an alias/rule only if the value is user-specific.
@@ -165,7 +170,7 @@ TASKS
 4. Add or run a quick node test with several realistic inputs: the case above, 3+ similar inputs, and 3+ unrelated inputs that must stay unchanged. Run node --check on every edited file.
 
 DELIVERABLE
-- A ZIP of only the changed files.
+- A ZIP of only the changed files (including parsing.md if it changed).
 - A short report: root cause, what changed (file + function), tests run with results, and any risk.
 - Keep it concise.`;
   }
@@ -188,6 +193,11 @@ ${body}
 IMPORTANT LIMITS
 - Raw SMS text is not stored (privacy). You only see the AI value and the approved value, so do not invent SMS formats. If an item cannot be solved reliably from this information, do not guess: list it under "NEEDS INPUT" with the exact extra example you need.
 
+PARSING.MD RULES (MANDATORY)
+- Read parsing.md (repo root) FIRST. It documents the current parsing behaviour and the user's intended rules.
+- Every change to ai-entry.js MUST follow those rules and MUST NOT break or contradict any of them. If a requested fix conflicts with a rule in parsing.md, do not apply it: report the conflict under "NEEDS INPUT".
+- If your change adds or alters parsing behaviour (new rule, alias, guard, priority or fallback), also update parsing.md to match, in the same style, and include the updated parsing.md in the ZIP.
+
 METHOD
 1. For each item first check whether ai-entry.js already handles it. Mark it ALREADY IMPLEMENTED (with file/line) and skip it.
 2. Study all items together and find shared root causes (for example generic "TXN/amount/UPI" text accepted as a description, or a wrong field being reused). Fix each root cause with ONE general rule instead of one patch per item.
@@ -201,7 +211,7 @@ TESTS (run them, do not just describe them)
 - node --check on every edited file.
 
 DELIVERABLE
-- A ZIP containing only the changed files.
+- A ZIP containing only the changed files (including parsing.md if it changed).
 - A short report with a table: item # | status (FIXED / ALREADY IMPLEMENTED / NEEDS INPUT) | rule used (general or alias) | file + function.
 - Then: root causes found, test results, risks. Keep it concise.`;
   }
