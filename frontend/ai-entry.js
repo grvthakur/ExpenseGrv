@@ -1522,11 +1522,11 @@
       /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(
         t,
       ));
-  // App is debit-only: a bank SMS that is a credit/refund or only an OTP for a pending txn is never a transaction.
+  // App is debit-only: a bank SMS that is a credit/refund is never a transaction. OTPs with transaction details are supported.
   const isNonDebitSms = (t) =>
     isBankSms(t) &&
     ((!/\b(spent|debited|purchase[d]?|paid|charged|withdrawn|used)\b/i.test(t) &&
-      /\b(credited|refund(?:ed)?|reversed|reversal|received|otp|one[-\s]?time\s+password)\b/i.test(
+      /\b(credited|refund(?:ed)?|reversed|reversal|received)\b/i.test(
         t,
       )) ||
       // UPI / VPA / IMPS / NEFT account debits are not card transactions (ignored).
@@ -2430,7 +2430,7 @@
       showAiError(
         "Not a debit",
         new Error(
-          "Credit, refund, OTP or UPI message ignored. Only card debit transactions are supported.",
+          "Credit, refund or UPI message ignored. Only card debit transactions are supported.",
         ),
       );
       return;

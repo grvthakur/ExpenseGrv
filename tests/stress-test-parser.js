@@ -363,9 +363,18 @@ Thank you for banking with us.
   // --- Group 6: Negative Tests (Must NOT parse as debit) ---
   console.log("\n--- 6. Negative Tests (Rejections & Non-Debit Safety) ---");
 
-  // OTP SMS must not parse
+  // OTP SMS with transaction details is now parsed as a card transaction
   const otpSms = await AI.smsParse("Your OTP is 987654 for transaction of Rs 1,500.00 at AMAZON on card ending 7008. Valid for 10 mins. Do not share.");
-  check("OTP message returns null", { res: otpSms }, { res: null });
+  check("OTP message with transaction details is parsed as card transaction", otpSms, {
+    amount: 1500,
+    desc: "AMAZON",
+    card: "ICICI-AMAZON PAY",
+    kind: "card"
+  });
+
+  // Plain non-transaction OTP (no amount/card) must return null
+  const plainOtp = await AI.smsParse("Your OTP is 123456. Do not share.");
+  check("Plain OTP message without amount returns null", { res: plainOtp }, { res: null });
 
   // isNonDebitSms checks
   const nonDebit1 = AI.isNonDebitSms("Rs. 10,000.00 credited to your account 1234 on 05-Nov-26.");
