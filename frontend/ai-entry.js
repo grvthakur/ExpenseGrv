@@ -419,7 +419,11 @@
     const lab = { who: "", desc: "", rem: "" };
     const rest = [];
     lines.forEach((l) => {
-      const m = l.match(LB);
+      // Labels also work with only a space ("Remarks paid in sbi", "Desc amazon pay") - short lines only.
+      const m =
+        l.match(LB) ||
+        (l.length <= 80 &&
+          l.match(/^(used\s*by|usedby|desc(?:ription)?|remarks?)\s+(.+)$/i));
       if (!m) return rest.push(l);
       const k = m[1].toLowerCase().replace(/\s+/g, "");
       const v = m[2].trim();
@@ -823,7 +827,7 @@
         lines.slice(usedByIndex + 1).forEach((line) => {
           if (isBankNoiseLine(line)) return;
           const remarkMatch = line.match(
-            /^(?:remarks?|note)\s*[:=\-]\s*(.+)$/i,
+            /^(?:remarks?|note)(?:\s*[:=\-]\s*|\s+)(.+)$/i,
           );
           if (remarkMatch) {
             explicitRemarks.push(remarkMatch[1].trim());
@@ -903,7 +907,7 @@
     }
 
     // Explicit shorthand: "Grv Chaypatti and Pyaj" means person=GRV,
-    // remarks="CHAYPATTI - PYAJ". Never infer the person's name from the whole phrase.
+    // item="CHAYPATTI - PYAJ" (goes to Description, see parsing.md §9). Never infer the person's name from the whole phrase.
     const hintParts = line.match(
       /^([A-Za-z][A-Za-z'-]*)(?:\s*[,;]\s*|\s+)(.+)$/,
     );
@@ -954,14 +958,16 @@
             .trim()
             .replace(/^(?:-\s*)|(?:\s*-)$/g, "")
             .toUpperCase();
-        // Words before a payment-status keyword = product/description hint;
-        // keyword onwards ("already paid", "pending") = Remarks.
+        // parsing.md contract: words before a payment-status keyword = product/description
+        // hint (-> Description as "MERCHANT - ITEM"); keyword onwards ("already paid",
+        // "pending") = Remarks. The item must NEVER land in Remarks.
         const remark = tidyH(ki >= 0 ? toks.slice(0, ki) : toks);
         const remarks = ki >= 0 ? tidyH(toks.slice(ki)) : "";
         return {
           card: "",
           who: cap(whoToken),
-          rem: remark,
+          rem: "",
+          item: remark,
           remarks,
           date: hDate,
           sure: true,
@@ -1065,7 +1071,11 @@
             .filter((w) => !FILL.test(w))
             .join(" ")
         : "";
-    if (extra.length) rem = (extra.join(" ") + " " + rem).trim();
+    // Contract (parsing.md §9): words typed after the name with NO payment-status keyword are the
+    // item/purpose -> they go to Description ("AMAZON - DAHI DHANIYA"), never to Remarks.
+    // Only the payment-status part ("already paid in SBI") is a Remark.
+    const item = extra.join(" ").replace(/\s+/g, " ").trim().toUpperCase();
+    if (!item && extra.length) rem = (extra.join(" ") + " " + rem).trim();
     rem = rem.toUpperCase();
     const nameCase = (w) =>
       ppl.has(w) || /^(grv|me|sbi)$/.test(w)
@@ -1082,7 +1092,9 @@
       bareName ||
       ppl.has(who.toLowerCase()) ||
       REL.test(who.toLowerCase());
-    return { card, who, rem, date, sure, line };
+    return item
+      ? { card, who, rem, remarks: rem, item, date, sure, line }
+      : { card, who, rem, date, sure, line };
   }
   // Deterministic personal shorthand: "Grv, flpkrt axs, meethae from swiggy".
   // Returns null unless the line has a recognizable person and enough structure.

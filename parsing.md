@@ -318,6 +318,28 @@ Item/purpose words such as `TOOTHPASTE` belong in Description, not Remarks. Paym
 
 The heuristic hint functions have multiple formats and branches. Their outputs must be tested against the field contract above; the comments alone are not proof that every shorthand shape behaves identically.
 
+
+### Regression contract: shorthand line after the SMS (added after the "Grv , Dahi Dhaniya" bug)
+User line = `<Person> [, ] <words> [payment-status words]`. Parsed as:
+- Person -> Used By
+- words BEFORE a payment-status keyword (KWX) -> item -> Description as `MERCHANT - ITEM` (never Remarks)
+- payment-status words onward -> Remarks
+
+| Input line after the bank SMS | Description | Remarks | Used By |
+|---|---|---|---|
+| `Grv , Dahi Dhaniya` | `AMAZON - DAHI DHANIYA` | (empty) | GRV |
+| `Tanya shoes` | `AMAZON - SHOES` | (empty) | Tanya |
+| `Grv already paid in SBI` | `AMAZON` | `ALREADY PAID IN SBI` | GRV |
+| `Grv dahi dhaniya already paid in SBI` | `AMAZON - DAHI DHANIYA` | `ALREADY PAID IN SBI` | GRV |
+
+Implementation: `userLine()` shorthand branch returns `item` (not `rem`) and `hintToRemarks()` sends `item` to `appendDescriptionHint()`. Any change here must keep this table passing.
+
+### Explicit labels (always win over guessing)
+Labels `Used by`, `Description`/`Desc`/`Merchant`, `Remarks`/`Remark`/`Note` work with `:`, `-`, `=` or just a space: `Remarks: paid in sbi`, `Remarks - paid in sbi`, `Remarks-paid in sbi`, `Remarks paid in sbi`. A labelled Description replaces the SMS merchant; a labelled Remarks is the only text put in Remarks.
+
+### CC Master limit
+`Used limit` = sum of all `UNPAID` rows of the card (any month). Paid/Owed/Settled rows do not consume limit.
+
 ## 10. AI fallback — frontend to Apps Script
 
 When deterministic parsing does not produce a sufficiently complete result, the frontend calls:
