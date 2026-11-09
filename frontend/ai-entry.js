@@ -227,13 +227,11 @@
     String(x || "")
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
-  const aLoad = () => {
-    try {
-      return JSON.parse(localStorage.getItem(ALIAS_KEY) || "{}") || {};
-    } catch (_) {
-      return {};
-    }
-  };
+  // Aliases are DISABLED: one transaction's edit must never leak into the next one.
+  try {
+    localStorage.removeItem(ALIAS_KEY); // purge old polluted aliases
+  } catch (_) {}
+  const aLoad = () => ({});
   const BRANDS = [
     [/irctc|indian\s*rail|iil\b/i, "IRCTC"],
     [/amazon|amzn/i, "AMAZON"],
@@ -280,21 +278,8 @@
       }
     return L[aKey(n)] || n;
   }
-  function learnAlias(orig, now) {
-    try {
-      const a = String(orig || "")
-          .trim()
-          .toUpperCase(),
-        b = String(now || "")
-          .trim()
-          .toUpperCase();
-      if (!a || !b || a === b || a.length > 40 || b.length > 40) return;
-      const L = aLoad();
-      L[aKey(a)] = b;
-      const ks = Object.keys(L);
-      if (ks.length > 300) delete L[ks[0]];
-      localStorage.setItem(ALIAS_KEY, JSON.stringify(L));
-    } catch (_) {}
+  function learnAlias() {
+    /* disabled: edits stay transaction-specific */
   }
   // Keep the original transaction input only in memory until the user confirms.
   // It is sent transiently with the save request; the backend stores only a safe fingerprint.
@@ -2598,6 +2583,35 @@
       // Never keep SMS boilerplate ("OTPs are SECRET") as a remark/description.
       if (r.remarks && BOILER.test(r.remarks)) r.remarks = "";
       if (r.desc && BOILER.test(r.desc)) r.desc = "";
+      // Deterministic guard: for a real bank SMS the amount/date/merchant come from the raw text, never from stale or hallucinated AI output.
+      if (isBankSms(text)) {
+        try {
+          const ulg = userLine(text);
+          const bodyG =
+            ulg && ulg.body
+              ? ulg.body
+              : (lab ? lab.body : text)
+                  .split(/\n+/)
+                  .filter((x) => !(ulg && (ulg.lines || [ulg.line]).includes(x.trim())))
+                  .join("\n");
+          const g = await smsParse(bodyG);
+          if (g && g.amount > 0) {
+            r.kind = "card";
+            r.amount = g.amount;
+            if (!(ul && ul.date)) r.date = g.date;
+            if (g.card && !r.card) r.card = g.card;
+            if (g.desc) {
+              const have = String(r.desc || "").toUpperCase();
+              const head = g.desc.toUpperCase().split(/\s+/)[0];
+              if (!have.includes(head)) {
+                r.desc = g.desc;
+                if (ul && ul.item) appendDescriptionHint(r, ul.item);
+                if (lab && lab.desc) appendDescriptionHint(r, lab.desc);
+              }
+            }
+          }
+        } catch (_) {}
+      }
       lastD4 = last4Of(text);
       applyLab(r); // explicit labels always win
       // Client-side guards (work even if the server is an older version)
