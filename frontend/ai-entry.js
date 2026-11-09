@@ -335,6 +335,7 @@
         if (typeof cancelEditSweetie === "function") cancelEditSweetie();
         if (typeof cancelEditCard === "function") cancelEditCard();
         if (typeof cancelEditExpense === "function") cancelEditExpense();
+        if (typeof window !== "undefined" && window.__asm) window.__asm.cancelAllForms();
       } catch (_) {}
       const vals = {};
       pv.querySelectorAll("[data-k]").forEach(

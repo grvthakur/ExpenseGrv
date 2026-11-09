@@ -17,8 +17,8 @@ const FRONTEND_ROOT = path.join(ROOT, "frontend");
 const BACKEND_ROOT = path.join(ROOT, "backend");
 const read = (f) => {
   const candidates = [
-    path.join(ROOT, f),
     path.join(FRONTEND_ROOT, f),
+    path.join(ROOT, f),
     path.join(BACKEND_ROOT, "expense-sheet", f),
     path.join(BACKEND_ROOT, "ai-sheet", f),
     path.join(BACKEND_ROOT, "shared", f)

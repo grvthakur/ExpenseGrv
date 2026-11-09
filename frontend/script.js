@@ -31,6 +31,13 @@ function getExpenseCategoryTone(category) {
   return EXPENSE_CATEGORY_TONES[key] ?? 8;
 }
 
+function normalizeCardName(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function getCardTone(card) {
   const value = String(card || "—")
     .trim()
@@ -1087,6 +1094,7 @@ function sortExpenses(col) {
 function startEditExpense(id) {
   const exp = expenses.find((e) => e.id === id);
   if (!exp) return;
+  if (typeof window !== 'undefined' && window.__asm) window.__asm.startEdit('expense', id, exp);
   editingExpId = id;
   document.getElementById("expenseDate").value = exp.date;
   document.getElementById("expenseCategory").value = exp.category;
@@ -1114,6 +1122,7 @@ function cancelEditExpense() {
 }
 
 function addEntry() {
+  if (typeof window !== 'undefined' && window.__asm && !window.__asm.canSubmit()) return;
   if (window.__addBusy) return;
   window.__addBusy = true;
   setTimeout(() => (window.__addBusy = false), 1500);
@@ -1399,18 +1408,34 @@ function renderCards() {
     const cfg = cardConfig.find((c) => c.card === cardName);
     const lim = cfg ? cfg.limit : 0;
     const maxUse = lim ? Math.round(lim * 0.3) : 0;
-    const rem = lim ? lim - val.spent : 0;
-    const pct = lim ? Math.min(100, Math.round((val.spent / maxUse) * 100)) : 0;
-    const over = lim && val.spent > maxUse;
+
+    // Real Available Limit calculation (matching CC Master):
+    // Paid bills free up the credit limit. Used limit = all UNPAID rows for this card.
+    const cardNorm = normalizeCardName(cardName);
+    const totalUnpaid = cardTxns
+      .filter(
+        (t) =>
+          normalizeCardName(t.card) === cardNorm &&
+          String(t.status || "").toUpperCase() === "UNPAID"
+      )
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    const rem = lim ? Math.max(0, lim - totalUnpaid) : 0;
+    const pct = lim ? Math.min(100, Math.round((totalUnpaid / maxUse) * 100)) : 0;
+    const over = lim && totalUnpaid > maxUse;
+    const remFmt = rem.toLocaleString("en-IN", {
+      minimumFractionDigits: rem % 1 !== 0 ? 2 : 0,
+      maximumFractionDigits: 2,
+    });
 
     cardSummaryEl.innerHTML += `
       <div class="card-summary-item">
         <div class="cs-name">${cardName}</div>
         <div class="cs-row"><span>Spent</span><span class="c-red">₹${val.spent.toFixed(2)}</span></div>
-        ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString()}</span></div>` : ""}
-        ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${rem.toLocaleString()}</span></div>` : ""}
+        ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString("en-IN")}</span></div>` : ""}
+        ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${remFmt}</span></div>` : ""}
         ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : ""}" style="width:${pct}%"></div></div>` : ""}
-        <div class="cs-row"><span>Unpaid</span><span class="c-pink">₹${val.unpaid.toFixed(2)}</span></div>
+        <div class="cs-row"><span>Unpaid</span><span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></div>
       </div>`;
   });
 
@@ -1809,6 +1834,7 @@ function sortCards(col) {
 function startEditCard(id) {
   const t = cardTxns.find((t) => t.id === id);
   if (!t) return;
+  if (typeof window !== 'undefined' && window.__asm) window.__asm.startEdit('card', id, t);
   editingCardId = id;
   document.getElementById("cardSelect").value = t.card;
   document.getElementById("cardUsedBy").value = t.usedBy || "";
@@ -1841,6 +1867,7 @@ function cancelEditCard() {
 }
 
 function addCardEntry() {
+  if (typeof window !== 'undefined' && window.__asm && !window.__asm.canSubmit()) return;
   if (window.__addBusy) return;
   window.__addBusy = true;
   setTimeout(() => (window.__addBusy = false), 1500);
@@ -4964,6 +4991,7 @@ function sortSweetie(col) {
 function startEditSweetie(id) {
   const t = sweetieTxns.find((t) => t.id === id);
   if (!t) return;
+  if (typeof window !== 'undefined' && window.__asm) window.__asm.startEdit('sweetie', id, t);
   editingSweetieId = id;
   document.getElementById("sweetieType").value = t.type;
   document.getElementById("sweetieAmount").value = Math.abs(t.amount);
@@ -5012,6 +5040,7 @@ function cloneSweetie(id) {
 }
 
 function addSweetieEntry() {
+  if (typeof window !== 'undefined' && window.__asm && !window.__asm.canSubmit()) return;
   if (window.__addBusy) return;
   window.__addBusy = true;
   setTimeout(() => (window.__addBusy = false), 1500);
