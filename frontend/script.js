@@ -2303,17 +2303,14 @@ function renderCCMaster(rows) {
     const configuredName = normalizeCardName(cfg.card);
 
     // Transaction rows use the Manage Cards name, not the shorter CC Master label.
+    // Used limit = money still owed to the bank = every UNPAID row of this card (any month).
+    // Marking a bill PAID (Record Bill Payment / Already paid) therefore frees the limit again.
     const used = cardTxns
-      .filter((t) => {
-        if (normalizeCardName(t.card) !== configuredName || !t.txnDate) {
-          return false;
-        }
-
-        const d = new Date(t.txnDate);
-        return months.some(
-          ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
-        );
-      })
+      .filter(
+        (t) =>
+          normalizeCardName(t.card) === configuredName &&
+          String(t.status || "").toUpperCase() === "UNPAID",
+      )
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
     const limit = Number(cfg.limit) || 0;
@@ -2390,7 +2387,7 @@ function renderCCMaster(rows) {
               <div style="width:${info.pct}%"></div>
             </div>
             <div class="cc-limit-footnote">
-              Usage: ${info.pct.toFixed(1)}% · Based on the selected Credit Cards month range
+              Usage: ${info.pct.toFixed(1)}% · Based on all UNPAID transactions (paid bills free the limit)
             </div>
           `
             : `
