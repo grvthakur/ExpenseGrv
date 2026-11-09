@@ -333,6 +333,8 @@
       // An AI add must never become an update of a leftover edit.
       try {
         if (typeof cancelEditSweetie === "function") cancelEditSweetie();
+        if (typeof cancelEditCard === "function") cancelEditCard();
+        if (typeof cancelEditExpense === "function") cancelEditExpense();
       } catch (_) {}
       const vals = {};
       pv.querySelectorAll("[data-k]").forEach(
@@ -583,7 +585,7 @@
       .replace(/\s+/g, " ")
       .trim()
       .toUpperCase()
-      .replace(/\s+IN$/, "");
+      .replace(/\s+IN(?:\s+[A-Z0-9])?$/, "").replace(/\s+IN$/, "");
   const standalone = (t) =>
     t
       .split(/\n+/)
@@ -1320,7 +1322,7 @@
   // Instant bank SMS / email parser (no AI): amount, card last-4/bank, date, merchant.
   async function smsParse(t) {
     if (t.length > 3000) return null;
-    if (!isBankSms(t)) return null;
+    if (!isBankSms(t) || isNonDebitSms(t)) return null;
     const am = bankAmount(t);
     if (!am) return null;
     const amount = am;
@@ -1370,9 +1372,13 @@
         "indusind",
         "rbl",
         "bob",
-      ].find((b) => new RegExp("\\b" + b, "i").test(t));
-      const c = bank
-        ? cardConfig.filter((x) => x.card.toLowerCase().startsWith(bank))
+        "bank of baroda",
+        "baroda",
+      ].find((b) => new RegExp("\\b" + b.replace(/\s+/g, "\\s+"), "i").test(t));
+      const bKey =
+        bank && /^(bank of baroda|baroda)$/i.test(bank) ? "bob" : bank;
+      const c = bKey
+        ? cardConfig.filter((x) => x.card.toLowerCase().startsWith(bKey))
         : [];
       if (c.length === 1) card = c[0].card;
     }
@@ -1382,11 +1388,15 @@
     const fm = t.match(
       /\bfor\s+([A-Z][A-Z0-9 &.\-*']{2,40}?)(?=\s*(?:\.|,|\s+(?:click|on|ref|via|using|pls|please)\b|$))/,
     );
+    const toM = t.match(
+      /\b(?:for\s+payment\s+to|payment\s+to|paid\s+to)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+using\b|\s+via\b|\s+from\b|\s+with\b|\s+credit\b|\s+debit\b|\s+card\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
+    );
     let mm =
       lm ||
-      (fm && !/\b(at|towards|@)\s+[A-Za-z0-9]/i.test(t) ? fm : null) ||
+      toM ||
+      (fm && !/(?:\b(?:at|towards)|@)\s+[A-Za-z0-9]/i.test(t) ? fm : null) ||
       t.match(
-        /\b(?:at|towards|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+using\b|\s+via\b|\s+from\b|\s+with\b|\s+credit\b|\s+debit\b|\s+card\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
+        /(?:\b(?:at|towards)|@)\s+([A-Za-z0-9][A-Za-z0-9 &.\-*'\/]{1,40}?)(?=\s*(?:\.\s|\.$|,|\s+on\b|\s+using\b|\s+via\b|\s+from\b|\s+with\b|\s+credit\b|\s+debit\b|\s+card\b|\s+avl|\s+available|\s+ref|\s+upi|\s+if\b|\s+to dispute|\s+not you|\s+call|\s+limit|$))/i,
       );
     // Last resort only (every existing merchant pattern above found nothing): "... on 04-Nov-26 on MERCHANT."
     // (ICICI style). Skips dates and "on <bank> card/account" so it can never replace an existing match.
@@ -1506,7 +1516,7 @@
   // Strong bank-SMS signal: money amount + (txn word OR card last-4 OR merchant label). Beats every "question" guess.
   const isBankSms = (t) =>
     /(?:\b(?:inr|rs\.?)|₹)\s*[\d,]+/i.test(t) &&
-    (/\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited)\b/i.test(
+    (/\b(spent|debited|purchase|txn|transaction|paid|payment|charged|merchant|towards|credited|used)\b/i.test(
       t,
     ) ||
       /\b(?:card|a\/c|acct?)\b[^\d]{0,14}[x*]*\d{4}\b|\b[x*]{2,}\s*\d{4}\b/i.test(
@@ -1515,7 +1525,7 @@
   // App is debit-only: a bank SMS that is a credit/refund or only an OTP for a pending txn is never a transaction.
   const isNonDebitSms = (t) =>
     isBankSms(t) &&
-    ((!/\b(spent|debited|purchase[d]?|paid|charged|withdrawn)\b/i.test(t) &&
+    ((!/\b(spent|debited|purchase[d]?|paid|charged|withdrawn|used)\b/i.test(t) &&
       /\b(credited|refund(?:ed)?|reversed|reversal|received|otp|one[-\s]?time\s+password)\b/i.test(
         t,
       )) ||
