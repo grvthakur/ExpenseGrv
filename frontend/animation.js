@@ -165,25 +165,31 @@
   }
 
   /* ════════════════════════════════════════════════════════════════════
-       4. TRANSACTION LIST — staggered row entrance on every render
-       (render() / renderCards() / renderSweetie() always fully rebuild
-       their <tbody>, so re-animating all current rows on each call
-       correctly covers add / delete / filter / sort.)
+       4. TRANSACTION LIST — staggered row entrance on initial load only
+       (Prevents re-animating all rows on routine background sync/add/delete/edit
+       which was causing the entire table to flicker and blink.)
        ════════════════════════════════════════════════════════════════════ */
 
-  function animateTbodyRows(tbody) {
+  const _tableAnimatedOnce = { expenses: false, cards: false, sweetie: false };
+
+  function animateTbodyRows(tbody, key) {
     if (!tbody || REDUCE_MOTION) return;
+    if (key && _tableAnimatedOnce[key]) return;
+    if (key) _tableAnimatedOnce[key] = true;
+
     Array.from(tbody.rows).forEach((row, i) => {
       row.classList.remove("row-anim-in");
-      row.style.setProperty("--row-delay", `${Math.min(i * 20, 300)}ms`);
-      void row.offsetWidth; // force reflow so the animation restarts
+      row.style.setProperty("--row-delay", `${Math.min(i * 20, 200)}ms`);
       row.classList.add("row-anim-in");
     });
   }
 
-  // Smoothly fill the credit-card usage bars from 0 → target width
+  // Smoothly fill the credit-card usage bars without collapsing to 0% on routine renders
+  let _barsAnimatedOnce = false;
   function animateProgressBars(container) {
     if (!container || REDUCE_MOTION) return;
+    if (_barsAnimatedOnce) return;
+    _barsAnimatedOnce = true;
     container.querySelectorAll(".cs-bar").forEach((bar) => {
       const target = bar.style.width || "0%";
       bar.style.width = "0%";
@@ -196,17 +202,17 @@
 
   function setupListAnimations() {
     wrapGlobal("render", () => {
-      nextFrame(() => animateTbodyRows(document.getElementById("tableBody")));
+      nextFrame(() => animateTbodyRows(document.getElementById("tableBody"), "expenses"));
     });
     wrapGlobal("renderCards", () => {
       nextFrame(() => {
-        animateTbodyRows(document.getElementById("cardTableBody"));
+        animateTbodyRows(document.getElementById("cardTableBody"), "cards");
         animateProgressBars(document.getElementById("cardSummaryGrid"));
       });
     });
     wrapGlobal("renderSweetie", () => {
       nextFrame(() =>
-        animateTbodyRows(document.getElementById("sweetieTableBody")),
+        animateTbodyRows(document.getElementById("sweetieTableBody"), "sweetie"),
       );
     });
   }

@@ -1,0 +1,32 @@
+/* tables-enhanced.css v3 — presentation-only, tiny & scoped. Delete the <link> to revert.
+   Desktop (>=1280px): Billing Month gets its own width (was squeezed to max-width:80px so the
+   text spilled under the action button). Narrower screens + phones: layout NOT changed.
+   Touch devices: no sticky row-hover highlight after a tap. */
+
+@media (min-width: 1280px) {
+  html body #cardTable th:nth-child(8),
+  html body #cardTable td:nth-child(8) {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+  }
+  html body #cardTable th:nth-child(9),
+  html body #cardTable td:nth-child(9) {
+    padding-left: 10px !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (hover: none) {
+  html body #expenseSection table tbody tr:hover td,
+  html body #cardSection table tbody tr:hover td,
+  html body #grvCCSection table tbody tr:hover td,
+  html body #sweetieSection table tbody tr:hover td {
+    background: transparent;
+  }
+  html body #cardSection table tbody tr.grv-unpaid-row:hover td,
+  html body #grvCCSection table tbody tr.grv-unpaid-row:hover td {
+    background: rgba(239, 68, 68, 0.055);
+  }
+}
