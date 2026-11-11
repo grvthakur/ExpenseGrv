@@ -1,4 +1,4 @@
-/* tables-enhanced.css v6 — presentation-only, tiny & scoped. Delete the <link> to revert.
+/* tables-enhanced.css v8 — presentation-only, tiny & scoped. Delete the <link> to revert.
    Desktop (>=1280px): Billing Month gets its own width (was squeezed to max-width:80px so the
    text spilled under the action button). Narrower screens + phones: layout NOT changed.
    Touch devices: no sticky row-hover highlight after a tap. */
@@ -56,4 +56,33 @@
   html body .person-tone-7, html body .grv-card-tone-7 { --pc: 20,184,166; --pt: 94,234,212; }
   html body .person-tone-8, html body .grv-card-tone-8 { --pc: 244,63,94; --pt: 253,164,175; }
   html body .person-tone-9, html body .grv-card-tone-9 { --pc: 148,163,184; --pt: 203,213,225; }
+}
+
+/* ── v8: softer data colours (DESKTOP ONLY; phones untouched) ───────────────
+   Credit-card tables: amount = soft lime (unique, not used by any card/person pill), description = stays white, remarks = soft lavender.
+   Expenses: spend amount = soft coral-orange instead of hard red (income stays green).
+   Text colour only — no size/layout change. Delete this block to revert. */
+@media (min-width: 769px) {
+  html body :is(#cardTable, #grvCardTable) td .table-amount-pill {
+    color: #bef264 !important;
+    text-shadow: 0 0 6px rgba(190, 242, 100, 0.22) !important;
+  }
+  html body :is(#cardTable, #grvCardTable) td:nth-child(5) .table-text-pill {
+    color: #d8c8ff !important;
+  }
+  html body #expenseTable td.txn-amount-out .table-amount-pill {
+    color: #fdba74 !important;
+    text-shadow: 0 0 6px rgba(253, 186, 116, 0.22) !important;
+  }
+  body.light-mode :is(#cardTable, #grvCardTable) td .table-amount-pill {
+    color: #4d7c0f !important;
+    text-shadow: none !important;
+  }
+  body.light-mode :is(#cardTable, #grvCardTable) td:nth-child(5) .table-text-pill {
+    color: #6d28d9 !important;
+  }
+  body.light-mode #expenseTable td.txn-amount-out .table-amount-pill {
+    color: #c2410c !important;
+    text-shadow: none !important;
+  }
 }
