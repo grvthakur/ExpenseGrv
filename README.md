@@ -1,6 +1,46 @@
 # GRV Expense
 
 This repository is organized for human maintenance while preserving the original application files and runtime-relative frontend paths.
+# GRV Expense
+
+## Git Commands
+
+### 1. Push Local Changes to GitHub
+
+Run these commands from the repository root:
+
+```bash
+git add .
+git commit -m "Your commit message"
+git pull --rebase origin main
+git push origin main
+```
+
+**Purpose:**
+- `git add .` — Stage all local changes.
+- `git commit` — Save changes locally.
+- `git pull --rebase origin main` — Get the latest GitHub changes and rebase local commits on top.
+- `git push origin main` — Push local commits to GitHub.
+
+### 2. Make Local Repository Exactly Same as GitHub
+
+**WARNING:** This will discard local uncommitted changes and local commits that are not present on GitHub.
+
+```bash
+git fetch origin
+git reset --hard origin/main
+git clean -fd
+```
+
+**Purpose:**
+- `git fetch origin` — Fetch the latest GitHub changes.
+- `git reset --hard origin/main` — Make the current local branch exactly match GitHub's `main`.
+- `git clean -fd` — Remove untracked files and directories.
+
+**Important:** Use Command 1 when you want to upload your work. Use Command 2 when you want to discard local differences and restore the exact GitHub version.
+
+---
+
 
 ## Project layout
 

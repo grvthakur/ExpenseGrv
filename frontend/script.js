@@ -120,7 +120,7 @@ let editingCardId = null;
 let expSearch = "";
 let cardSearch = "";
 let cardStatusFilter = "ALL"; // ALL, PAID, UNPAID
-let cardMonthFilter = "3"; // "1" = current month only, "3" = last 3 months
+let cardMonthFilter = "1"; // "1" = current month only, "3" = last 3 months
 let cardCardFilter = "ALL"; // ALL or specific card name
 let selectedCardTxnIds = new Set(); // Desktop Credit Cards bulk selection
 let cardUsedByFilter = "ALL"; // ALL or a normalised "used by" name
@@ -354,7 +354,7 @@ function _pendTouch(url) {
     const sp = new URL(url, location.href).searchParams;
     const a = sp.get("action") || "";
     const id = sp.get("id");
-    const ids = sp.get("ids") ? sp.get("ids").split(",") : (id ? [id] : []);
+    const ids = sp.get("ids") ? sp.get("ids").split(",") : id ? [id] : [];
     if (!ids.length) return;
     ids.forEach((oneId) => {
       const trimmed = String(oneId).trim();
@@ -524,7 +524,7 @@ function clearAllCardFilters() {
   if (u) u.value = "ALL";
   cardUsedByFilter = "ALL";
   setCardStatusFilter("ALL");
-  setCardMonthFilter("3");
+  setCardMonthFilter("1");
   cardCardFilter = "ALL";
   renderCards();
 }
@@ -1147,7 +1147,8 @@ function sortExpenses(col) {
 function startEditExpense(id) {
   const exp = expenses.find((e) => e.id === id);
   if (!exp) return;
-  if (typeof window !== 'undefined' && window.__asm) window.__asm.startEdit('expense', id, exp);
+  if (typeof window !== "undefined" && window.__asm)
+    window.__asm.startEdit("expense", id, exp);
   editingExpId = id;
   document.getElementById("expenseDate").value = exp.date;
   document.getElementById("expenseCategory").value = exp.category;
@@ -1175,7 +1176,12 @@ function cancelEditExpense() {
 }
 
 function addEntry() {
-  if (typeof window !== 'undefined' && window.__asm && !window.__asm.canSubmit()) return;
+  if (
+    typeof window !== "undefined" &&
+    window.__asm &&
+    !window.__asm.canSubmit()
+  )
+    return;
   if (window.__addBusy) return;
   window.__addBusy = true;
   setTimeout(() => (window.__addBusy = false), 1500);
@@ -1426,80 +1432,133 @@ function renderCards() {
   const newest = last3[0];
   const rangeLabel =
     monthCount === 1
-      ? `${MONTHS[newest.m]} ${newest.y}`
+      ? `${FULL_MONTHS[newest.m]} ${newest.y}`
       : `${MONTHS[oldest.m]} - ${MONTHS[newest.m]} ${newest.y}`;
   const rangeEl = document.getElementById("ccRangeLabel");
   if (rangeEl) rangeEl.textContent = rangeLabel;
 
-  // Filter by month range
+  // Helper: check if a transaction belongs to the current billing month
+  function isCurrentBillingMonth(t) {
+    if (!t) return false;
+    const stored = formatBillingMonth(t.billingMonth || "");
+    if (stored && stored !== "—" && stored !== "") {
+      if (stored.trim().toLowerCase() === bMonth.trim().toLowerCase())
+        return true;
+    }
+    const cardNorm = normalizeCardName(t.card);
+    const cfg = cardConfig.find((c) => normalizeCardName(c.card) === cardNorm);
+    const calc = calcBillingMonth(t.txnDate, cfg?.cutoff || 0);
+    return calc.trim().toLowerCase() === bMonth.trim().toLowerCase();
+  }
+
+  // Helper: parse transaction date safely in local time
+  function parseTxnDate(dateVal) {
+    if (!dateVal) return null;
+    const s = String(dateVal).trim();
+    const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (ymd) return new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+    const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (dmy) return new Date(+dmy[3], +dmy[2] - 1, +dmy[1]);
+    const parsed = new Date(s);
+    return isNaN(parsed) ? null : parsed;
+  }
+
+  // Filter table rows by month range:
+  // When 1 month is selected: strictly current billing month transactions
+  // When 3 months is selected: transactions within the 3-month window
   const rows = cardTxns.filter((t) => {
-    if (!t.txnDate) return false;
-    const d = new Date(t.txnDate);
-    return last3.some(
-      ({ m, y }) => d.getMonth() === m && d.getFullYear() === y,
-    );
+    if (!t) return false;
+    if (monthCount === 1) {
+      return isCurrentBillingMonth(t);
+    }
+    const d = parseTxnDate(t.txnDate);
+    if (
+      d &&
+      last3.some(({ m, y }) => d.getMonth() === m && d.getFullYear() === y)
+    ) {
+      return true;
+    }
+    return isCurrentBillingMonth(t);
   });
 
-  // Stats
-  const totalSpend = rows.reduce((s, t) => s + t.amount, 0);
+  // Stats for the active view
+  const totalSpend = rows.reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const unpaid = rows
-    .filter((t) => t.status === "UNPAID")
-    .reduce((s, t) => s + t.amount, 0);
+    .filter((t) => String(t.status || "").toUpperCase() === "UNPAID")
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const paid = rows
-    .filter((t) => t.status === "PAID")
-    .reduce((s, t) => s + t.amount, 0);
+    .filter((t) => String(t.status || "").toUpperCase() === "PAID")
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
   document.getElementById("ccStatTotal").textContent = money(totalSpend);
   document.getElementById("ccStatUnpaid").textContent = money(unpaid);
   document.getElementById("ccStatPaid").textContent = money(paid);
 
-  // Per-card summary
+  // Per-card summary for the current billing month:
+  // Shows limit, available remaining limit, total unpaid balance, and THIS MONTH's spend.
   const cardSummaryEl = document.getElementById("cardSummaryGrid");
   cardSummaryEl.innerHTML = "";
-  const cardMap = new Map();
-  rows.forEach((t) => {
-    if (!cardMap.has(t.card)) cardMap.set(t.card, { spent: 0, unpaid: 0 });
-    cardMap.get(t.card).spent += t.amount;
-    if (t.status === "UNPAID") cardMap.get(t.card).unpaid += t.amount;
+
+  const cardSet = new Set();
+  cardConfig.forEach((c) => {
+    if (c.card) cardSet.add(c.card.trim());
+  });
+  cardTxns.forEach((t) => {
+    if (t.card) cardSet.add(t.card.trim());
   });
 
-  cardMap.forEach((val, cardName) => {
-    const cfg = cardConfig.find((c) => c.card === cardName);
-    const lim = cfg ? cfg.limit : 0;
+  let renderedCardCount = 0;
+  cardSet.forEach((cardName) => {
+    const cardNorm = normalizeCardName(cardName);
+    const cfg = cardConfig.find((c) => normalizeCardName(c.card) === cardNorm);
+    const lim = cfg ? Number(cfg.limit) || 0 : 0;
     const maxUse = lim ? Math.round(lim * 0.3) : 0;
 
-    // Real Available Limit calculation (matching CC Master):
-    // Paid bills free up the credit limit. Used limit = all UNPAID rows for this card.
-    const cardNorm = normalizeCardName(cardName);
+    // Month spend for this card: strictly current billing month transactions
+    const monthSpent = cardTxns
+      .filter(
+        (t) =>
+          normalizeCardName(t.card) === cardNorm && isCurrentBillingMonth(t),
+      )
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // Total unpaid on this card: all UNPAID rows (money owed to bank, matching CC Master)
     const totalUnpaid = cardTxns
       .filter(
         (t) =>
           normalizeCardName(t.card) === cardNorm &&
-          String(t.status || "").toUpperCase() === "UNPAID"
+          String(t.status || "").toUpperCase() === "UNPAID",
       )
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    const rem = lim ? Math.max(0, lim - totalUnpaid) : 0;
-    const pct = lim ? Math.min(100, Math.round((totalUnpaid / maxUse) * 100)) : 0;
-    const over = lim && totalUnpaid > maxUse;
-    const remFmt = rem.toLocaleString("en-IN", {
-      minimumFractionDigits: rem % 1 !== 0 ? 2 : 0,
-      maximumFractionDigits: 2,
-    });
+    // Show card if configured in Manage Cards, or if it had activity this month, or has unpaid balance
+    if (cfg || monthSpent !== 0 || totalUnpaid > 0) {
+      renderedCardCount++;
+      const rem = lim ? Math.max(0, lim - totalUnpaid) : 0;
+      const pct = maxUse
+        ? Math.min(100, Math.round((totalUnpaid / maxUse) * 100))
+        : 0;
+      const over = maxUse && totalUnpaid > maxUse;
+      const remFmt = rem.toLocaleString("en-IN", {
+        minimumFractionDigits: rem % 1 !== 0 ? 2 : 0,
+        maximumFractionDigits: 2,
+      });
 
-    cardSummaryEl.innerHTML += `
-      <div class="card-summary-item">
-        <div class="cs-name">${cardName}</div>
-        <div class="cs-row"><span>Spent</span><span class="c-red">₹${val.spent.toFixed(2)}</span></div>
-        ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString("en-IN")}</span></div>` : ""}
-        ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${remFmt}</span></div>` : ""}
-        ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : ""}" style="width:${pct}%"></div></div>` : ""}
-        <div class="cs-row"><span>Unpaid</span><span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></div>
-      </div>`;
+      cardSummaryEl.innerHTML += `
+        <div class="card-summary-item">
+          <div class="cs-name">${esc(cfg ? cfg.card : cardName)}</div>
+          <div class="cs-row"><span>Spent</span><span class="c-red">₹${monthSpent.toFixed(2)}</span></div>
+          ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString("en-IN")}</span></div>` : ""}
+          ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${remFmt}</span></div>` : ""}
+          ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : ""}" style="width:${pct}%"></div></div>` : ""}
+          <div class="cs-row"><span>Unpaid</span><span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></div>
+        </div>`;
+    }
   });
 
-  if (cardMap.size === 0)
-    cardSummaryEl.innerHTML = `<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">No transactions this billing month</div>`;
+  if (renderedCardCount === 0) {
+    cardSummaryEl.innerHTML = `<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">No card activity this billing month</div>`;
+  }
 
   // Table
   const tbody = document.getElementById("cardTableBody");
@@ -1893,7 +1952,8 @@ function sortCards(col) {
 function startEditCard(id) {
   const t = cardTxns.find((t) => t.id === id);
   if (!t) return;
-  if (typeof window !== 'undefined' && window.__asm) window.__asm.startEdit('card', id, t);
+  if (typeof window !== "undefined" && window.__asm)
+    window.__asm.startEdit("card", id, t);
   editingCardId = id;
   document.getElementById("cardSelect").value = t.card;
   document.getElementById("cardUsedBy").value = t.usedBy || "";
@@ -1926,7 +1986,12 @@ function cancelEditCard() {
 }
 
 function addCardEntry() {
-  if (typeof window !== 'undefined' && window.__asm && !window.__asm.canSubmit()) return;
+  if (
+    typeof window !== "undefined" &&
+    window.__asm &&
+    !window.__asm.canSubmit()
+  )
+    return;
   if (window.__addBusy) return;
   window.__addBusy = true;
   setTimeout(() => (window.__addBusy = false), 1500);
@@ -2823,81 +2888,96 @@ const initDaylightToggle = (function () {
 
   // ---- パレット：5つのトークン × 4つの明るさ = 20色
   const RAMPS = [
-    ['bg', [0.76, 0.85, 0.93, 0.985]],
-    ['surface', [0.4, 0.52, 0.64, 0.76]],
-    ['fg', [0.17, 0.25, 0.33, 0.44]],
-    ['muted', [0.5, 0.62, 0.74, 0.86]],
-    ['accent', [0.5, 0.66, 0.8, 0.92]],
+    ["bg", [0.76, 0.85, 0.93, 0.985]],
+    ["surface", [0.4, 0.52, 0.64, 0.76]],
+    ["fg", [0.17, 0.25, 0.33, 0.44]],
+    ["muted", [0.5, 0.62, 0.74, 0.86]],
+    ["accent", [0.5, 0.66, 0.8, 0.92]],
   ];
-  const C0 = 0, C1 = 1, C2 = 2, C3 = 3;
-  const G0 = 4, G1 = 5, G2 = 6, G3 = 7;
-  const I0 = 8, I1 = 9, I2 = 10, I3 = 11;
-  const U0 = 12, U1 = 13, U2 = 14, U3 = 15;
-  const A0 = 16, A1 = 17, A2 = 18, A3 = 19;
+  const C0 = 0,
+    C1 = 1,
+    C2 = 2,
+    C3 = 3;
+  const G0 = 4,
+    G1 = 5,
+    G2 = 6,
+    G3 = 7;
+  const I0 = 8,
+    I1 = 9,
+    I2 = 10,
+    I3 = 11;
+  const U0 = 12,
+    U1 = 13,
+    U2 = 14,
+    U3 = 15;
+  const A0 = 16,
+    A1 = 17,
+    A2 = 18,
+    A3 = 19;
 
   // ---- 材質：[昼, 夕, 宵, 夜] のパレット番号
   const MATS = [
-    ['SKY', C3, C3, C3, C3],
-    ['HILL_FAR', U2, U1, I3, I1],
-    ['HILL_NEAR', U1, U0, I2, I1],
-    ['TREE_FAR', G1, G0, I2, I0],
-    ['GRASS', G2, G1, I3, I1],
-    ['GRASS_DK', G1, G0, I2, I0],
-    ['GRASS_LT', G3, G2, U0, I2],
-    ['PATH', C1, C0, U0, I2],
-    ['PATH_DK', C0, A0, I3, I1],
-    ['WALL', C3, A3, U1, I2],
-    ['WALL_SH', C2, A2, U0, I1],
-    ['PLANK', C1, A1, I3, I1],
-    ['STONE', U1, U0, I2, I1],
-    ['STONE_LT', U2, U1, I3, I2],
-    ['ROOF', I3, I2, I1, I0],
-    ['ROOF_LT', U0, I3, I2, I1],
-    ['ROOF_HI', U1, U0, I3, I1],
-    ['WOOD', A0, A0, I2, I0],
-    ['WOOD_LT', A1, A1, I3, I1],
-    ['WOOD_DK', I3, I2, I1, I0],
-    ['BRICK', U0, I3, I2, I0],
-    ['BRICK_LT', U1, U0, I3, I1],
-    ['BARK', I3, I2, I1, I0],
-    ['BARK_LT', A0, A0, I1, I0],
-    ['LEAF0', G0, G0, I1, I0],
-    ['LEAF1', G1, G0, I2, I0],
-    ['LEAF2', G2, A0, I2, I1],
-    ['LEAF3', G3, A1, I3, I1],
-    ['FLOWER_A', A2, A1, A0, I2],
-    ['FLOWER_C', C3, A3, U1, I3],
-    ['STEM', G0, G0, I2, I0],
-    ['GLASS', I2, A0, I1, I0],
-    ['GLASS_HI', U1, A1, I2, I1],
-    ['ROOM', C1, C0, I3, I1],
-    ['SKIN', A3, A3, U2, I3],
-    ['HAIR', I0, I0, I0, I0],
-    ['SHIRT', A1, A0, I3, I1],
-    ['SHIRT_DK', A0, A0, I2, I0],
-    ['PANTS', I2, I2, I1, I0],
-    ['BOOT', I0, I0, I0, I0],
-    ['BOOK', C3, C3, U2, I3],
-    ['BOOK_DK', C1, C1, U0, I2],
-    ['CLOUD', C3, A3, U1, I2],
-    ['CLOUD_SH', U3, A2, U0, I1],
-    ['SMOKE', C1, C1, U2, I3],
-    ['SMOKE_DK', U2, U1, U0, I2],
-    ['SUN', C3, C3, A3, A3],
-    ['SUN_RIM', A3, A2, A2, A2],
-    ['MOON', C3, C3, C3, C3],
-    ['MOON_DK', C1, C1, C1, C1],
-    ['STAR', C3, C3, C3, C3],
-    ['STAR_DIM', U2, U2, U2, U2],
-    ['LIT', A2, A2, A2, A2],
-    ['LIT_HI', A3, A3, A3, A3],
-    ['LIT_DK', A1, A1, A1, A1],
-    ['SIL', I0, I0, I0, I0],
-    ['FIREFLY', A3, A3, A3, A3],
-    ['BIRD', I2, I2, I1, I0],
-    ['MARK', I0, I0, C3, C3],
-    ['ZZZ', U3, U3, U3, U3],
-    ['WING', A2, A2, A1, I2],
+    ["SKY", C3, C3, C3, C3],
+    ["HILL_FAR", U2, U1, I3, I1],
+    ["HILL_NEAR", U1, U0, I2, I1],
+    ["TREE_FAR", G1, G0, I2, I0],
+    ["GRASS", G2, G1, I3, I1],
+    ["GRASS_DK", G1, G0, I2, I0],
+    ["GRASS_LT", G3, G2, U0, I2],
+    ["PATH", C1, C0, U0, I2],
+    ["PATH_DK", C0, A0, I3, I1],
+    ["WALL", C3, A3, U1, I2],
+    ["WALL_SH", C2, A2, U0, I1],
+    ["PLANK", C1, A1, I3, I1],
+    ["STONE", U1, U0, I2, I1],
+    ["STONE_LT", U2, U1, I3, I2],
+    ["ROOF", I3, I2, I1, I0],
+    ["ROOF_LT", U0, I3, I2, I1],
+    ["ROOF_HI", U1, U0, I3, I1],
+    ["WOOD", A0, A0, I2, I0],
+    ["WOOD_LT", A1, A1, I3, I1],
+    ["WOOD_DK", I3, I2, I1, I0],
+    ["BRICK", U0, I3, I2, I0],
+    ["BRICK_LT", U1, U0, I3, I1],
+    ["BARK", I3, I2, I1, I0],
+    ["BARK_LT", A0, A0, I1, I0],
+    ["LEAF0", G0, G0, I1, I0],
+    ["LEAF1", G1, G0, I2, I0],
+    ["LEAF2", G2, A0, I2, I1],
+    ["LEAF3", G3, A1, I3, I1],
+    ["FLOWER_A", A2, A1, A0, I2],
+    ["FLOWER_C", C3, A3, U1, I3],
+    ["STEM", G0, G0, I2, I0],
+    ["GLASS", I2, A0, I1, I0],
+    ["GLASS_HI", U1, A1, I2, I1],
+    ["ROOM", C1, C0, I3, I1],
+    ["SKIN", A3, A3, U2, I3],
+    ["HAIR", I0, I0, I0, I0],
+    ["SHIRT", A1, A0, I3, I1],
+    ["SHIRT_DK", A0, A0, I2, I0],
+    ["PANTS", I2, I2, I1, I0],
+    ["BOOT", I0, I0, I0, I0],
+    ["BOOK", C3, C3, U2, I3],
+    ["BOOK_DK", C1, C1, U0, I2],
+    ["CLOUD", C3, A3, U1, I2],
+    ["CLOUD_SH", U3, A2, U0, I1],
+    ["SMOKE", C1, C1, U2, I3],
+    ["SMOKE_DK", U2, U1, U0, I2],
+    ["SUN", C3, C3, A3, A3],
+    ["SUN_RIM", A3, A2, A2, A2],
+    ["MOON", C3, C3, C3, C3],
+    ["MOON_DK", C1, C1, C1, C1],
+    ["STAR", C3, C3, C3, C3],
+    ["STAR_DIM", U2, U2, U2, U2],
+    ["LIT", A2, A2, A2, A2],
+    ["LIT_HI", A3, A3, A3, A3],
+    ["LIT_DK", A1, A1, A1, A1],
+    ["SIL", I0, I0, I0, I0],
+    ["FIREFLY", A3, A3, A3, A3],
+    ["BIRD", I2, I2, I1, I0],
+    ["MARK", I0, I0, C3, C3],
+    ["ZZZ", U3, U3, U3, U3],
+    ["WING", A2, A2, A1, I2],
   ];
   const M = Object.fromEntries(MATS.map((row, i) => [row[0], i]));
 
@@ -2950,13 +3030,19 @@ const initDaylightToggle = (function () {
       const fy = y - yi;
       const u = fx * fx * (3 - 2 * fx);
       const v = fy * fy * (3 - 2 * fy);
-      return mix(mix(at(xi, yi), at(xi + 1, yi), u), mix(at(xi, yi + 1), at(xi + 1, yi + 1), u), v);
+      return mix(
+        mix(at(xi, yi), at(xi + 1, yi), u),
+        mix(at(xi, yi + 1), at(xi + 1, yi + 1), u),
+        v,
+      );
     };
   }
 
   // ---- 色の計算（OKLab）。色の値は書かず、トークンの色相に明るさだけを与える
-  const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-  const toGamma = (c) => (c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+  const toLinear = (c) =>
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const toGamma = (c) =>
+    c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
   function rgbToOklab([r8, g8, b8]) {
     const r = toLinear(r8 / 255);
     const g = toLinear(g8 / 255);
@@ -2964,93 +3050,219 @@ const initDaylightToggle = (function () {
     const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
     const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
     const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-    return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+    return [
+      0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+      1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+      0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+    ];
   }
   function oklabToLinear(L, a, b) {
     const l = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3);
     const m = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3);
     const s = Math.pow(L - 0.0894841775 * a - 1.291485548 * b, 3);
-    return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    ];
   }
   function labTone(lab, L) {
     // 明るさを決め、色域に入るまで鮮やかさを落とす
     let chroma = 1;
     for (let i = 0; i < 24; i++) {
       const rgb = oklabToLinear(L, lab[1] * chroma, lab[2] * chroma);
-      if (rgb.every((v) => v >= -0.001 && v <= 1.001)) return rgb.map((v) => Math.round(toGamma(clamp(v)) * 255));
+      if (rgb.every((v) => v >= -0.001 && v <= 1.001))
+        return rgb.map((v) => Math.round(toGamma(clamp(v)) * 255));
       chroma *= 0.9;
     }
-    return oklabToLinear(L, 0, 0).map((v) => Math.round(toGamma(clamp(v)) * 255));
+    return oklabToLinear(L, 0, 0).map((v) =>
+      Math.round(toGamma(clamp(v)) * 255),
+    );
   }
 
   // ---- 住人の絵
-  const CHARS = { H: 'HAIR', S: 'SKIN', E: 'HAIR', T: 'SHIRT', D: 'SHIRT_DK', P: 'PANTS', B: 'BOOT', W: 'BOOK', K: 'BOOK_DK' };
+  const CHARS = {
+    H: "HAIR",
+    S: "SKIN",
+    E: "HAIR",
+    T: "SHIRT",
+    D: "SHIRT_DK",
+    P: "PANTS",
+    B: "BOOT",
+    W: "BOOK",
+    K: "BOOK_DK",
+  };
   const makeSprite = (rows) => {
     const list = [];
     rows.forEach((row, y) => {
       [...row].forEach((ch, x) => {
-        if (ch !== '.') list.push([x, y, M[CHARS[ch]], ch === 'E']);
+        if (ch !== ".") list.push([x, y, M[CHARS[ch]], ch === "E"]);
       });
     });
     return { list, w: rows[0].length, h: rows.length };
   };
-  const HEAD = ['..HHH..', '.HHHHH.', '.HHSSS.', '.HSSES.', '..SSSS.'];
-  const HEAD_BLINK = ['..HHH..', '.HHHHH.', '.HHSSS.', '.HSSSS.', '..SSSS.'];
-  const HEAD_UP = ['..HHH..', '.HHHHH.', '.HHSES.', '.HSSSS.', '..SSSS.'];
-  const BODY_STAND = ['..TTT..', '.TTTTT.', '.STTTS.', '..DDD..', '..PPP..', '..P.P..', '..B.B..'];
-  const BODY_WALK1 = ['..TTT..', '.TTTTT.', '..TTTS.', '.SDDD..', '..PPP..', '.PP.P..', '.B..BB.'];
-  const BODY_WALK2 = ['..TTT..', '.TTTTT.', '.STTTS.', '..DDD..', '..PPP..', '..PP...', '..BB...'];
-  const BODY_WALK3 = ['..TTT..', '.TTTTT.', '.STTT..', '..DDDS.', '..PPP..', '..P.PP.', '.BB..B.'];
-  const BODY_ARMS = ['S.TTT.S', 'STTTTTS', '..TTT..', '..DDD..', '..PPP..', '..P.P..', '..B.B..'];
+  const HEAD = ["..HHH..", ".HHHHH.", ".HHSSS.", ".HSSES.", "..SSSS."];
+  const HEAD_BLINK = ["..HHH..", ".HHHHH.", ".HHSSS.", ".HSSSS.", "..SSSS."];
+  const HEAD_UP = ["..HHH..", ".HHHHH.", ".HHSES.", ".HSSSS.", "..SSSS."];
+  const BODY_STAND = [
+    "..TTT..",
+    ".TTTTT.",
+    ".STTTS.",
+    "..DDD..",
+    "..PPP..",
+    "..P.P..",
+    "..B.B..",
+  ];
+  const BODY_WALK1 = [
+    "..TTT..",
+    ".TTTTT.",
+    "..TTTS.",
+    ".SDDD..",
+    "..PPP..",
+    ".PP.P..",
+    ".B..BB.",
+  ];
+  const BODY_WALK2 = [
+    "..TTT..",
+    ".TTTTT.",
+    ".STTTS.",
+    "..DDD..",
+    "..PPP..",
+    "..PP...",
+    "..BB...",
+  ];
+  const BODY_WALK3 = [
+    "..TTT..",
+    ".TTTTT.",
+    ".STTT..",
+    "..DDDS.",
+    "..PPP..",
+    "..P.PP.",
+    ".BB..B.",
+  ];
+  const BODY_ARMS = [
+    "S.TTT.S",
+    "STTTTTS",
+    "..TTT..",
+    "..DDD..",
+    "..PPP..",
+    "..P.P..",
+    "..B.B..",
+  ];
   const person = (head, body) => makeSprite([...head, ...body]);
   const SPR = {
     stand: person(HEAD, BODY_STAND),
     blink: person(HEAD_BLINK, BODY_STAND),
-    walk: [person(HEAD, BODY_WALK1), person(HEAD, BODY_WALK2), person(HEAD, BODY_WALK3), person(HEAD, BODY_WALK2)],
+    walk: [
+      person(HEAD, BODY_WALK1),
+      person(HEAD, BODY_WALK2),
+      person(HEAD, BODY_WALK3),
+      person(HEAD, BODY_WALK2),
+    ],
     up: person(HEAD_UP, BODY_ARMS),
-    crouch: person(HEAD, ['..TTT..', '.TTTTTS', '..DDD.S', '..PPP..', '.BB.B..']),
+    crouch: person(HEAD, [
+      "..TTT..",
+      ".TTTTTS",
+      "..DDD.S",
+      "..PPP..",
+      ".BB.B..",
+    ]),
     seat: makeSprite([
-      '....HHH..',
-      '...HHHHH.',
-      '...SSSHH.',
-      '...ESSHH.',
-      '...SSSS..',
-      '...TTTT..',
-      '...STTTT.',
-      '...STTTT.',
-      'PPPPPPDD.',
-      'BB.PPPPP.',
+      "....HHH..",
+      "...HHHHH.",
+      "...SSSHH.",
+      "...ESSHH.",
+      "...SSSS..",
+      "...TTTT..",
+      "...STTTT.",
+      "...STTTT.",
+      "PPPPPPDD.",
+      "BB.PPPPP.",
     ]),
     seatBlink: makeSprite([
-      '....HHH..',
-      '...HHHHH.',
-      '...SSSHH.',
-      '...SSSHH.',
-      '...SSSS..',
-      '...TTTT..',
-      '...STTTT.',
-      '...STTTT.',
-      'PPPPPPDD.',
-      'BB.PPPPP.',
+      "....HHH..",
+      "...HHHHH.",
+      "...SSSHH.",
+      "...SSSHH.",
+      "...SSSS..",
+      "...TTTT..",
+      "...STTTT.",
+      "...STTTT.",
+      "PPPPPPDD.",
+      "BB.PPPPP.",
     ]),
     seatUp: makeSprite([
-      '....HHH..',
-      '...HHHHH.',
-      '...ESSHH.',
-      '...SSSHH.',
-      '...SSSS..',
-      '...TTTT..',
-      '...STTTT.',
-      '...STTTT.',
-      'PPPPPPDD.',
-      'BB.PPPPP.',
+      "....HHH..",
+      "...HHHHH.",
+      "...ESSHH.",
+      "...SSSHH.",
+      "...SSSS..",
+      "...TTTT..",
+      "...STTTT.",
+      "...STTTT.",
+      "PPPPPPDD.",
+      "BB.PPPPP.",
     ]),
-    bust: makeSprite(['...HHH...', '..HHHHH..', '..HSSES..', '...SSS...', '..TTTTT..', '.TTTTTTT.', '.TTTTTTT.', '.TTTTTTT.']),
-    bustBlink: makeSprite(['...HHH...', '..HHHHH..', '..HSSSS..', '...SSS...', '..TTTTT..', '.TTTTTTT.', '.TTTTTTT.', '.TTTTTTT.']),
-    bustUp: makeSprite(['S..HHH..S', 'S.HHHHH.S', 'S.HSSES.S', 'SS.SSS.SS', '.STTTTTS.', '..TTTTT..', '..TTTTT..', '..TTTTT..']),
-    bustHalf: makeSprite(['...HHH...', '..HHHHH..', 'S.HSSES.S', 'SS.SSS.SS', '.STTTTTS.', '..TTTTT..', '.TTTTTTT.', '.TTTTTTT.']),
-    sil: makeSprite(['...HHH..', '..HHHHH.', '..HHHHH.', '...HHH..', '..HHHHH.', '.HHHHHHH', 'HHHHHHHH', 'HHHHHHHH']),
-    silLook: makeSprite(['....HHH.', '...HHHHH', '...HHHHH', '...HHH..', '..HHHHH.', '.HHHHHHH', 'HHHHHHHH', 'HHHHHHHH']),
+    bust: makeSprite([
+      "...HHH...",
+      "..HHHHH..",
+      "..HSSES..",
+      "...SSS...",
+      "..TTTTT..",
+      ".TTTTTTT.",
+      ".TTTTTTT.",
+      ".TTTTTTT.",
+    ]),
+    bustBlink: makeSprite([
+      "...HHH...",
+      "..HHHHH..",
+      "..HSSSS..",
+      "...SSS...",
+      "..TTTTT..",
+      ".TTTTTTT.",
+      ".TTTTTTT.",
+      ".TTTTTTT.",
+    ]),
+    bustUp: makeSprite([
+      "S..HHH..S",
+      "S.HHHHH.S",
+      "S.HSSES.S",
+      "SS.SSS.SS",
+      ".STTTTTS.",
+      "..TTTTT..",
+      "..TTTTT..",
+      "..TTTTT..",
+    ]),
+    bustHalf: makeSprite([
+      "...HHH...",
+      "..HHHHH..",
+      "S.HSSES.S",
+      "SS.SSS.SS",
+      ".STTTTTS.",
+      "..TTTTT..",
+      ".TTTTTTT.",
+      ".TTTTTTT.",
+    ]),
+    sil: makeSprite([
+      "...HHH..",
+      "..HHHHH.",
+      "..HHHHH.",
+      "...HHH..",
+      "..HHHHH.",
+      ".HHHHHHH",
+      "HHHHHHHH",
+      "HHHHHHHH",
+    ]),
+    silLook: makeSprite([
+      "....HHH.",
+      "...HHHHH",
+      "...HHHHH",
+      "...HHH..",
+      "..HHHHH.",
+      ".HHHHHHH",
+      "HHHHHHHH",
+      "HHHHHHHH",
+    ]),
   };
 
   // ---- シェーダー
@@ -3309,6 +3521,10 @@ const initDaylightToggle = (function () {
           // 縁の厚み：明るい線ではなく、ガラスの奥の暗さで形を見せる
           float edge = pow(rho, 16.0);
           lens = mix(lens, uInk, edge * 0.42);
+          
+          // visibility: thin bright rim so the knob stands out on small / dark toggles
+          float rim = smoothstep(0.84, 0.93, rho) * (1.0 - smoothstep(0.95, 1.0, rho));
+          lens = mix(lens, envHigh, rim * 0.6);
 
           // 下の内側に集まる光
           float pool = smoothstep(0.05, 0.95, -lp.y * 0.9 + lp.x * 0.2) * smoothstep(1.0, 0.8, rho) * smoothstep(0.42, 0.86, rho);
@@ -3359,19 +3575,27 @@ const initDaylightToggle = (function () {
       cleanups.push(() => target.removeEventListener(type, fn, options));
     };
 
-    let canvas = root.querySelector('.scene');
-    const button = root.querySelector('.hit');
-    const statusEl = root.querySelector('[data-status]');
-    const probe = root.querySelector('.probe');
-    const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
-    const schemeQuery = matchMedia('(prefers-color-scheme: dark)');
+    let canvas = root.querySelector(".scene");
+    const button = root.querySelector(".hit");
+    const statusEl = root.querySelector("[data-status]");
+    const probe = root.querySelector(".probe");
+    const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
+    const schemeQuery = matchMedia("(prefers-color-scheme: dark)");
     let calm = true; // perf: static scene, redraw only while sliding (was: follow reduced-motion)
 
     // 画面に出さない canvas。OffscreenCanvas のない古い Safari（16.3 まで）でも動くようにする
-    const offscreen = (w, h) => (typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, h) : Object.assign(root.ownerDocument.createElement('canvas'), { width: w, height: h }));
+    const offscreen = (w, h) =>
+      typeof OffscreenCanvas === "function"
+        ? new OffscreenCanvas(w, h)
+        : Object.assign(root.ownerDocument.createElement("canvas"), {
+            width: w,
+            height: h,
+          });
 
     // ---- パレットをトークンから作る
-    const paint = offscreen(1, 1).getContext('2d', { willReadFrequently: true });
+    const paint = offscreen(1, 1).getContext("2d", {
+      willReadFrequently: true,
+    });
     const palette = new Array(20);
     const palette32 = new Uint32Array(20);
     const readPalette = () => {
@@ -3437,7 +3661,10 @@ const initDaylightToggle = (function () {
     let canopy = [];
     let stars = [];
     const emitList = [];
-    const sources = [{ w: 0, x: 0, y: 0, r: 0, g: 0, b: 0 }, { w: 0, x: 0, y: 0, r: 0, g: 0, b: 0 }];
+    const sources = [
+      { w: 0, x: 0, y: 0, r: 0, g: 0, b: 0 },
+      { w: 0, x: 0, y: 0, r: 0, g: 0, b: 0 },
+    ];
 
     const noiseA = makeNoise(11);
     const noiseB = makeNoise(29);
@@ -3457,7 +3684,8 @@ const initDaylightToggle = (function () {
       if (matBuf[i] === 0) matBuf[i] = m;
     };
     const rect = (x, y, w, h, m) => {
-      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) put(x + i, y + j, m);
+      for (let j = 0; j < h; j++)
+        for (let i = 0; i < w; i++) put(x + i, y + j, m);
     };
     const get = (x, y) => {
       const px = x + ox;
@@ -3466,7 +3694,8 @@ const initDaylightToggle = (function () {
       return matBuf[py * bw + px];
     };
     const blit = (s, x, y, flip = false, force = -1) => {
-      for (const [dx, dy, m] of s.list) put(flip ? x + s.w - 1 - dx : x + dx, y + dy, force >= 0 ? force : m);
+      for (const [dx, dy, m] of s.list)
+        put(flip ? x + s.w - 1 - dx : x + dx, y + dy, force >= 0 ? force : m);
     };
     const emit = (x, y, weight, group = 2) => {
       const px = x + ox;
@@ -3483,13 +3712,24 @@ const initDaylightToggle = (function () {
     };
 
     // ---- 動かない背景
-    const hillFar = (x) => 58 + noiseA(x * 0.022 + 3, 1.5) * 16 + noiseB(x * 0.09, 4.5) * 3;
-    const hillNear = (x) => 69 + noiseA(x * 0.034 + 40, 7.5) * 11 + noiseB(x * 0.14 + 7, 2.5) * 2;
+    const hillFar = (x) =>
+      58 + noiseA(x * 0.022 + 3, 1.5) * 16 + noiseB(x * 0.09, 4.5) * 3;
+    const hillNear = (x) =>
+      69 + noiseA(x * 0.034 + 40, 7.5) * 11 + noiseB(x * 0.14 + 7, 2.5) * 2;
 
     const pathDist = (x, y) => {
       // 戸口から手前へ下る道と、木へ向かう枝道
-      const main = Math.abs(x - (74 + Math.pow(Math.max(y - 86, 0), 1.45) * 0.62 + Math.sin(y * 0.3) * 1.5));
-      const toTree = y < 100 ? Math.abs(y - (92 + Math.sin(x * 0.09) * 1.4 + (x - 78) * 0.012)) * (x > 78 && x < 136 ? 1 : 99) : 99;
+      const main = Math.abs(
+        x -
+          (74 +
+            Math.pow(Math.max(y - 86, 0), 1.45) * 0.62 +
+            Math.sin(y * 0.3) * 1.5),
+      );
+      const toTree =
+        y < 100
+          ? Math.abs(y - (92 + Math.sin(x * 0.09) * 1.4 + (x - 78) * 0.012)) *
+            (x > 78 && x < 136 ? 1 : 99)
+          : 99;
       return Math.min(main * 0.5, toTree);
     };
 
@@ -3501,7 +3741,8 @@ const initDaylightToggle = (function () {
           const i = py * bw + px;
           if (y < HORIZON) {
             if (y >= hillNear(x)) {
-              const tuft = noiseB(x * 0.5, y * 0.8) > 0.74 && y > hillNear(x) + 1;
+              const tuft =
+                noiseB(x * 0.5, y * 0.8) > 0.74 && y > hillNear(x) + 1;
               matBuf[i] = tuft ? M.TREE_FAR : M.HILL_NEAR;
             } else if (y >= hillFar(x)) {
               // 遠い山は、上の端を空へディザで溶かす
@@ -3510,7 +3751,9 @@ const initDaylightToggle = (function () {
             }
             continue;
           }
-          const n = noiseA(x * 0.075 + 9, y * 0.2 + 3) + noiseB(x * 0.3, y * 0.5) * 0.28;
+          const n =
+            noiseA(x * 0.075 + 9, y * 0.2 + 3) +
+            noiseB(x * 0.3, y * 0.5) * 0.28;
           const depth = (y - HORIZON) / 30;
           const v = n + (bayerAt(x, y) / 16 - 0.5) * 0.14 - depth * 0.14;
           let m = M.GRASS;
@@ -3552,7 +3795,11 @@ const initDaylightToggle = (function () {
 
     const paintBush = (cx, cy, rx, ry, seed) => {
       const r = seeded(seed);
-      const blobs = Array.from({ length: 6 }, () => [cx + (r() - 0.5) * rx * 1.5, cy + (r() - 0.5) * ry, 3 + r() * (ry * 0.75)]);
+      const blobs = Array.from({ length: 6 }, () => [
+        cx + (r() - 0.5) * rx * 1.5,
+        cy + (r() - 0.5) * ry,
+        3 + r() * (ry * 0.75),
+      ]);
       for (let y = cy - ry - 3; y <= cy + ry + 1; y++) {
         for (let x = cx - rx - 3; x <= cx + rx + 3; x++) {
           let inside = false;
@@ -3565,8 +3812,22 @@ const initDaylightToggle = (function () {
             }
           }
           if (!inside) continue;
-          const v = shade * 0.6 + (cy - y) / (ry * 2.4) + (bayerAt(x, y) / 16 - 0.5) * 0.3 + noiseB(x * 0.4, y * 0.5) * 0.25;
-          put(x, y, v > 0.82 ? M.LEAF3 : v > 0.52 ? M.LEAF2 : v > 0.24 ? M.LEAF1 : M.LEAF0);
+          const v =
+            shade * 0.6 +
+            (cy - y) / (ry * 2.4) +
+            (bayerAt(x, y) / 16 - 0.5) * 0.3 +
+            noiseB(x * 0.4, y * 0.5) * 0.25;
+          put(
+            x,
+            y,
+            v > 0.82
+              ? M.LEAF3
+              : v > 0.52
+                ? M.LEAF2
+                : v > 0.24
+                  ? M.LEAF1
+                  : M.LEAF0,
+          );
         }
       }
     };
@@ -3597,7 +3858,8 @@ const initDaylightToggle = (function () {
       // 煙突（屋根の奥）
       rect(68, 28, 8, 18, M.BRICK);
       for (let y = 28; y < 46; y += 2) {
-        for (let x = 68; x < 76; x++) if ((x + (((y - 28) / 2) & 1) * 2) % 4 < 2) put(x, y, M.BRICK_LT);
+        for (let x = 68; x < 76; x++)
+          if ((x + (((y - 28) / 2) & 1) * 2) % 4 < 2) put(x, y, M.BRICK_LT);
       }
       rect(67, 26, 10, 2, M.STONE_LT);
       rect(67, 28, 10, 1, M.STONE);
@@ -3605,17 +3867,20 @@ const initDaylightToggle = (function () {
       // 壁
       rect(X0, TOP, X1 - X0, BASE - TOP, M.WALL);
       for (let y = TOP + 3; y < BASE; y += 4) {
-        for (let x = X0; x < X1; x++) if ((x * 7 + y * 3) % 23 !== 0) put(x, y, M.PLANK);
+        for (let x = X0; x < X1; x++)
+          if ((x * 7 + y * 3) % 23 !== 0) put(x, y, M.PLANK);
       }
       // 軒下の影。ディザで下へ薄くなる
       for (let y = TOP; y < TOP + 6; y++) {
         for (let x = X0; x < X1; x++) {
-          if (y < TOP + 3 || bayerAt(x, y) < (TOP + 6 - y) * 4) put(x, y, M.WALL_SH);
+          if (y < TOP + 3 || bayerAt(x, y) < (TOP + 6 - y) * 4)
+            put(x, y, M.WALL_SH);
         }
       }
       // 右の端は日陰
       for (let x = X1 - 3; x < X1; x++) {
-        for (let y = TOP; y < BASE; y++) if (bayerAt(x, y) < (x - (X1 - 3) + 1) * 5) put(x, y, M.WALL_SH);
+        for (let y = TOP; y < BASE; y++)
+          if (bayerAt(x, y) < (x - (X1 - 3) + 1) * 5) put(x, y, M.WALL_SH);
       }
       // 土台の石
       rect(X0 - 1, BASE - 3, X1 - X0 + 2, 3, M.STONE);
@@ -3638,7 +3903,8 @@ const initDaylightToggle = (function () {
           else if (tile === 0) m = M.ROOF;
           else m = (y - RT) % 3 === 1 ? M.ROOF_LT : M.ROOF;
           // 光の当たる左上
-          if (x - l < 5 + t * 8 && (y - RT) % 3 === 1 && tile !== 0) m = M.ROOF_HI;
+          if (x - l < 5 + t * 8 && (y - RT) % 3 === 1 && tile !== 0)
+            m = M.ROOF_HI;
           put(x, y, m);
         }
       }
@@ -3693,7 +3959,11 @@ const initDaylightToggle = (function () {
       for (let i = 0; i < 16; i++) {
         const a = r() * Math.PI * 2;
         const d = 14 + r() * 13;
-        blobs.push([CX + Math.cos(a) * d * 1.08, CY + Math.sin(a) * d * 0.82, 6 + r() * 7]);
+        blobs.push([
+          CX + Math.cos(a) * d * 1.08,
+          CY + Math.sin(a) * d * 0.82,
+          6 + r() * 7,
+        ]);
       }
       for (let y = CY - 36; y <= CY + 32; y++) {
         for (let x = CX - 42; x <= CX + 42; x++) {
@@ -3709,9 +3979,23 @@ const initDaylightToggle = (function () {
           if (!inside) continue;
           const lightDir = ((CX - x) * 0.4 + (CY - y) * 0.75) / 26;
           const clump = best * 0.5;
-          const grain = noiseB(x * 0.26 + 20, y * 0.3) * 0.7 + noiseA(x * 0.7, y * 0.7) * 0.3;
-          const v = lightDir * 0.34 + clump + grain + (bayerAt(x, y) / 16 - 0.5) * 0.16 - 0.3;
-          const m = v > 0.82 ? M.LEAF3 : v > 0.52 ? M.LEAF2 : v > 0.26 ? M.LEAF1 : M.LEAF0;
+          const grain =
+            noiseB(x * 0.26 + 20, y * 0.3) * 0.7 +
+            noiseA(x * 0.7, y * 0.7) * 0.3;
+          const v =
+            lightDir * 0.34 +
+            clump +
+            grain +
+            (bayerAt(x, y) / 16 - 0.5) * 0.16 -
+            0.3;
+          const m =
+            v > 0.82
+              ? M.LEAF3
+              : v > 0.52
+                ? M.LEAF2
+                : v > 0.26
+                  ? M.LEAF1
+                  : M.LEAF0;
           canopy.push(x, y, m);
         }
       }
@@ -3727,7 +4011,17 @@ const initDaylightToggle = (function () {
         for (let x = l; x <= r; x++) {
           const t = (x - l) / Math.max(r - l, 1);
           const grain = noiseB(x * 0.9, y * 0.14) > 0.55;
-          put(x, y, t > 0.84 ? M.BARK : t < 0.2 ? M.WOOD_LT : grain ? M.BARK_LT : M.WOOD);
+          put(
+            x,
+            y,
+            t > 0.84
+              ? M.BARK
+              : t < 0.2
+                ? M.WOOD_LT
+                : grain
+                  ? M.BARK_LT
+                  : M.WOOD,
+          );
         }
       }
       // 根もとの石
@@ -3758,7 +4052,12 @@ const initDaylightToggle = (function () {
       const r = seeded(808);
       stars = [];
       for (let i = 0; i < 95; i++) {
-        stars.push({ x: Math.floor(r() * (CORE_W + 40)) - 20, y: Math.floor(r() * 66), seed: r(), big: r() < 0.14 });
+        stars.push({
+          x: Math.floor(r() * (CORE_W + 40)) - 20,
+          y: Math.floor(r() * 66),
+          seed: r(),
+          big: r() < 0.14,
+        });
       }
       // 空を時刻のかなめごとに描いておく
       skyKeys = KEYS.map(([, , stops]) => {
@@ -3780,7 +4079,21 @@ const initDaylightToggle = (function () {
     };
 
     // ---- 住人と世界の動き
-    const res = { x: 73, inside: false, face: 1, step: 0, doorOpen: 0, startle: 0, hop: 0, blink: 0, nextBlink: 2, page: 0, nextPage: 4, pageT: 0, hurry: 0 };
+    const res = {
+      x: 73,
+      inside: false,
+      face: 1,
+      step: 0,
+      doorOpen: 0,
+      startle: 0,
+      hop: 0,
+      blink: 0,
+      nextBlink: 2,
+      page: 0,
+      nextPage: 4,
+      pageT: 0,
+      hurry: 0,
+    };
     const clouds = [
       { x: 8, y: 13, w: 30, h: 9, seed: 1, speed: 0.55 },
       { x: 88, y: 24, w: 22, h: 7, seed: 2, speed: 0.8 },
@@ -3788,12 +4101,17 @@ const initDaylightToggle = (function () {
       { x: 214, y: 30, w: 18, h: 5, seed: 4, speed: 1.05 },
     ].map((cloud) => {
       const r = seeded(cloud.seed * 977);
-      const blobs = Array.from({ length: 6 }, (_, i) => [cloud.w * ((i + 0.5) / 6) + (r() - 0.5) * 3, cloud.h * (0.45 + (r() - 0.5) * 0.35), cloud.h * (0.3 + r() * 0.32)]);
+      const blobs = Array.from({ length: 6 }, (_, i) => [
+        cloud.w * ((i + 0.5) / 6) + (r() - 0.5) * 3,
+        cloud.h * (0.45 + (r() - 0.5) * 0.35),
+        cloud.h * (0.3 + r() * 0.32),
+      ]);
       const list = [];
       for (let y = 0; y < cloud.h + 3; y++) {
         for (let x = -2; x < cloud.w + 3; x++) {
           let inside = false;
-          for (const [bx, by, br] of blobs) if (Math.hypot(x - bx, (y - by) * 1.25) < br) inside = true;
+          for (const [bx, by, br] of blobs)
+            if (Math.hypot(x - bx, (y - by) * 1.25) < br) inside = true;
           if (!inside) continue;
           list.push(x, y, y > cloud.h * 0.62 ? 1 : 0);
         }
@@ -3805,7 +4123,11 @@ const initDaylightToggle = (function () {
     const leaves = [];
     const birds = { t: -1, next: 8, y: 20, dir: 1 };
     const shoot = { t: -1, next: 14 };
-    const flies = Array.from({ length: 8 }, (_, i) => ({ seed: i * 7.3 + 1, x: 150 + (i - 3) * 9, y: 88 + (i % 3) * 6 }));
+    const flies = Array.from({ length: 8 }, (_, i) => ({
+      seed: i * 7.3 + 1,
+      x: 150 + (i - 3) * 9,
+      y: 88 + (i % 3) * 6,
+    }));
     const butterfly = { x: 108, y: 84 };
     let anim = 0;
     let smokeAcc = 0;
@@ -3819,10 +4141,10 @@ const initDaylightToggle = (function () {
 
     // 時刻から、住人の予定を決める
     const planFor = (h) => {
-      if (h >= 9.6 && h < 11) return { outside: true, x: 104, act: 'tend' };
-      if (h >= 11 && h < 16.2) return { outside: true, x: 131, act: 'read' };
-      if (h >= 16.2 && h < 17.2) return { outside: true, x: 88, act: 'stroll' };
-      return { outside: false, x: 73, act: 'in' };
+      if (h >= 9.6 && h < 11) return { outside: true, x: 104, act: "tend" };
+      if (h >= 11 && h < 16.2) return { outside: true, x: 131, act: "read" };
+      if (h >= 16.2 && h < 17.2) return { outside: true, x: 88, act: "stroll" };
+      return { outside: false, x: 73, act: "in" };
     };
 
     const stepResident = (dt, h, speedHint) => {
@@ -3834,7 +4156,10 @@ const initDaylightToggle = (function () {
         return plan;
       }
       res.startle = Math.max(0, res.startle - dt);
-      res.hop = res.startle > 0.55 ? Math.sin(((0.9 - res.startle) / 0.35) * Math.PI) * 3 : 0;
+      res.hop =
+        res.startle > 0.55
+          ? Math.sin(((0.9 - res.startle) / 0.35) * Math.PI) * 3
+          : 0;
       res.doorOpen = Math.max(0, res.doorOpen - dt);
       if (res.startle > 0) return plan;
 
@@ -3846,7 +4171,8 @@ const initDaylightToggle = (function () {
       if (!res.inside) {
         const delta = want - res.x;
         if (Math.abs(delta) > 0.5) {
-          const speed = 17 + clamp(speedHint, 0, 1) * 72 + (Math.abs(delta) > 34 ? 8 : 0);
+          const speed =
+            17 + clamp(speedHint, 0, 1) * 72 + (Math.abs(delta) > 34 ? 8 : 0);
           const move = Math.min(Math.abs(delta), speed * dt);
           res.x += Math.sign(delta) * move;
           res.face = Math.sign(delta);
@@ -3885,7 +4211,9 @@ const initDaylightToggle = (function () {
       if (night > 0.02) {
         for (const s of stars) {
           if (s.seed > night * 1.05) continue;
-          const twinkle = calm ? 1 : Math.sin(anim * (1.3 + s.seed * 4.4) + s.seed * 40);
+          const twinkle = calm
+            ? 1
+            : Math.sin(anim * (1.3 + s.seed * 4.4) + s.seed * 40);
           if (twinkle < -0.72) continue;
           const m = twinkle < 0.1 && !s.big ? M.STAR_DIM : M.STAR;
           putSky(s.x, s.y, m);
@@ -3902,7 +4230,12 @@ const initDaylightToggle = (function () {
             const f = shoot.t / 0.55;
             for (let i = 0; i < 7; i++) {
               const u = f * 42 - i * 2;
-              if (u > 0 && u < 42) putSky(Math.round(shoot.x + u), Math.round(shoot.y + u * 0.45), i < 2 ? M.STAR : M.STAR_DIM);
+              if (u > 0 && u < 42)
+                putSky(
+                  Math.round(shoot.x + u),
+                  Math.round(shoot.y + u * 0.45),
+                  i < 2 ? M.STAR : M.STAR_DIM,
+                );
             }
           }
         }
@@ -3945,7 +4278,13 @@ const initDaylightToggle = (function () {
             const x = mx + dx;
             const y = my + dy;
             if (d <= R) {
-              const crater = (dx === -2 && dy === -2) || (dx === 2 && dy === 1) || (dx === -3 && dy === 2) || (dx === 1 && dy === -3) || (dx === 3 && dy === -1) || (dx === -1 && dy === 3);
+              const crater =
+                (dx === -2 && dy === -2) ||
+                (dx === 2 && dy === 1) ||
+                (dx === -3 && dy === 2) ||
+                (dx === 1 && dy === -3) ||
+                (dx === 3 && dy === -1) ||
+                (dx === -1 && dy === 3);
               const shaded = dx * 0.7 + dy * 0.7 > R * 0.45;
               putSky(x, y, crater || shaded ? M.MOON_DK : M.MOON);
               emit(x, y, 12, 1);
@@ -3959,7 +4298,8 @@ const initDaylightToggle = (function () {
       // 雲
       for (const cloud of clouds) {
         const span = CORE_W + 96;
-        const cx = ((cloud.x + (calm ? 0 : anim * cloud.speed) + 48) % span) - 48;
+        const cx =
+          ((cloud.x + (calm ? 0 : anim * cloud.speed) + 48) % span) - 48;
         const x0 = Math.round(cx);
         for (let i = 0; i < cloud.list.length; i += 3) {
           const x = x0 + cloud.list[i];
@@ -3974,7 +4314,10 @@ const initDaylightToggle = (function () {
       if (!calm && h > 7 && h < 18.5 && birds.t >= 0) {
         const flap = Math.floor(anim * 7) % 2;
         for (let i = 0; i < 4; i++) {
-          const x = Math.round((birds.dir > 0 ? -12 + birds.t * 26 : CORE_W + 12 - birds.t * 26) - birds.dir * i * 6);
+          const x = Math.round(
+            (birds.dir > 0 ? -12 + birds.t * 26 : CORE_W + 12 - birds.t * 26) -
+              birds.dir * i * 6,
+          );
           const y = birds.y + (i % 2) * 3 + i;
           putSky(x, y, M.BIRD);
           putSky(x - 1, y - flap, M.BIRD);
@@ -3994,21 +4337,31 @@ const initDaylightToggle = (function () {
         const py = y + oy;
         if (px < 0 || py < 0 || px >= bw || py >= bh) return;
         const i = py * bw + px;
-        if (matBuf[i] !== 0 && strength * fade * 16 > bayerAt(x, y)) varBuf[i] = 1;
+        if (matBuf[i] !== 0 && strength * fade * 16 > bayerAt(x, y))
+          varBuf[i] = 1;
       };
       // 木の影
-      const tx = 146 + (-dir) * 0 - dir * -1 * reach * 0.8;
+      const tx = 146 + -dir * 0 - dir * -1 * reach * 0.8;
       for (let y = 87; y < 101; y++) {
         const t = (y - 87) / 14;
-        const half = 25 * Math.sqrt(1 - Math.pow(t * 2 - 1, 2)) * (1 + Math.abs(dir) * 0.3);
+        const half =
+          25 *
+          Math.sqrt(1 - Math.pow(t * 2 - 1, 2)) *
+          (1 + Math.abs(dir) * 0.3);
         const cx = tx + (t - 0.5) * dir * 8;
-        for (let x = Math.round(cx - half); x <= cx + half; x++) mark(x, y, 1 - Math.abs(x - cx) / (half + 1) * 0.4);
+        for (let x = Math.round(cx - half); x <= cx + half; x++)
+          mark(x, y, 1 - (Math.abs(x - cx) / (half + 1)) * 0.4);
       }
       // 家の影
       for (let y = 87; y < 94; y++) {
         const t = (y - 87) / 7;
         const shift = dir * reach * 0.8 * t;
-        for (let x = Math.round(36 + Math.min(shift, 0)); x <= 86 + Math.max(shift, 0); x++) mark(x, y, 1 - t * 0.5);
+        for (
+          let x = Math.round(36 + Math.min(shift, 0));
+          x <= 86 + Math.max(shift, 0);
+          x++
+        )
+          mark(x, y, 1 - t * 0.5);
       }
     };
 
@@ -4025,7 +4378,8 @@ const initDaylightToggle = (function () {
 
       if (lamp || cook) {
         const flick = lamp ? lampFlick : 0.6 + 0.08 * Math.sin(anim * 9);
-        const swing = lamp && !calm ? Math.round(Math.sin(anim * 0.9) * 0.7) : 0;
+        const swing =
+          lamp && !calm ? Math.round(Math.sin(anim * 0.9) * 0.7) : 0;
         for (let y = 0; y < WH; y++) {
           for (let x = 0; x < WW; x++) {
             let m;
@@ -4034,11 +4388,20 @@ const initDaylightToggle = (function () {
               const cone = Math.abs(x - (4.5 + swing)) - (y - 2) * 0.62;
               m = cone < 0 && y >= 3 ? M.LIT_HI : cone < 2.2 ? M.LIT : M.LIT_DK;
             } else {
-              m = Math.hypot(x - 6.5, y - 8) < 5 && bayerAt(x, y) < 8 ? M.LIT : M.LIT_DK;
+              m =
+                Math.hypot(x - 6.5, y - 8) < 5 && bayerAt(x, y) < 8
+                  ? M.LIT
+                  : M.LIT_DK;
             }
             if (y >= WH - 1) m = M.LIT_DK;
             put(WX + x, WY + y, m);
-            if (y < WH) emit(WX + x, WY + y, (m === M.LIT_HI ? 255 : m === M.LIT ? 210 : 130) * flick, 0);
+            if (y < WH)
+              emit(
+                WX + x,
+                WY + y,
+                (m === M.LIT_HI ? 255 : m === M.LIT ? 210 : 130) * flick,
+                0,
+              );
           }
         }
         if (lamp) {
@@ -4075,11 +4438,16 @@ const initDaylightToggle = (function () {
         } else {
           // 夕方：台所を行き来する人影と、湯気
           const walk = calm ? 0 : Math.sin(anim * 0.8) * 3;
-          if (res.inside) blit(SPR.sil, Math.round(WX + 3 + walk), WY + 5, false, M.SIL);
+          if (res.inside)
+            blit(SPR.sil, Math.round(WX + 3 + walk), WY + 5, false, M.SIL);
           if (!calm) {
             for (let i = 0; i < 3; i++) {
               const s = (anim * 0.9 + i * 0.33) % 1;
-              put(WX + 11 + Math.round(Math.sin(s * 8 + i)), WY + 7 - Math.round(s * 6), M.LIT_HI);
+              put(
+                WX + 11 + Math.round(Math.sin(s * 8 + i)),
+                WY + 7 - Math.round(s * 6),
+                M.LIT_HI,
+              );
             }
           }
           rect(WX + 10, WY + 8, 4, 1, M.SIL);
@@ -4087,7 +4455,8 @@ const initDaylightToggle = (function () {
       } else if (morning) {
         // 朝：窓を開けて、伸びをする
         rect(WX, WY, WW, WH, M.ROOM);
-        for (let y = 0; y < 2; y++) for (let x = 0; x < WW; x++) put(WX + x, WY + y, M.GLASS_HI);
+        for (let y = 0; y < 2; y++)
+          for (let x = 0; x < WW; x++) put(WX + x, WY + y, M.GLASS_HI);
         let bust = SPR.bust;
         if (!calm) {
           const c = (anim % 5.4) / 5.4;
@@ -4118,7 +4487,8 @@ const initDaylightToggle = (function () {
       const leaf = Math.round(shutter * 7);
       const drawLeaf = (x0, w) => {
         for (let i = 0; i < w; i++) {
-          for (let y = 0; y < 14; y++) put(x0 + i, 60 + y, y % 2 === 0 ? M.WOOD : M.WOOD_LT);
+          for (let y = 0; y < 14; y++)
+            put(x0 + i, 60 + y, y % 2 === 0 ? M.WOOD : M.WOOD_LT);
         }
       };
       // 開いている鎧戸は窓の両わきに、閉じると窓の上に
@@ -4148,7 +4518,7 @@ const initDaylightToggle = (function () {
       const dy = -Math.round(res.hop);
       const startled = res.startle > 0;
       const moving = Math.abs((plan.outside ? plan.x : 73) - res.x) > 0.5;
-      if (!moving && plan.act === 'read' && Math.abs(res.x - 131) < 1) {
+      if (!moving && plan.act === "read" && Math.abs(res.x - 131) < 1) {
         // 木にもたれて、本を読む
         const up = startled;
         const spr = up ? SPR.seatUp : res.blink > 0 ? SPR.seatBlink : SPR.seat;
@@ -4180,9 +4550,14 @@ const initDaylightToggle = (function () {
         }
         return;
       }
-      if (!moving && plan.act === 'tend') {
+      if (!moving && plan.act === "tend") {
         const bob = !calm && Math.sin(anim * 2.2) > 0;
-        blit(bob ? SPR.crouch : SPR.stand, Math.round(res.x) - 3, bob ? base - 10 : base - 12, false);
+        blit(
+          bob ? SPR.crouch : SPR.stand,
+          Math.round(res.x) - 3,
+          bob ? base - 10 : base - 12,
+          false,
+        );
         return;
       }
       let spr = SPR.stand;
@@ -4200,7 +4575,11 @@ const initDaylightToggle = (function () {
       for (let i = 0; i < canopy.length; i += 3) {
         const y = canopy[i + 1];
         // 風：上ほど大きく、段ごとにずれて揺れる
-        const sway = calm ? 0 : Math.round(Math.sin(anim * 0.9 + y * 0.11) * (1.15 - (y - 10) * 0.012));
+        const sway = calm
+          ? 0
+          : Math.round(
+              Math.sin(anim * 0.9 + y * 0.11) * (1.15 - (y - 10) * 0.012),
+            );
         put(canopy[i] + sway, y, canopy[i + 2]);
       }
     };
@@ -4212,7 +4591,12 @@ const initDaylightToggle = (function () {
         smokeAcc += dt * (h >= 17 ? 3.2 : 1.4);
         while (smokeAcc >= 1) {
           smokeAcc -= 1;
-          smoke.push({ x: 72 + Math.random() * 2, y: 25, t: 0, seed: Math.random() * 10 });
+          smoke.push({
+            x: 72 + Math.random() * 2,
+            y: 25,
+            t: 0,
+            seed: Math.random() * 10,
+          });
         }
       }
       for (let i = smoke.length - 1; i >= 0; i--) {
@@ -4230,7 +4614,8 @@ const initDaylightToggle = (function () {
           for (let dx = 0; dx < size; dx++) {
             const x = Math.round(s.x) + dx;
             const y = Math.round(s.y) + dy;
-            if (bayerAt(x, y) < 16 - thin * 1.3) put(x, y, s.t > 2.3 ? M.SMOKE_DK : M.SMOKE);
+            if (bayerAt(x, y) < 16 - thin * 1.3)
+              put(x, y, s.t > 2.3 ? M.SMOKE_DK : M.SMOKE);
           }
         }
       }
@@ -4270,10 +4655,15 @@ const initDaylightToggle = (function () {
       }
 
       // 蛍
-      const night = clamp(smoothstep(19.4, 20.8, h) + (1 - smoothstep(3.6, 5, h)));
+      const night = clamp(
+        smoothstep(19.4, 20.8, h) + (1 - smoothstep(3.6, 5, h)),
+      );
       if (night > 0.3 && !calm) {
         for (const f of flies) {
-          const wx = f.x + Math.sin(anim * 0.33 + f.seed) * 14 + Math.sin(anim * 0.9 + f.seed * 2) * 3;
+          const wx =
+            f.x +
+            Math.sin(anim * 0.33 + f.seed) * 14 +
+            Math.sin(anim * 0.9 + f.seed * 2) * 3;
           const wy = f.y + Math.sin(anim * 0.47 + f.seed * 1.4) * 5;
           const pulse = Math.sin(anim * 1.4 + f.seed * 3);
           if (pulse < 0.1) continue;
@@ -4284,7 +4674,8 @@ const initDaylightToggle = (function () {
 
       // 蝶
       if (!calm && h > 8 && h < 17) {
-        butterfly.x = 108 + Math.sin(anim * 0.31) * 15 + Math.sin(anim * 1.1) * 2;
+        butterfly.x =
+          108 + Math.sin(anim * 0.31) * 15 + Math.sin(anim * 1.1) * 2;
         butterfly.y = 82 + Math.sin(anim * 0.72) * 5;
         const x = Math.round(butterfly.x);
         const y = Math.round(butterfly.y);
@@ -4299,7 +4690,13 @@ const initDaylightToggle = (function () {
       }
 
       // 舞う葉
-      if (!calm && h > 7 && h < 19 && Math.random() < dt * 0.18) leaves.push({ x: 124 + Math.random() * 44, y: 54 + Math.random() * 14, t: 0, seed: Math.random() * 6 });
+      if (!calm && h > 7 && h < 19 && Math.random() < dt * 0.18)
+        leaves.push({
+          x: 124 + Math.random() * 44,
+          y: 54 + Math.random() * 14,
+          t: 0,
+          seed: Math.random() * 6,
+        });
       for (let i = leaves.length - 1; i >= 0; i--) {
         const l = leaves[i];
         l.t += dt;
@@ -4322,11 +4719,14 @@ const initDaylightToggle = (function () {
 
       // 軒下の灯り
       if (lanternL > 0.02) {
-        const flick = calm ? 1 : 0.94 + 0.06 * Math.sin(anim * 11) * Math.sin(anim * 3.7);
+        const flick = calm
+          ? 1
+          : 0.94 + 0.06 * Math.sin(anim * 11) * Math.sin(anim * 3.7);
         rect(64, 64, 3, 1, M.WOOD_DK);
         rect(64, 65, 3, 3, M.LIT_HI);
         rect(64, 68, 3, 1, M.WOOD_DK);
-        for (let y = 65; y < 68; y++) for (let x = 64; x < 67; x++) emit(x, y, 255 * lanternL * flick, 0);
+        for (let y = 65; y < 68; y++)
+          for (let x = 64; x < 67; x++) emit(x, y, 255 * lanternL * flick, 0);
       } else {
         rect(64, 64, 3, 1, M.WOOD_DK);
         rect(64, 65, 3, 3, M.GLASS);
@@ -4342,7 +4742,14 @@ const initDaylightToggle = (function () {
             if (px < 0 || py < 0 || px >= bw || py >= bh) continue;
             const i = py * bw + px;
             const m = matBuf[i];
-            if (m === 0 || m === M.SIL || m === M.LIT || m === M.LIT_HI || m === M.LIT_DK) continue;
+            if (
+              m === 0 ||
+              m === M.SIL ||
+              m === M.LIT ||
+              m === M.LIT_HI ||
+              m === M.LIT_DK
+            )
+              continue;
             const d = Math.hypot((x - cx) / rx, (y - cy) / ry);
             const v = (1 - d) * L * 1.5;
             if (v * 16 > bayerAt(x, y)) varBuf[i] = 2;
@@ -4365,7 +4772,9 @@ const initDaylightToggle = (function () {
         if (h >= KEYS[i][0] && h < KEYS[i + 1][0]) {
           keyA = i;
           keyB = i + 1;
-          keyP = clamp(((h - KEYS[i][0]) / (KEYS[i + 1][0] - KEYS[i][0]) - 0.32) / 0.36);
+          keyP = clamp(
+            ((h - KEYS[i][0]) / (KEYS[i + 1][0] - KEYS[i][0]) - 0.32) / 0.36,
+          );
           return;
         }
       }
@@ -4385,7 +4794,9 @@ const initDaylightToggle = (function () {
         c.x = 0;
         c.y = 0;
       }
-      lampFlick = calm ? 1 : 0.95 + 0.05 * Math.sin(anim * 13) * Math.sin(anim * 5.3);
+      lampFlick = calm
+        ? 1
+        : 0.95 + 0.05 * Math.sin(anim * 13) * Math.sin(anim * 5.3);
 
       if (!calm) {
         birds.next -= dt;
@@ -4431,7 +4842,12 @@ const initDaylightToggle = (function () {
       for (let i = 0; i < n; i++) {
         const m = matBuf[i];
         const useB = thrA[i] < p;
-        const idx = m === 0 ? (useB ? sb[i] : sa[i]) : (useB ? tb : ta)[varBuf[i] * NM + m];
+        const idx =
+          m === 0
+            ? useB
+              ? sb[i]
+              : sa[i]
+            : (useB ? tb : ta)[varBuf[i] * NM + m];
         pixels[i] = palette32[idx];
       }
     };
@@ -4450,20 +4866,26 @@ const initDaylightToggle = (function () {
         const row = y * w * 4;
         for (let c = 0; c < 3; c++) {
           let sum = 0;
-          for (let x = -r; x <= r; x++) sum += src[row + clamp(x, 0, w - 1) * 4 + c];
+          for (let x = -r; x <= r; x++)
+            sum += src[row + clamp(x, 0, w - 1) * 4 + c];
           for (let x = 0; x < w; x++) {
             dst[row + x * 4 + c] = sum / size;
-            sum += src[row + clamp(x + r + 1, 0, w - 1) * 4 + c] - src[row + clamp(x - r, 0, w - 1) * 4 + c];
+            sum +=
+              src[row + clamp(x + r + 1, 0, w - 1) * 4 + c] -
+              src[row + clamp(x - r, 0, w - 1) * 4 + c];
           }
         }
       }
       for (let x = 0; x < w; x++) {
         for (let c = 0; c < 3; c++) {
           let sum = 0;
-          for (let y = -r; y <= r; y++) sum += dst[clamp(y, 0, h - 1) * w * 4 + x * 4 + c];
+          for (let y = -r; y <= r; y++)
+            sum += dst[clamp(y, 0, h - 1) * w * 4 + x * 4 + c];
           for (let y = 0; y < h; y++) {
             src[y * w * 4 + x * 4 + c] = sum / size;
-            sum += dst[clamp(y + r + 1, 0, h - 1) * w * 4 + x * 4 + c] - dst[clamp(y - r, 0, h - 1) * w * 4 + x * 4 + c];
+            sum +=
+              dst[clamp(y + r + 1, 0, h - 1) * w * 4 + x * 4 + c] -
+              dst[clamp(y - r, 0, h - 1) * w * 4 + x * 4 + c];
           }
         }
       }
@@ -4472,7 +4894,14 @@ const initDaylightToggle = (function () {
     // ---- WebGL
     let gl = null;
     try {
-      gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, powerPreference: 'high-performance' });
+      gl = canvas.getContext("webgl2", {
+        alpha: true,
+        premultipliedAlpha: true,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        powerPreference: "high-performance",
+      });
     } catch {
       gl = null;
     }
@@ -4487,7 +4916,8 @@ const initDaylightToggle = (function () {
       const s = gl.createShader(type);
       gl.shaderSource(s, source);
       gl.compileShader(s);
-      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) || 'shader');
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+        throw new Error(gl.getShaderInfoLog(s) || "shader");
       return s;
     };
     const setupGl = () => {
@@ -4498,24 +4928,58 @@ const initDaylightToggle = (function () {
         const f = compile(gl.FRAGMENT_SHADER, FRAG);
         gl.attachShader(program, v);
         gl.attachShader(program, f);
-        gl.bindAttribLocation(program, 0, 'aPos');
+        gl.bindAttribLocation(program, 0, "aPos");
         gl.linkProgram(program);
         gl.deleteShader(v);
         gl.deleteShader(f);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'link');
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+          throw new Error(gl.getProgramInfoLog(program) || "link");
       } catch (error) {
-        console.warn('toggle-daylight: シェーダーを作れないので、2D で描く', error);
+        console.warn(
+          "toggle-daylight: シェーダーを作れないので、2D で描く",
+          error,
+        );
         return false;
       }
       gl.useProgram(program);
-      for (const name of ['uWorld', 'uGlowNear', 'uRes', 'uPill', 'uOrigin', 'uWorldSize', 'uGlowSize', 'uLens', 'uBezel', 'uK', 'uNight', 'uLift', 'uSeam', 'uCalm', 'uShellDay', 'uShellNight', 'uInk', 'uLight', 'uHiNight', 'uLoNight', 'uSkyDay', 'uHomeCol', 'uSkyCol', 'uHomePos', 'uSkyPos']) {
+      for (const name of [
+        "uWorld",
+        "uGlowNear",
+        "uRes",
+        "uPill",
+        "uOrigin",
+        "uWorldSize",
+        "uGlowSize",
+        "uLens",
+        "uBezel",
+        "uK",
+        "uNight",
+        "uLift",
+        "uSeam",
+        "uCalm",
+        "uShellDay",
+        "uShellNight",
+        "uInk",
+        "uLight",
+        "uHiNight",
+        "uLoNight",
+        "uSkyDay",
+        "uHomeCol",
+        "uSkyCol",
+        "uHomePos",
+        "uSkyPos",
+      ]) {
         loc[name] = gl.getUniformLocation(program, name);
       }
       vao = gl.createVertexArray();
       gl.bindVertexArray(vao);
       quad = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, quad);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 3, -1, -1, 3]),
+        gl.STATIC_DRAW,
+      );
       gl.enableVertexAttribArray(0);
       gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -4545,12 +5009,28 @@ const initDaylightToggle = (function () {
       const fresh = canvas.cloneNode(false);
       canvas.replaceWith(fresh);
       canvas = fresh;
-      ctx2d = canvas.getContext('2d');
+      ctx2d = canvas.getContext("2d");
     };
     if (!ready && !lost) useCanvas2d();
 
     // ---- 形と大きさ
-    const shape = { W: 1, H: 1, cssW: 1, cssH: 1, dpr: 1, pillW: 1, pillH: 1, bezel: 1, winW: 1, winH: 1, r0: 1, travel: 1, travelCss: 1, ox: 0, oy: 0 };
+    const shape = {
+      W: 1,
+      H: 1,
+      cssW: 1,
+      cssH: 1,
+      dpr: 1,
+      pillW: 1,
+      pillH: 1,
+      bezel: 1,
+      winW: 1,
+      winH: 1,
+      r0: 1,
+      travel: 1,
+      travelCss: 1,
+      ox: 0,
+      oy: 0,
+    };
     let renderScale = 1;
     let fullK = 1; // 解像度を落としていないときの整数倍
     let thumbSeam = 1;
@@ -4564,7 +5044,9 @@ const initDaylightToggle = (function () {
     const measure = () => {
       const box = root.getBoundingClientRect();
       const fullDpr = Math.min(2, devicePixelRatio || 1);
-      const nextFullK = pickK((Math.round(box.height * fullDpr) / 1.32) * (1 - 0.046 * 2));
+      const nextFullK = pickK(
+        (Math.round(box.height * fullDpr) / 1.32) * (1 - 0.046 * 2),
+      );
       if (nextFullK !== fullK) {
         fullK = nextFullK;
         renderScale = 1;
@@ -4640,11 +5122,35 @@ const initDaylightToggle = (function () {
         gl.viewport(0, 0, W, H);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texWorld);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, bw, bh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA8,
+          bw,
+          bh,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          null,
+        );
+        gl.texParameteri(
+          gl.TEXTURE_2D,
+          gl.TEXTURE_MIN_FILTER,
+          gl.LINEAR_MIPMAP_LINEAR,
+        );
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, texNear);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, GRID_W, GRID_H, 0, gl.RGBA, gl.FLOAT, null);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA16F,
+          GRID_W,
+          GRID_H,
+          0,
+          gl.RGBA,
+          gl.FLOAT,
+          null,
+        );
       } else {
         lowCanvas = offscreen(bw, bh);
       }
@@ -4676,19 +5182,40 @@ const initDaylightToggle = (function () {
       glowFarBuf.set(glowRaw);
       boxBlur(glowFarBuf, glowTemp, GRID_W, GRID_H, 3);
       boxBlur(glowFarBuf, glowTemp, GRID_W, GRID_H, 3);
-      for (let i = 0; i < glowNearBuf.length; i++) glowNearBuf[i] += glowFarBuf[i] * 0.55;
+      for (let i = 0; i < glowNearBuf.length; i++)
+        glowNearBuf[i] += glowFarBuf[i] * 0.55;
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texWorld);
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, bw, bh, gl.RGBA, gl.UNSIGNED_BYTE, pixelBytes);
+      gl.texSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        0,
+        0,
+        bw,
+        bh,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        pixelBytes,
+      );
       gl.generateMipmap(gl.TEXTURE_2D);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, texNear);
-      gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, GRID_W, GRID_H, gl.RGBA, gl.FLOAT, glowNearBuf);
+      gl.texSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        0,
+        0,
+        GRID_W,
+        GRID_H,
+        gl.RGBA,
+        gl.FLOAT,
+        glowNearBuf,
+      );
     };
 
     // ---- つまみの状態
-    let x = root.dataset.night === '1' ? 1 : 0; // 0 = 昼、1 = 夜
+    let x = root.dataset.night === "1" ? 1 : 0; // 0 = 昼、1 = 夜
     let velocity = 0;
     let target = 0;
     let moving = false;
@@ -4700,18 +5227,18 @@ const initDaylightToggle = (function () {
     let hurry = 0;
 
     // 時間の流れ：右へは昼から夜へ。右端から戻るときは、夜明けを通って次の昼へ
-    let branch = 'pm';
+    let branch = "pm";
     let amStart = CLOCK_NIGHT;
     let nightClock = CLOCK_NIGHT;
     const clockOf = () => {
-      if (branch === 'am') return mix(36, amStart, x);
+      if (branch === "am") return mix(36, amStart, x);
       if (x >= 1) return nightClock;
       return CLOCK_DAY + (CLOCK_NIGHT - CLOCK_DAY) * x;
     };
     const beginTravel = () => {
-      if (x <= 0.0005) branch = 'pm';
+      if (x <= 0.0005) branch = "pm";
       else if (x >= 0.9995) {
-        branch = 'am';
+        branch = "am";
         amStart = nightClock;
       }
     };
@@ -4719,7 +5246,16 @@ const initDaylightToggle = (function () {
     const setStatus = (text) => {
       if (statusEl.textContent !== text) statusEl.textContent = text;
     };
-    const phaseName = (h) => (h < 5 || h >= 20 ? 'Night' : h < 7 ? 'Dawn' : h < 10 ? 'Morning' : h < 16.5 ? 'Day' : 'Evening');
+    const phaseName = (h) =>
+      h < 5 || h >= 20
+        ? "Night"
+        : h < 7
+          ? "Dawn"
+          : h < 10
+            ? "Morning"
+            : h < 16.5
+              ? "Day"
+              : "Evening";
 
     const commit = (value) => {
       const night = value >= 1;
@@ -4727,17 +5263,23 @@ const initDaylightToggle = (function () {
       velocity = 0;
       moving = false;
       if (night) {
-        nightClock = branch === 'am' ? amStart : CLOCK_NIGHT;
-        branch = 'pm';
+        nightClock = branch === "am" ? amStart : CLOCK_NIGHT;
+        branch = "pm";
       } else {
-        branch = 'pm';
+        branch = "pm";
       }
       if (checked !== night) {
         checked = night;
-        button.setAttribute('aria-checked', String(night));
-        root.dispatchEvent(new CustomEvent('daylight:change', { bubbles: true, composed: true, detail: { night } }));
+        button.setAttribute("aria-checked", String(night));
+        root.dispatchEvent(
+          new CustomEvent("daylight:change", {
+            bubbles: true,
+            composed: true,
+            detail: { night },
+          }),
+        );
       }
-      setStatus(night ? 'Night' : 'Day');
+      setStatus(night ? "Night" : "Day");
     };
 
     // ---- 描く
@@ -4779,15 +5321,28 @@ const initDaylightToggle = (function () {
       const homeW = sources[0].w;
       const home = unit(A2);
       const homeI = (homeW / 255 / 150) * 1.05;
-      const hx = homeW > 0 ? shape.ox + (sources[0].x / homeW + 0.5) * k - shape.W / 2 : 0;
-      const hy = homeW > 0 ? shape.oy - (sources[0].y / homeW + 0.5) * k - shape.H / 2 : 0;
+      const hx =
+        homeW > 0
+          ? shape.ox + (sources[0].x / homeW + 0.5) * k - shape.W / 2
+          : 0;
+      const hy =
+        homeW > 0
+          ? shape.oy - (sources[0].y / homeW + 0.5) * k - shape.H / 2
+          : 0;
       gl.uniform2f(loc.uHomePos, hx, hy);
-      gl.uniform3f(loc.uHomeCol, home[0] * homeI, home[1] * homeI, home[2] * homeI);
+      gl.uniform3f(
+        loc.uHomeCol,
+        home[0] * homeI,
+        home[1] * homeI,
+        home[2] * homeI,
+      );
       const skyW = sources[1].w;
       const skyU = unit(A3);
       const skyI = (skyW / 255 / 110) * 0.55;
-      const sx = skyW > 0 ? shape.ox + (sources[1].x / skyW + 0.5) * k - shape.W / 2 : 0;
-      const sy = skyW > 0 ? shape.oy - (sources[1].y / skyW + 0.5) * k - shape.H / 2 : 0;
+      const sx =
+        skyW > 0 ? shape.ox + (sources[1].x / skyW + 0.5) * k - shape.W / 2 : 0;
+      const sy =
+        skyW > 0 ? shape.oy - (sources[1].y / skyW + 0.5) * k - shape.H / 2 : 0;
       gl.uniform2f(loc.uSkyPos, sx, sy);
       gl.uniform3f(loc.uSkyCol, skyU[0] * skyI, skyU[1] * skyI, skyU[2] * skyI);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -4796,8 +5351,12 @@ const initDaylightToggle = (function () {
     const draw2d = (night) => {
       // WebGL が使えないとき：世界だけを整数倍で写し、丸く切って、つまみを置く
       const g = ctx2d;
-      const low = lowCanvas.getContext('2d');
-      low.putImageData(new ImageData(new Uint8ClampedArray(pixels.buffer), bw, bh), 0, 0);
+      const low = lowCanvas.getContext("2d");
+      low.putImageData(
+        new ImageData(new Uint8ClampedArray(pixels.buffer), bw, bh),
+        0,
+        0,
+      );
       g.clearRect(0, 0, shape.W, shape.H);
       const px = (shape.W - shape.pillW) / 2;
       const py = (shape.H - shape.pillH) / 2;
@@ -4821,17 +5380,18 @@ const initDaylightToggle = (function () {
     let raf = 0;
     let last = 0;
     let visible = true;
-    let pageVisible = root.ownerDocument.visibilityState !== 'hidden';
+    let pageVisible = root.ownerDocument.visibilityState !== "hidden";
     let worldAcc = 1;
     let dirty = true;
     let slow = 0;
     let good = 0;
     let frames = 0;
     let lastWorldClock = -1;
-    let lastNightText = '';
+    let lastNightText = "";
     let drag = null;
 
-    const nightAmount = (h) => clamp(smoothstep(17.4, 20.2, h) + (1 - smoothstep(4.8, 7.2, h)));
+    const nightAmount = (h) =>
+      clamp(smoothstep(17.4, 20.2, h) + (1 - smoothstep(4.8, 7.2, h)));
 
     // 描くのに本当に時間がかかっているときだけ、細かさを落とす。
     // コマが少ないだけでは決めない。省電力モードやブラウザの間引きで 30 コマになっている端末では、解像度を下げても速くならず、絵だけが悪くなる。
@@ -4930,7 +5490,12 @@ const initDaylightToggle = (function () {
         stretchV += (170 * (goal - stretch) - 11 * stretchV) * dt;
         stretch += stretchV * dt;
         lift += (liftTarget - lift) * (1 - Math.exp(-dt * 14));
-        if (Math.abs(stretch) > 0.002 || Math.abs(stretchV) > 0.01 || Math.abs(liftTarget - lift) > 0.002) dirty = true;
+        if (
+          Math.abs(stretch) > 0.002 ||
+          Math.abs(stretchV) > 0.01 ||
+          Math.abs(liftTarget - lift) > 0.002
+        )
+          dirty = true;
       } else {
         stretch = 0;
         stretchV = 0;
@@ -4939,7 +5504,10 @@ const initDaylightToggle = (function () {
 
       // ---- 右端では、時間が静かに進み、やがて灯りを消して眠る
       if (!calm && x >= 1 && !moving && !drag && nightClock < CLOCK_SLEEP) {
-        nightClock = Math.min(CLOCK_SLEEP, nightClock + (dt * (CLOCK_SLEEP - CLOCK_NIGHT)) / NIGHT_CREEP);
+        nightClock = Math.min(
+          CLOCK_SLEEP,
+          nightClock + (dt * (CLOCK_SLEEP - CLOCK_NIGHT)) / NIGHT_CREEP,
+        );
       }
 
       const clock = clockOf();
@@ -4947,7 +5515,9 @@ const initDaylightToggle = (function () {
 
       // ---- 世界は 30 コマで動く
       worldAcc += dt;
-      const worldStep = calm ? Math.abs(clock - lastWorldClock) > 1e-4 || dirty : worldAcc >= 1 / WORLD_HZ - WORLD_SLACK;
+      const worldStep = calm
+        ? Math.abs(clock - lastWorldClock) > 1e-4 || dirty
+        : worldAcc >= 1 / WORLD_HZ - WORLD_SLACK;
       if (worldStep) {
         renderWorld(clock, Math.min(worldAcc, 0.1), hurry);
         worldAcc = 0;
@@ -4962,7 +5532,7 @@ const initDaylightToggle = (function () {
         const nightText = night.toFixed(3);
         if (nightText !== lastNightText) {
           lastNightText = nightText;
-          root.style.setProperty('--night', nightText);
+          root.style.setProperty("--night", nightText);
         }
         if (ready) {
           const startedAt = costLeft > 0 ? performance.now() : 0;
@@ -4976,7 +5546,8 @@ const initDaylightToggle = (function () {
 
       // 動きを減らす設定で止まっているときは、次の操作まで描かない
       const idleCalm = calm && !moving && !drag;
-      if (visible && pageVisible && !idleCalm) raf = requestAnimationFrame(tick);
+      if (visible && pageVisible && !idleCalm)
+        raf = requestAnimationFrame(tick);
     };
 
     function stopDrawing() {
@@ -5001,11 +5572,20 @@ const initDaylightToggle = (function () {
 
     // ---- 入力
     let suppressClick = 0;
-    on(button, 'pointerdown', (event) => {
+    on(button, "pointerdown", (event) => {
       if (event.button !== 0) return;
       beginTravel();
       moving = false;
-      drag = { id: event.pointerId, start: event.clientX, from: x, want: x, moved: false, lastX: event.clientX, lastT: performance.now(), speed: 0 };
+      drag = {
+        id: event.pointerId,
+        start: event.clientX,
+        from: x,
+        want: x,
+        moved: false,
+        lastX: event.clientX,
+        lastT: performance.now(),
+        speed: 0,
+      };
       liftTarget = 1;
       try {
         button.setPointerCapture(event.pointerId);
@@ -5014,14 +5594,17 @@ const initDaylightToggle = (function () {
       }
       wake();
     });
-    on(button, 'pointermove', (event) => {
+    on(button, "pointermove", (event) => {
       if (!drag || event.pointerId !== drag.id) return;
       const dx = event.clientX - drag.start;
       if (Math.abs(dx) > 3) drag.moved = true;
       drag.want = drag.from + dx / Math.max(shape.travelCss, 1);
       const nowMs = performance.now();
       const dtMs = Math.max(nowMs - drag.lastT, 4);
-      const speed = (event.clientX - drag.lastX) / Math.max(shape.travelCss, 1) / (dtMs / 1000);
+      const speed =
+        (event.clientX - drag.lastX) /
+        Math.max(shape.travelCss, 1) /
+        (dtMs / 1000);
       drag.speed = drag.speed * 0.6 + speed * 0.4;
       drag.lastX = event.clientX;
       drag.lastT = nowMs;
@@ -5038,40 +5621,54 @@ const initDaylightToggle = (function () {
         suppressClick = performance.now() + 300;
         // 近い方の端へ。勢いも少し数える
         target = x + speed * 0.09 >= 0.5 ? 1 : 0;
-        root.dispatchEvent(new CustomEvent('daylight:intent', { detail: { night: target >= 1 } }));
+        root.dispatchEvent(
+          new CustomEvent("daylight:intent", {
+            detail: { night: target >= 1 },
+          }),
+        );
         velocity = clamp(speed, -3, 3);
         moving = true;
       }
       wake();
     };
-    on(button, 'pointerup', release);
-    on(button, 'pointercancel', release);
-    on(button, 'lostpointercapture', release);
+    on(button, "pointerup", release);
+    on(button, "pointercancel", release);
+    on(button, "lostpointercapture", release);
 
     const toggle = () => {
       beginTravel();
       target = (moving ? target >= 0.5 : x >= 0.5) ? 0 : 1;
       moving = true;
-      root.dispatchEvent(new CustomEvent('daylight:intent', { detail: { night: target >= 1 } }));
+      root.dispatchEvent(
+        new CustomEvent("daylight:intent", { detail: { night: target >= 1 } }),
+      );
       wake();
     };
-    on(button, 'click', () => {
+    on(button, "click", () => {
       if (performance.now() < suppressClick) return;
       toggle();
     });
 
     const STEP = 0.04;
-    on(button, 'keydown', (event) => {
+    on(button, "keydown", (event) => {
       let dir = 0;
-      if (event.key === 'ArrowRight' || event.key === 'ArrowUp') dir = 1;
-      else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') dir = -1;
+      if (event.key === "ArrowRight" || event.key === "ArrowUp") dir = 1;
+      else if (event.key === "ArrowLeft" || event.key === "ArrowDown") dir = -1;
       if (!dir) return;
       event.preventDefault();
       beginTravel();
       const from = moving ? target : x;
       target = clamp(from + dir * STEP);
       moving = true;
-      setStatus(phaseName(hourOf(branch === 'am' ? mix(36, amStart, target) : CLOCK_DAY + (CLOCK_NIGHT - CLOCK_DAY) * target)));
+      setStatus(
+        phaseName(
+          hourOf(
+            branch === "am"
+              ? mix(36, amStart, target)
+              : CLOCK_DAY + (CLOCK_NIGHT - CLOCK_DAY) * target,
+          ),
+        ),
+      );
       wake();
     });
 
@@ -5086,8 +5683,8 @@ const initDaylightToggle = (function () {
       }
     });
     io.observe(root);
-    on(root.ownerDocument, 'visibilitychange', () => {
-      pageVisible = root.ownerDocument.visibilityState !== 'hidden';
+    on(root.ownerDocument, "visibilitychange", () => {
+      pageVisible = root.ownerDocument.visibilityState !== "hidden";
       if (pageVisible) {
         dirty = true;
         wake();
@@ -5112,8 +5709,8 @@ const initDaylightToggle = (function () {
       lastWorldClock = -1;
       wake();
     };
-    on(motionQuery, 'change', applyCalm);
-    on(schemeQuery, 'change', () => {
+    on(motionQuery, "change", applyCalm);
+    on(schemeQuery, "change", () => {
       readPalette();
       dirty = true;
       lastWorldClock = -1;
@@ -5140,7 +5737,7 @@ const initDaylightToggle = (function () {
         redrawAll();
       }, RESTORE_WAIT_MS);
     }
-    on(canvas, 'webglcontextlost', (event) => {
+    on(canvas, "webglcontextlost", (event) => {
       event.preventDefault();
       ready = false;
       lost = true;
@@ -5148,7 +5745,7 @@ const initDaylightToggle = (function () {
       stopDrawing();
       if (pageVisible) waitForRestore();
     });
-    on(canvas, 'webglcontextrestored', () => {
+    on(canvas, "webglcontextrestored", () => {
       if (ctx2d) return; // もう 2D で描いている
       clearTimeout(restoreTimer);
       lost = false;
@@ -5158,7 +5755,7 @@ const initDaylightToggle = (function () {
     });
 
     // ---- 組み立て
-    button.setAttribute('aria-checked', String(checked));
+    button.setAttribute("aria-checked", String(checked));
     readPalette();
     measure();
     if (lost) waitForRestore();
@@ -5182,7 +5779,7 @@ const initDaylightToggle = (function () {
         gl.deleteVertexArray(vao);
         gl.deleteTexture(texWorld);
         gl.deleteTexture(texNear);
-        const lose = gl.getExtension('WEBGL_lose_context');
+        const lose = gl.getExtension("WEBGL_lose_context");
         if (lose) lose.loseContext();
       }
     };
@@ -5192,7 +5789,9 @@ const initDaylightToggle = (function () {
     if (!root || root.dataset.ldMounted) return;
     root.dataset.ldMounted = "1";
     let saved = null;
-    try { saved = localStorage.getItem("theme"); } catch (e) {}
+    try {
+      saved = localStorage.getItem("theme");
+    } catch (e) {}
     if ((saved || "dark") !== "light") root.dataset.night = "1";
     // Apply the theme the instant the user decides, not after the slide animation ends.
     root.addEventListener("daylight:intent", (e) => {
@@ -5201,7 +5800,11 @@ const initDaylightToggle = (function () {
     root.addEventListener("daylight:change", (e) => {
       applyTheme(e.detail.night ? "dark" : "light");
     });
-    try { mount(root); } catch (e) { console.warn("daylight toggle failed", e); }
+    try {
+      mount(root);
+    } catch (e) {
+      console.warn("daylight toggle failed", e);
+    }
   };
 })();
 
@@ -5358,7 +5961,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setGrvCardStatusFilter("ALL");
   setGrvCardMonthFilter("3");
   setCardStatusFilter("ALL"); // init filter button styles
-  setCardMonthFilter("3"); // init month filter button styles
+  setCardMonthFilter("1"); // init month filter button styles
   populateCCCardFilter(); // init card dropdown
 
   setInterval(() => {
@@ -7457,7 +8060,8 @@ function sortSweetie(col) {
 function startEditSweetie(id) {
   const t = sweetieTxns.find((t) => t.id === id);
   if (!t) return;
-  if (typeof window !== 'undefined' && window.__asm) window.__asm.startEdit('sweetie', id, t);
+  if (typeof window !== "undefined" && window.__asm)
+    window.__asm.startEdit("sweetie", id, t);
   editingSweetieId = id;
   document.getElementById("sweetieType").value = t.type;
   document.getElementById("sweetieAmount").value = Math.abs(t.amount);
@@ -7506,7 +8110,12 @@ function cloneSweetie(id) {
 }
 
 function addSweetieEntry() {
-  if (typeof window !== 'undefined' && window.__asm && !window.__asm.canSubmit()) return;
+  if (
+    typeof window !== "undefined" &&
+    window.__asm &&
+    !window.__asm.canSubmit()
+  )
+    return;
   if (window.__addBusy) return;
   window.__addBusy = true;
   setTimeout(() => (window.__addBusy = false), 1500);
