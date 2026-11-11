@@ -1,4 +1,4 @@
-/* tables-enhanced.css v3 — presentation-only, tiny & scoped. Delete the <link> to revert.
+/* tables-enhanced.css v6 — presentation-only, tiny & scoped. Delete the <link> to revert.
    Desktop (>=1280px): Billing Month gets its own width (was squeezed to max-width:80px so the
    text spilled under the action button). Narrower screens + phones: layout NOT changed.
    Touch devices: no sticky row-hover highlight after a tap. */
@@ -29,4 +29,31 @@
   html body #grvCCSection table tbody tr.grv-unpaid-row:hover td {
     background: rgba(239, 68, 68, 0.055);
   }
+}
+
+/* ── v5: subtle colour grading for Card + Used By name pills (DESKTOP ONLY) ──
+   Table/columns keep their original look; only the name pills get a soft tint.
+   Reuses person-tone-N / grv-card-tone-N (same name → same colour). Phones (<=768px)
+   are untouched. Presentation-only; no size/layout change. Delete this block to revert. */
+@media (min-width: 769px) {
+  html body :is(.table-card-pill, .table-person-pill)[class*="-tone-"] {
+    background: linear-gradient(135deg, rgba(var(--pc), 0.15), rgba(var(--pc), 0.05));
+    border-color: rgba(var(--pc), 0.32);
+    color: rgb(var(--pt));
+    font-weight: 600;
+  }
+  body.light-mode :is(.table-card-pill, .table-person-pill)[class*="-tone-"] {
+    background: linear-gradient(135deg, rgba(var(--pc), 0.14), rgba(var(--pc), 0.05));
+    color: color-mix(in srgb, rgb(var(--pc)) 60%, #000);
+  }
+  html body .person-tone-0, html body .grv-card-tone-0 { --pc: 34,211,238; --pt: 165,243,252; }
+  html body .person-tone-1, html body .grv-card-tone-1 { --pc: 168,85,247; --pt: 216,180,254; }
+  html body .person-tone-2, html body .grv-card-tone-2 { --pc: 245,158,11; --pt: 252,211,77; }
+  html body .person-tone-3, html body .grv-card-tone-3 { --pc: 236,72,153; --pt: 249,168,212; }
+  html body .person-tone-4, html body .grv-card-tone-4 { --pc: 59,130,246; --pt: 147,197,253; }
+  html body .person-tone-5, html body .grv-card-tone-5 { --pc: 34,197,94; --pt: 134,239,172; }
+  html body .person-tone-6, html body .grv-card-tone-6 { --pc: 249,115,22; --pt: 253,186,116; }
+  html body .person-tone-7, html body .grv-card-tone-7 { --pc: 20,184,166; --pt: 94,234,212; }
+  html body .person-tone-8, html body .grv-card-tone-8 { --pc: 244,63,94; --pt: 253,164,175; }
+  html body .person-tone-9, html body .grv-card-tone-9 { --pc: 148,163,184; --pt: 203,213,225; }
 }
