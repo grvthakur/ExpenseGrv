@@ -1,10 +1,12 @@
-const CACHE_NAME = "expense-tracker-v32";
+const CACHE_NAME = "expense-tracker-v35";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./script.js",
   "./animation.css",
   "./tables-enhanced.css",
+  "./table-density.css?v=1",
+  "./table-density.js?v=1",
   "./animation.js",
   "./row-actions.js",
   "./autocomplete.js",

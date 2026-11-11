@@ -1,0 +1,57 @@
+/* table-density.css — desktop-only (>=1024px) row density. Normal = no rules (original look).
+   Driven by <html data-d-{exp|cards|grvcc|sweetie}="comfortable|compact|dense|ultra">. Phones untouched. */
+.grv-dens { display: inline-flex; align-items: center; gap: 5px; font-size: .75rem; color: var(--muted); margin-left: 8px; }
+.grv-dens select { font-size: .75rem; padding: 4px 6px; border-radius: 6px; background: var(--s2); color: var(--text); border: 1px solid var(--border); }
+@media (max-width: 1023px) { .grv-dens { display: none !important; } }
+
+@media (min-width: 1024px) {
+  html {
+    --dn-comfortable: 9px 14px; --dn-compact: 6px 12px; --dn-dense: 3px 8px; --dn-ultra: 1px 6px;
+  }
+  /* ---- Comfortable ---- */
+  html[data-d-exp="comfortable"] body #expenseTable :is(td, th),
+  html[data-d-cards="comfortable"] body #cardTable :is(td, th),
+  html[data-d-grvcc="comfortable"] body #grvCardTable :is(td, th),
+  html[data-d-sweetie="comfortable"] body #sweetieTable :is(td, th) { padding: 9px 14px !important; }
+  html[data-d-exp="comfortable"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="comfortable"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="comfortable"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="comfortable"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 26px !important; height: 26px !important; }
+  /* ---- Compact ---- */
+  html[data-d-exp="compact"] body #expenseTable :is(td, th),
+  html[data-d-cards="compact"] body #cardTable :is(td, th),
+  html[data-d-grvcc="compact"] body #grvCardTable :is(td, th),
+  html[data-d-sweetie="compact"] body #sweetieTable :is(td, th) { padding: 6px 12px !important; }
+  html[data-d-exp="compact"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="compact"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="compact"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="compact"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 23px !important; height: 23px !important; font-size: .7rem !important; }
+  /* ---- Dense ---- */
+  html[data-d-exp="dense"] body #expenseTable :is(td, th),
+  html[data-d-cards="dense"] body #cardTable :is(td, th),
+  html[data-d-grvcc="dense"] body #grvCardTable :is(td, th),
+  html[data-d-sweetie="dense"] body #sweetieTable :is(td, th) { padding: 3px 8px !important; font-size: .78rem !important; line-height: 1.25 !important; }
+  html[data-d-exp="dense"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="dense"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="dense"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="dense"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 20px !important; height: 20px !important; font-size: .62rem !important; }
+  /* ---- Ultra Dense ---- */
+  html[data-d-exp="ultra"] body #expenseTable :is(td, th),
+  html[data-d-cards="ultra"] body #cardTable :is(td, th),
+  html[data-d-grvcc="ultra"] body #grvCardTable :is(td, th),
+  html[data-d-sweetie="ultra"] body #sweetieTable :is(td, th) { padding: 1px 6px !important; font-size: .74rem !important; line-height: 1.2 !important; }
+  html[data-d-exp="ultra"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="ultra"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="ultra"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="ultra"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 17px !important; height: 17px !important; font-size: .55rem !important; margin: 0 1px 0 0 !important; }
+  /* pills inside cells: trim vertical padding in the 2 densest modes */
+  html:is([data-d-exp], [data-d-cards], [data-d-grvcc], [data-d-sweetie]) body :is(#expenseTable, #cardTable, #grvCardTable, #sweetieTable) td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill) { line-height: 1.2; }
+  html[data-d-exp="dense"] body #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-cards="dense"] body #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-grvcc="dense"] body #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-sweetie="dense"] body #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-exp="ultra"] body #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-cards="ultra"] body #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-grvcc="ultra"] body #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
+  html[data-d-sweetie="ultra"] body #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill) { padding-top: 0 !important; padding-bottom: 0 !important; }
+}

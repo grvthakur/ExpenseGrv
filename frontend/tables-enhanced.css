@@ -86,3 +86,61 @@
     text-shadow: none !important;
   }
 }
+
+/* §5 Mobile: Credit Card table — card-name column.
+   Problem: col 2 was too narrow, so one word (e.g. "FLIPKART") got cut mid-word
+   ("FLIPKAR" / "T"). Fix: slightly smaller text + guaranteed min width so a whole
+   word always fits; wrapping only happens at spaces / hyphens. */
+@media (max-width: 600px) {
+  html body table#cardTable th:nth-child(2),
+  html body table#cardTable td:nth-child(2) {
+    min-width: 64px !important;
+    max-width: 90px !important;
+  }
+  html body table#cardTable td:nth-child(2) span.table-data-pill.table-card-pill {
+    font-size: .5rem !important;
+    letter-spacing: -.01em !important;
+    line-height: 1.25 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: manual !important;
+  }
+}
+
+/* §7 Soft per-column tint — BACKGROUND COLOUR ONLY (no size/padding/layout change).
+   Each column gets its own very light hue so columns are easy to tell apart.
+   Unpaid rows keep their red tint; row hover still wins. Action column untouched.
+   Make it stronger/softer by changing --col-a (0.045). */
+html body { --col-a: .045; }
+
+/* Expenses: Date | Category | Description | Amount */
+html body #expenseTable tbody tr td:nth-child(1) { background: rgba(148,163,184,var(--col-a)); }
+html body #expenseTable tbody tr td:nth-child(2) { background: rgba(168, 85,247,var(--col-a)); }
+html body #expenseTable tbody tr td:nth-child(3) { background: rgba( 14,165,233,var(--col-a)); }
+html body #expenseTable tbody tr td:nth-child(4) { background: rgba( 34,197, 94,var(--col-a)); }
+
+/* Credit Cards: Date | Card | Used by | Description | Remark | Amount | Status | Billing */
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(1) { background: rgba(148,163,184,var(--col-a)); }
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(2) { background: rgba( 34,211,238,var(--col-a)); }
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(3) { background: rgba(245,158, 11,var(--col-a)); }
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(4) { background: rgba(168, 85,247,var(--col-a)); }
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(5) { background: rgba(249,115, 22,var(--col-a)); }
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(6) { background: rgba(244, 63, 94,var(--col-a)); }
+html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(8) { background: rgba( 59,130,246,var(--col-a)); }
+
+/* GRV CC: Date | Card | Description | Remark | Amount | Status (col 1 may be hidden checkbox) */
+html body #grvCardTable tbody tr:not(.grv-unpaid-row) td:nth-child(2) { background: rgba(148,163,184,var(--col-a)); }
+html body #grvCardTable tbody tr:not(.grv-unpaid-row) td:nth-child(3) { background: rgba( 34,211,238,var(--col-a)); }
+html body #grvCardTable tbody tr:not(.grv-unpaid-row) td:nth-child(4) { background: rgba(168, 85,247,var(--col-a)); }
+html body #grvCardTable tbody tr:not(.grv-unpaid-row) td:nth-child(5) { background: rgba(249,115, 22,var(--col-a)); }
+html body #grvCardTable tbody tr:not(.grv-unpaid-row) td:nth-child(6) { background: rgba(244, 63, 94,var(--col-a)); }
+
+/* Sweetie: 1 | 2 | Amount | … */
+html body #sweetieTable tbody tr td:nth-child(1) { background: rgba(148,163,184,var(--col-a)); }
+html body #sweetieTable tbody tr td:nth-child(2) { background: rgba(168, 85,247,var(--col-a)); }
+html body #sweetieTable tbody tr td:nth-child(3) { background: rgba( 34,197, 94,var(--col-a)); }
+html body #sweetieTable tbody tr td:nth-child(4) { background: rgba( 14,165,233,var(--col-a)); }
+
+/* Light mode needs a touch more tint to be visible on white */
+body.light-mode { --col-a: .07; }
+
