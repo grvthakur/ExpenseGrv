@@ -2,7 +2,6 @@
    Driven by <html data-d-{exp|cards|grvcc|sweetie}="comfortable|compact|dense|ultra">. Phones untouched. */
 .grv-dens { display: inline-flex; align-items: center; gap: 5px; font-size: .75rem; color: var(--muted); margin-left: 8px; }
 .grv-dens select { font-size: .75rem; padding: 4px 6px; border-radius: 6px; background: var(--s2); color: var(--text); border: 1px solid var(--border); }
-@media (max-width: 1023px) { .grv-dens { display: none !important; } }
 
 @media (min-width: 1024px) {
   html {
@@ -54,4 +53,22 @@
   html[data-d-cards="ultra"] body #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
   html[data-d-grvcc="ultra"] body #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
   html[data-d-sweetie="ultra"] body #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill) { padding-top: 0 !important; padding-bottom: 0 !important; }
+}
+
+/* ---- Phone / tablet (<=1023px): vertical padding + expense action buttons only; widths, fonts,
+   columns and layout untouched. Comfortable=Compact, Ultra=Dense here. ---- */
+@media (max-width: 1023px) {
+  .grv-dens { font-size: .68rem; margin: 4px 0 4px 6px; gap: 4px; white-space: nowrap; }
+  .grv-dens, .grv-dens select { width: auto !important; flex: 0 0 auto !important; }
+  .grv-dens select { font-size: .7rem; padding: 3px 4px; max-width: 120px; }
+  html:is([data-d-exp="comfortable"],[data-d-exp="compact"]) body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
+  html:is([data-d-cards="comfortable"],[data-d-cards="compact"]) body:not(#z):not(#z):not(#z) #cardTable :is(td, th):not(:nth-child(9)),
+  html:is([data-d-grvcc="comfortable"],[data-d-grvcc="compact"]) body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
+  html:is([data-d-sweetie="comfortable"],[data-d-sweetie="compact"]) body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 4px !important; padding-bottom: 4px !important; }
+  html:is([data-d-exp="dense"],[data-d-exp="ultra"]) body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
+  html:is([data-d-cards="dense"],[data-d-cards="ultra"]) body:not(#z):not(#z):not(#z) #cardTable :is(td, th):not(:nth-child(9)),
+  html:is([data-d-grvcc="dense"],[data-d-grvcc="ultra"]) body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
+  html:is([data-d-sweetie="dense"],[data-d-sweetie="ultra"]) body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 2px !important; padding-bottom: 2px !important; }
+  html:is([data-d-exp="comfortable"],[data-d-exp="compact"]) body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 28px !important; height: 28px !important; }
+  html:is([data-d-exp="dense"],[data-d-exp="ultra"]) body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 26px !important; height: 26px !important; }
 }
