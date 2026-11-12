@@ -2012,7 +2012,16 @@ function addCardEntry() {
 
   // Purchases must be positive. Negative amounts are allowed only when the
   // user explicitly selects an eligible unpaid purchase in the refund field.
-  if (!Number.isFinite(amount) || amount === 0 || (amount < 0 && !isRefund)) {
+  // Editing an entry that is already a refund (negative) must stay allowed:
+  // the refund-of picker is hidden in edit mode, so it can't be re-selected.
+  const editingRefund =
+    Boolean(editingCardId) &&
+    cardTxns.some((t) => t.id === editingCardId && Number(t.amount) < 0);
+  if (
+    !Number.isFinite(amount) ||
+    amount === 0 ||
+    (amount < 0 && !isRefund && !editingRefund)
+  ) {
     return toast(
       "Enter a valid amount. For a refund, select an unpaid purchase first.",
       true,
