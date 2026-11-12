@@ -1,62 +1,123 @@
-/* table-density.css — desktop-only (>=1024px) row density. Normal = no rules (original look).
-   Driven by <html data-d-{exp|cards|grvcc|sweetie}="comfortable|compact|dense|ultra">. Phones untouched. */
+/* table-density.css — row density, all 5 modes on desktop AND phone. Normal = no rules (original look).
+   Driven by <html data-d-{exp|cards|grvcc|sweetie}="comfortable|compact|dense|ultra">. */
 .grv-dens { display: inline-flex; align-items: center; gap: 5px; font-size: .75rem; color: var(--muted); margin-left: 8px; }
 .grv-dens select { font-size: .75rem; padding: 4px 6px; border-radius: 6px; background: var(--s2); color: var(--text); border: 1px solid var(--border); }
 
+/* ---- Desktop (>=1024px) ---- */
 @media (min-width: 1024px) {
-  html {
-    --dn-comfortable: 9px 14px; --dn-compact: 6px 12px; --dn-dense: 3px 8px; --dn-ultra: 1px 6px;
-  }
-  /* ---- Comfortable ---- */
-  html[data-d-exp="comfortable"] body #expenseTable :is(td, th),
-  html[data-d-cards="comfortable"] body #cardTable :is(td, th),
-  html[data-d-grvcc="comfortable"] body #grvCardTable :is(td, th),
-  html[data-d-sweetie="comfortable"] body #sweetieTable :is(td, th) { padding: 9px 14px !important; }
-  html[data-d-exp="comfortable"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-cards="comfortable"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-grvcc="comfortable"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-sweetie="comfortable"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 26px !important; height: 26px !important; }
-  /* ---- Compact ---- */
-  html[data-d-exp="compact"] body #expenseTable :is(td, th),
-  html[data-d-cards="compact"] body #cardTable :is(td, th),
-  html[data-d-grvcc="compact"] body #grvCardTable :is(td, th),
-  html[data-d-sweetie="compact"] body #sweetieTable :is(td, th) { padding: 6px 12px !important; }
-  html[data-d-exp="compact"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-cards="compact"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-grvcc="compact"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-sweetie="compact"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 23px !important; height: 23px !important; font-size: .7rem !important; }
-  /* ---- Dense ---- */
-  html[data-d-exp="dense"] body #expenseTable :is(td, th),
-  html[data-d-cards="dense"] body #cardTable :is(td, th),
-  html[data-d-grvcc="dense"] body #grvCardTable :is(td, th),
-  html[data-d-sweetie="dense"] body #sweetieTable :is(td, th) { padding: 3px 8px !important; font-size: .78rem !important; line-height: 1.25 !important; }
-  html[data-d-exp="dense"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-cards="dense"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-grvcc="dense"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-sweetie="dense"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 20px !important; height: 20px !important; font-size: .62rem !important; }
-  /* ---- Ultra Dense ---- */
-  html[data-d-exp="ultra"] body #expenseTable :is(td, th),
-  html[data-d-cards="ultra"] body #cardTable :is(td, th),
-  html[data-d-grvcc="ultra"] body #grvCardTable :is(td, th),
-  html[data-d-sweetie="ultra"] body #sweetieTable :is(td, th) { padding: 1px 6px !important; font-size: .74rem !important; line-height: 1.2 !important; }
-  html[data-d-exp="ultra"] body #expenseTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-cards="ultra"] body #cardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-grvcc="ultra"] body #grvCardTable :is(.edit-btn, .clone-btn, .delete-btn),
-  html[data-d-sweetie="ultra"] body #sweetieTable :is(.edit-btn, .clone-btn, .delete-btn) { width: 17px !important; height: 17px !important; font-size: .55rem !important; margin: 0 1px 0 0 !important; }
-  /* pills inside cells: trim vertical padding in the 2 densest modes */
-  html:is([data-d-exp], [data-d-cards], [data-d-grvcc], [data-d-sweetie]) body :is(#expenseTable, #cardTable, #grvCardTable, #sweetieTable) td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill) { line-height: 1.2; }
-  html[data-d-exp="dense"] body #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-cards="dense"] body #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-grvcc="dense"] body #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-sweetie="dense"] body #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-exp="ultra"] body #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-cards="ultra"] body #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-grvcc="ultra"] body #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill),
-  html[data-d-sweetie="ultra"] body #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill) { padding-top: 0 !important; padding-bottom: 0 !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 8px !important; padding-bottom: 8px !important; padding-left: 14px !important; padding-right: 14px !important; font-size: .84rem !important; line-height: 1.2 !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 26px !important; height: 26px !important; min-width: 0 !important; min-height: 0 !important; font-size: 0.81rem !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 22px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 18px !important; min-height: 0 !important; line-height: 18px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .68rem !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill) { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 5px !important; padding-bottom: 5px !important; padding-left: 12px !important; padding-right: 12px !important; font-size: .8rem !important; line-height: 1.2 !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 24px !important; height: 24px !important; min-width: 0 !important; min-height: 0 !important; font-size: 0.75rem !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 20px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 17px !important; min-height: 0 !important; line-height: 17px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .64rem !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill) { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 3px !important; padding-bottom: 3px !important; padding-left: 8px !important; padding-right: 8px !important; font-size: .76rem !important; line-height: 1.2 !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 20px !important; height: 20px !important; min-width: 0 !important; min-height: 0 !important; font-size: 0.62rem !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 17px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 15px !important; min-height: 0 !important; line-height: 15px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .6rem !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill) { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 1px !important; padding-bottom: 1px !important; padding-left: 6px !important; padding-right: 6px !important; font-size: .72rem !important; line-height: 1.2 !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 16px !important; height: 16px !important; min-width: 0 !important; min-height: 0 !important; font-size: 0.50rem !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 14px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 13px !important; min-height: 0 !important; line-height: 13px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .56rem !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-amount-pill, .table-text-pill, .table-card-pill, .table-person-pill, .table-data-pill) { padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1.2 !important; }
 }
 
-/* ---- Phone / tablet (<=1023px): vertical padding + expense action buttons only; widths, fonts,
-   columns and layout untouched. All 5 modes, same names as desktop. ---- */
+@media (min-width: 1024px) {
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { display: inline-flex !important; align-items: center; justify-content: center; box-sizing: border-box; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span { display: inline-flex !important; align-items: center; height: auto !important; line-height: 1 !important; }
+}
+
+@media (min-width: 1024px) {
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem,
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem { display: inline !important; margin: 0 0 0 6px !important; padding: 0 !important; }
+}
+
+/* ---- Phone / tablet (<=1023px): vertical padding + element heights; widths/columns untouched ---- */
 @media (max-width: 1023px) {
   .grv-dens { font-size: .68rem; margin: 4px 0 4px 6px; gap: 4px; white-space: nowrap; }
   .grv-dens, .grv-dens select { width: auto !important; flex: 0 0 auto !important; }
@@ -65,20 +126,104 @@
   html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th):not(:nth-child(9)),
   html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
   html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 5px !important; padding-bottom: 5px !important; }
-  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 30px !important; height: 30px !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 29px !important; height: 29px !important; }
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 22px !important; height: 22px !important; min-width: 0 !important; min-height: 0 !important; font-size: .55rem !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 20px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 17px !important; min-height: 0 !important; line-height: 17px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .6rem !important; }
   html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
   html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th):not(:nth-child(9)),
   html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
-  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 4px !important; padding-bottom: 4px !important; }
-  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 28px !important; height: 28px !important; }
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 3px !important; padding-bottom: 3px !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 27px !important; height: 27px !important; }
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 20px !important; height: 20px !important; min-width: 0 !important; min-height: 0 !important; font-size: .55rem !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 18px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 16px !important; min-height: 0 !important; line-height: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .57rem !important; }
   html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
   html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th):not(:nth-child(9)),
   html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
-  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 2px !important; padding-bottom: 2px !important; }
-  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 26px !important; height: 26px !important; }
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 1px !important; padding-bottom: 1px !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 25px !important; height: 25px !important; }
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 18px !important; height: 18px !important; min-width: 0 !important; min-height: 0 !important; font-size: .55rem !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 16px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 14px !important; min-height: 0 !important; line-height: 14px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .54rem !important; }
   html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable :is(td, th),
   html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable :is(td, th):not(:nth-child(9)),
   html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable :is(td, th),
   html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable :is(td, th) { padding-top: 0px !important; padding-bottom: 0px !important; }
-  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 24px !important; height: 24px !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 22px !important; height: 22px !important; }
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.edit-btn, .clone-btn, .delete-btn),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.edit-btn, .clone-btn, .delete-btn) { width: 16px !important; height: 16px !important; min-width: 0 !important; min-height: 0 !important; font-size: .55rem !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-toggle),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-toggle),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-toggle),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-toggle) { height: 14px !important; min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; line-height: 1 !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { height: 12px !important; min-height: 0 !important; line-height: 12px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: .5rem !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.status-badge),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.status-badge),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.status-badge),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.status-badge) { display: inline-flex !important; align-items: center; justify-content: center; box-sizing: border-box; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span { display: inline-flex !important; align-items: center; height: auto !important; line-height: 1 !important; }
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem,
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem { display: inline !important; margin: 0 0 0 6px !important; padding: 0 !important; }
+  html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-sweetie="comfortable"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-data-pill, .cc-rem) { font-size: 0.94em !important; }
+  html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-cards="compact"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-grvcc="compact"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-sweetie="compact"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-data-pill, .cc-rem) { font-size: 0.88em !important; }
+  html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-sweetie="dense"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-data-pill, .cc-rem) { font-size: 0.82em !important; }
+  html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-data-pill, .cc-rem),
+  html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-data-pill, .cc-rem) { font-size: 0.76em !important; }
 }
