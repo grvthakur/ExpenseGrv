@@ -28,13 +28,12 @@
     var cur = H.getAttribute("data-d-" + pg.key) || "normal";
     var w = document.createElement("label"); w.className = "grv-dens"; w.appendChild(document.createTextNode("View Density"));
     var s = document.createElement("select"); s.title = "View Density";
-    var PH = !DESK.matches, LIST = PH ? OPTS.filter(function (o) { return o[0] === "normal" || o[0] === "compact" || o[0] === "dense"; }) : OPTS;
-    if (PH) cur = { comfortable: "compact", ultra: "dense" }[cur] || cur;
+    var LIST = OPTS;
     LIST.forEach(function (o) { var e = document.createElement("option"); e.value = o[0]; e.textContent = o[1]; s.appendChild(e); });
     var sep = document.createElement("option"); sep.disabled = true; sep.textContent = "──────────"; s.appendChild(sep);
     [["__set", "★ Set Current View as Default"], ["__reset", "↺ Reset to Normal"]].forEach(function (o) { var e = document.createElement("option"); e.value = o[0]; e.textContent = o[1]; s.appendChild(e); });
     s.value = cur;
-    function stars() { var d = saved(pg.key); if (PH) d = { comfortable: "compact", ultra: "dense" }[d] || d; [].forEach.call(s.options, function (e, i) { if (i < LIST.length) e.textContent = LIST[i][1] + (d === LIST[i][0] && d !== "normal" ? " ★" : ""); }); }
+    function stars() { var d = saved(pg.key); [].forEach.call(s.options, function (e, i) { if (i < LIST.length) e.textContent = LIST[i][1] + (d === LIST[i][0] && d !== "normal" ? " ★" : ""); }); }
     stars();
     s.addEventListener("change", function () {
       var v = s.value;
