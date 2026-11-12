@@ -50,6 +50,9 @@
     .flt-toggle {
       display: none !important;
     }
+    .cs-toggle {
+      display: none !important;
+    }
 
     @media screen and (max-width: 768px) {
       .flt-toggle {
@@ -154,6 +157,28 @@
         border-radius: 10px !important;
       }
 
+      /* Card details (per-card Spent/Limit/Remaining boxes): collapsed behind a dropdown on phones */
+      .cs-toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+        background: var(--s2);
+        color: var(--accent);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin: 0 0 8px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      html body #cardSummaryGrid.cs-collapsed {
+        display: none !important;
+      }
+
       /* Force filter container to hide even if other CSS uses display:flex!important */
       html body #expenseSection .table-header > div.flt-collapsed,
       html body #cardSection .table-header > div.flt-collapsed,
@@ -208,12 +233,32 @@
     });
   }
 
+  function initCardDetails() {
+    const grid = document.getElementById("cardSummaryGrid");
+    if (!grid || grid.dataset.csReady === "1") return;
+    grid.dataset.csReady = "1";
+    grid.classList.add("cs-collapsed");
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cs-toggle";
+    btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = "<span>💳 Card Details</span><span>▾</span>";
+    btn.addEventListener("click", function () {
+      const open = grid.classList.toggle("cs-collapsed") === false;
+      btn.lastChild.textContent = open ? "▴" : "▾";
+      btn.setAttribute("aria-expanded", String(open));
+    });
+    grid.parentNode.insertBefore(btn, grid);
+  }
+
   function start() {
     initFilters();
+    initCardDetails();
 
     // Reinitialize if the app creates filter sections later.
     if (!window.__mobileFilterObserver) {
-      window.__mobileFilterObserver = new MutationObserver(initFilters);
+      window.__mobileFilterObserver = new MutationObserver(function () { initFilters(); initCardDetails(); });
       window.__mobileFilterObserver.observe(document.body, {
         childList: true,
         subtree: true,
