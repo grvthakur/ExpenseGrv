@@ -42,9 +42,59 @@
       cur = v; view(pg.key, cur);
     });
     w.appendChild(s);
+    // Custom styled dropdown on top of the (hidden) <select>, which stays the source of truth.
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "dens-btn";
+    btn.setAttribute("aria-haspopup", "listbox"); btn.setAttribute("aria-expanded", "false");
+    function label() { var d = saved(pg.key); for (var i = 0; i < LIST.length; i++) if (LIST[i][0] === cur) return LIST[i][1] + (d === cur && d !== "normal" ? " ★" : ""); return "Normal"; }
+    function paint() { btn.innerHTML = "<span class=\"dens-cur\"></span><svg width=\"10\" height=\"6\" viewBox=\"0 0 10 6\"><path d=\"M1 1l4 4 4-4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"; btn.firstChild.textContent = label(); }
+    paint();
+    var menu = null;
+    function closeMenu() { if (menu) { menu.remove(); menu = null; btn.setAttribute("aria-expanded", "false"); document.removeEventListener("mousedown", outside, true); document.removeEventListener("keydown", esc, true); window.removeEventListener("scroll", closeMenu, true); window.removeEventListener("resize", closeMenu); } }
+    function outside(e) { if (menu && !menu.contains(e.target) && !btn.contains(e.target)) closeMenu(); }
+    function esc(e) { if (e.key === "Escape") closeMenu(); }
+    function pick(v) {
+      closeMenu(); s.value = v; s.dispatchEvent(new Event("change")); paint();
+    }
+    btn.addEventListener("click", function () {
+      if (menu) return closeMenu();
+      var d = saved(pg.key);
+      menu = document.createElement("div"); menu.className = "dens-menu"; menu.setAttribute("role", "listbox");
+      LIST.forEach(function (o) {
+        var it = document.createElement("button"); it.type = "button"; it.className = "dens-item" + (o[0] === cur ? " on" : "");
+        it.setAttribute("role", "option");
+        it.innerHTML = "<i></i><span></span><em></em>";
+        it.children[1].textContent = o[1]; it.children[2].textContent = d === o[0] && d !== "normal" ? "★ default" : "";
+        it.addEventListener("click", function () { pick(o[0]); });
+        menu.appendChild(it);
+      });
+      var hr = document.createElement("div"); hr.className = "dens-sep"; menu.appendChild(hr);
+      [["__set", "★  Set current view as default"], ["__reset", "↺  Reset to Normal"]].forEach(function (o) {
+        var it = document.createElement("button"); it.type = "button"; it.className = "dens-item dens-act"; it.textContent = o[1];
+        it.addEventListener("click", function () { pick(o[0]); });
+        menu.appendChild(it);
+      });
+      document.body.appendChild(menu);
+      var r = btn.getBoundingClientRect(), mw = Math.max(r.width, 210), mh = menu.offsetHeight;
+      var left = Math.min(Math.max(8, r.left), window.innerWidth - mw - 8);
+      var top = r.bottom + 6; if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+      menu.style.minWidth = mw + "px"; menu.style.left = left + "px"; menu.style.top = top + "px";
+      btn.setAttribute("aria-expanded", "true");
+      document.addEventListener("mousedown", outside, true); document.addEventListener("keydown", esc, true);
+      window.addEventListener("scroll", closeMenu, true); window.addEventListener("resize", closeMenu);
+    });
+    w.appendChild(btn);
     anchor.parentNode.insertBefore(w, mode === "before" ? anchor : anchor.nextSibling);
     t.dataset.densInit = "1";
   }
-  function init() { PAGES.forEach(build); }
+  // iPhone/iOS shows an EMPTY date input as a blank box. Mark the filter date inputs so CSS can
+  // paint a "dd-mm-yyyy" hint while they are empty (:invalid works because they are `required`).
+  function datePlaceholders() {
+    document.querySelectorAll(".table-header input[type='date'], .grv-date-input").forEach(function (i) {
+      if (i.dataset.ph) return;
+      i.dataset.ph = "dd-mm-yyyy";
+      i.required = true;
+    });
+  }
+  function init() { PAGES.forEach(build); datePlaceholders(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

@@ -227,3 +227,67 @@
   html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-data-pill, .cc-rem),
   html[data-d-sweetie="ultra"] body:not(#z):not(#z):not(#z) #sweetieTable td :is(.table-data-pill, .cc-rem) { font-size: 0.76em !important; }
 }
+
+/* ---- Stylish View Density dropdown (desktop + phone) ---- */
+.grv-dens { font-weight: 600; letter-spacing: .02em; align-items: center; }
+.grv-dens::before { content: "\25A6"; color: var(--accent); font-size: 1em; }
+.grv-dens select {
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+  font-weight: 700; color: var(--text);
+  padding-right: 26px;
+  border: 1px solid rgba(34, 211, 238, .38);
+  border-radius: 999px;
+  background-color: var(--s2);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2322d3ee' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, rgba(34, 211, 238, .14), rgba(129, 140, 248, .14));
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 10px center, 0 0;
+  background-size: 10px 6px, 100% 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+.grv-dens select:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34, 211, 238, .12); }
+.grv-dens select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34, 211, 238, .25); }
+.grv-dens select option { background: var(--s2); color: var(--text); }
+
+/* ---- iPhone/iOS: show a "dd-mm-yyyy" hint in EMPTY filter date inputs ---- */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"][data-ph] { min-height: 38px; text-align: left; }
+  input[type="date"][data-ph]:invalid::before { content: attr(data-ph); color: var(--muted); }
+}
+
+/* ---- Custom View Density dropdown (replaces the plain native list) ---- */
+.grv-dens select { display: none !important; }
+.dens-btn {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-width: 120px; padding: 5px 12px; font: inherit; font-size: .78rem; font-weight: 700;
+  color: var(--text); cursor: pointer; border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, .38);
+  background: linear-gradient(135deg, rgba(34, 211, 238, .14), rgba(129, 140, 248, .14)), var(--s2);
+  transition: border-color .15s, box-shadow .15s;
+}
+.dens-btn svg { color: #22d3ee; flex: 0 0 auto; transition: transform .15s; }
+.dens-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.dens-btn:hover, .dens-btn:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34, 211, 238, .18); }
+.dens-menu {
+  position: fixed; z-index: 100000; padding: 6px; border-radius: 14px;
+  background: var(--s2); border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 1px rgba(34, 211, 238, .12);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.dens-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 12px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--text); font: inherit; font-size: .85rem; cursor: pointer;
+}
+.dens-item i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); flex: 0 0 auto; }
+.dens-item em { margin-left: auto; font-style: normal; font-size: .7rem; color: var(--accent); }
+.dens-item:hover { background: rgba(34, 211, 238, .12); }
+.dens-item.on { background: linear-gradient(135deg, rgba(34, 211, 238, .2), rgba(129, 140, 248, .2)); font-weight: 700; }
+.dens-item.on i { background: #22d3ee; border-color: #22d3ee; box-shadow: 0 0 8px rgba(34, 211, 238, .7); }
+.dens-sep { height: 1px; margin: 4px 6px; background: var(--border); }
+.dens-act { color: var(--muted); font-size: .8rem; }
+.dens-act:hover { color: var(--text); }
+@media (max-width: 768px) {
+  .grv-dens .dens-btn { flex: 0 0 58%; width: 58%; padding: 8px 12px; font-size: .85rem; }
+}
