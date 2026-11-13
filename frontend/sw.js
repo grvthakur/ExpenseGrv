@@ -1,4 +1,4 @@
-const CACHE_NAME = "expense-tracker-v38";
+const CACHE_NAME = "expense-tracker-v40";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,6 +6,9 @@ const APP_SHELL = [
   "./animation.css",
   "./tables-enhanced.css",
   "./table-density.css?v=1",
+  "./mobile-filters.css?v=1",
+  "./premium-select.css?v=1",
+  "./premium-select.js?v=1",
   "./table-density.js?v=1",
   "./animation.js",
   "./row-actions.js",
