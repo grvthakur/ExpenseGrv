@@ -1654,7 +1654,10 @@ function renderCards() {
   sorted.forEach((t) => {
     const tr = tbody.insertRow();
     if (t.status === "UNPAID") tr.classList.add("grv-unpaid-row");
-    const statusBadge = `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status === "PAID" ? "✓ " : "! "}${t.status}</span>`;
+    const refundView = refundStatusView(t);
+    const statusBadge = refundView
+      ? `<span class="status-badge ${refundView.cls}">${refundView.text}</span>`
+      : `<span class="status-badge ${t.status === "PAID" ? "badge-paid" : "badge-unpaid"}">${t.status === "PAID" ? "✓ " : "! "}${t.status}</span>`;
 
     const isRefund =
       Number(t.amount) < 0 ||
@@ -5817,6 +5820,19 @@ const initDaylightToggle = (function () {
   };
 })();
 
+// Refund rows (negative amount) are credits, not dues: show CREDIT / ADJUSTED instead of
+// UNPAID / PAID. DISPLAY ONLY - the stored status (PAID/UNPAID) and all totals are unchanged.
+function refundStatusView(t) {
+  const isRefund =
+    Number(t.amount) < 0 ||
+    /REFUND OF/i.test(String(t.description || "")) ||
+    /REFUND OF/i.test(String(t.remarks || ""));
+  if (!isRefund) return null;
+  return String(t.status || "UNPAID").toUpperCase() === "PAID"
+    ? { text: "✓ ADJUSTED", cls: "badge-credit-done" }
+    : { text: "↩ CREDIT", cls: "badge-credit" };
+}
+
 function initTheme() {
   // localStorage can throw (blocked storage / private mode); never let that stop boot.
   let saved = null;
@@ -6796,7 +6812,10 @@ function renderGrvCC() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = `status-toggle ${status === "PAID" ? "status-toggle-paid" : "status-toggle-unpaid"}`;
-      btn.innerHTML = `<span class="status-badge ${status === "PAID" ? "badge-paid" : "badge-unpaid"}">${status === "PAID" ? "✓ " : "! "}${esc(status)}</span>`;
+      const rv = refundStatusView(t);
+      btn.innerHTML = rv
+        ? `<span class="status-badge ${rv.cls}">${rv.text}</span>`
+        : `<span class="status-badge ${status === "PAID" ? "badge-paid" : "badge-unpaid"}">${status === "PAID" ? "✓ " : "! "}${esc(status)}</span>`;
       btn.title = "Toggle PAID / UNPAID";
       btn.setAttribute(
         "aria-label",
