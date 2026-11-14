@@ -58,11 +58,11 @@
   html body .person-tone-9, html body .grv-card-tone-9 { --pc: 148,163,184; --pt: 203,213,225; }
 }
 
-/* ── v8: softer data colours (DESKTOP ONLY; phones untouched) ───────────────
+/* ── v8: softer data colours (desktop + phone, TEXT COLOUR ONLY) ───────────────
    Credit-card tables: amount = soft lime (unique, not used by any card/person pill), description = stays white, remarks = soft lavender.
    Expenses: spend amount = soft coral-orange instead of hard red (income stays green).
    Text colour only — no size/layout change. Delete this block to revert. */
-@media (min-width: 769px) {
+@media all {
   html body :is(#cardTable, #grvCardTable) td .table-amount-pill {
     color: #bef264 !important;
     text-shadow: 0 0 6px rgba(190, 242, 100, 0.22) !important;
