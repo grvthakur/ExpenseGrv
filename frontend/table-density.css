@@ -110,12 +110,6 @@
   html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span { display: inline-flex !important; align-items: center; height: auto !important; line-height: 1 !important; }
 }
 
-@media (min-width: 1024px) {
-  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
-  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
-  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem,
-  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem { display: inline !important; margin: 0 0 0 6px !important; padding: 0 !important; }
-}
 
 /* ---- Phone / tablet (<=1023px): vertical padding + element heights; widths/columns untouched ---- */
 @media (max-width: 1023px) {
@@ -206,10 +200,6 @@
   html[data-d-exp="compact"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
   html[data-d-exp="dense"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span,
   html[data-d-exp="ultra"] body:not(#z):not(#z):not(#z) #expenseTable td:nth-child(5) > span { display: inline-flex !important; align-items: center; height: auto !important; line-height: 1 !important; }
-  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
-  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
-  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem,
-  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem { display: inline !important; margin: 0 0 0 6px !important; padding: 0 !important; }
   html[data-d-exp="comfortable"] body:not(#z):not(#z):not(#z) #expenseTable td :is(.table-data-pill, .cc-rem),
   html[data-d-cards="comfortable"] body:not(#z):not(#z):not(#z) #cardTable td :is(.table-data-pill, .cc-rem),
   html[data-d-grvcc="comfortable"] body:not(#z):not(#z):not(#z) #grvCardTable td :is(.table-data-pill, .cc-rem),
@@ -290,4 +280,14 @@
 .dens-act:hover { color: var(--text); }
 @media (max-width: 768px) {
   .grv-dens .dens-btn { flex: 0 0 58%; width: 58%; padding: 8px 12px; font-size: .85rem; }
+}
+
+/* Remarks are shown as the small yellow line under the description ONLY on phones (<=768px),
+   where the Remarks column is hidden. On tablet/desktop the Remarks column is visible, so
+   showing it here as well would duplicate it. */
+@media (max-width: 768px) {
+  html[data-d-cards="dense"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
+  html[data-d-cards="ultra"] body:not(#z):not(#z):not(#z) #cardTable td .cc-rem,
+  html[data-d-grvcc="dense"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem,
+  html[data-d-grvcc="ultra"] body:not(#z):not(#z):not(#z) #grvCardTable td .cc-rem { display: inline !important; margin: 0 0 0 6px !important; padding: 0 !important; }
 }
