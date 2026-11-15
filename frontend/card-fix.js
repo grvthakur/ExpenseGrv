@@ -318,17 +318,38 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
   };
 
   // Warm up right now (don't wait for the user to tap), then keep it fresh every 5 min.
-  fetchCCMasterData().catch(() => {});
+  fetchCCMasterData()
+          .then((d) => {
+            if (Array.isArray(d)) {
+              ccMasterCache = d;
+              merge();
+            }
+          })
+          .catch(() => {});
   setInterval(
     () => {
       if (document.visibilityState === "visible")
-        fetchCCMasterData().catch(() => {});
+        fetchCCMasterData()
+          .then((d) => {
+            if (Array.isArray(d)) {
+              ccMasterCache = d;
+              merge();
+            }
+          })
+          .catch(() => {});
     },
     5 * 60 * 1000,
   );
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible")
-      fetchCCMasterData().catch(() => {});
+      fetchCCMasterData()
+          .then((d) => {
+            if (Array.isArray(d)) {
+              ccMasterCache = d;
+              merge();
+            }
+          })
+          .catch(() => {});
   });
 })();
 
@@ -392,6 +413,21 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
     merge();
     return r;
   };
-  window.addEventListener("DOMContentLoaded", () => setTimeout(merge, 0));
+  window.addEventListener("DOMContentLoaded", () => {
+    setTimeout(merge, 0);
+    // cached CC list can be stale (missing newly added cards) -> refresh once
+    setTimeout(() => {
+      try {
+        fetchCCMasterData()
+          .then((d) => {
+            if (Array.isArray(d)) {
+              ccMasterCache = d;
+              merge();
+            }
+          })
+          .catch(() => {});
+      } catch (_) {}
+    }, 2500);
+  });
   window.__mergeCCCards = merge;
 })();

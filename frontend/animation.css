@@ -1047,9 +1047,9 @@ html body #cardSummaryGrid .cs-sub-item {
 }
 
 html body #cardSummaryGrid .cs-sub-lbl {
-  color: var(--muted);
-  font-size: 0.62rem;
-  font-weight: 500;
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  font-weight: 600;
 }
 
 html body #cardSummaryGrid .cs-sub-right {
@@ -1058,8 +1058,9 @@ html body #cardSummaryGrid .cs-sub-right {
 }
 
 html body #cardSummaryGrid .cs-no-limit {
-  font-size: 0.62rem;
-  opacity: .6;
+  font-size: 0.68rem;
+  color: #cbd5e1;
+  opacity: .9;
   font-style: italic;
 }
 
