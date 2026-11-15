@@ -1503,9 +1503,14 @@ function renderCards() {
   cardConfig.forEach((c) => {
     if (c.card) cardSet.add(c.card.trim());
   });
-  cardTxns.forEach((t) => {
-    if (t.card) cardSet.add(t.card.trim());
-  });
+  // Tiles follow the CC Master / Manage Cards list: a card deleted there must disappear here,
+  // even though its old transactions are kept. (Fallback: if no config has loaded yet, list
+  // cards found in transactions so the grid is not blank.)
+  if (cardSet.size === 0) {
+    cardTxns.forEach((t) => {
+      if (t.card) cardSet.add(t.card.trim());
+    });
+  }
 
   let renderedCardCount = 0;
   cardSet.forEach((cardName) => {
