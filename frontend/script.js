@@ -1545,13 +1545,13 @@ function renderCards() {
       });
 
       cardSummaryEl.innerHTML += `
-        <div class="card-summary-item">
-          <div class="cs-name">${esc(cfg ? cfg.card : cardName)}</div>
+        <div class="card-summary-item cs-tone-${getCardTone(cfg ? cfg.card : cardName)}">
+          <div class="cs-head"><div class="cs-name">${esc(cfg ? cfg.card : cardName)}</div>${lim ? `<span class="cs-util" title="Unpaid as % of card limit">${Math.round((totalUnpaid / lim) * 100)}%</span>` : `<span class="cs-util cs-util-none">No limit</span>`}</div>
           <div class="cs-row"><span>Spent</span><span class="c-red">₹${monthSpent.toFixed(2)}</span></div>
           ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString("en-IN")}</span></div>` : ""}
           ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${remFmt}</span></div>` : ""}
-          ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : ""}" style="width:${pct}%"></div></div>` : ""}
-          <div class="cs-row"><span>Unpaid</span><span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></div>
+          ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : pct >= 70 ? "cs-bar-warn" : ""}" style="width:${pct}%"></div></div>` : ""}
+          <div class="cs-row cs-unpaid"><span>Unpaid</span><span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></div>
         </div>`;
     }
   });
