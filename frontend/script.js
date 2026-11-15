@@ -1544,14 +1544,39 @@ function renderCards() {
         maximumFractionDigits: 2,
       });
 
+      const toneIdx = getCardTone(cfg ? cfg.card : cardName);
+      const utilPct = lim ? Math.round((totalUnpaid / lim) * 100) : 0;
       cardSummaryEl.innerHTML += `
-        <div class="card-summary-item cs-tone-${getCardTone(cfg ? cfg.card : cardName)}">
-          <div class="cs-head"><div class="cs-name">${esc(cfg ? cfg.card : cardName)}</div>${lim ? `<span class="cs-util" title="Unpaid as % of card limit">${Math.round((totalUnpaid / lim) * 100)}%</span>` : `<span class="cs-util cs-util-none">No limit</span>`}</div>
-          <div class="cs-row"><span>Spent</span><span class="c-red">₹${monthSpent.toFixed(2)}</span></div>
-          ${lim ? `<div class="cs-row"><span>Limit</span><span>₹${lim.toLocaleString("en-IN")}</span></div>` : ""}
-          ${lim ? `<div class="cs-row"><span>Remaining</span><span class="c-green">₹${remFmt}</span></div>` : ""}
+        <div class="card-summary-item cs-tone-${toneIdx}">
+          <div class="cs-head">
+            <div class="cs-brand-wrap">
+              <span class="cs-chip-icon" aria-hidden="true">
+                <svg width="13" height="10" viewBox="0 0 14 11" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="10" rx="2" stroke="currentColor" stroke-opacity="0.7"/><line x1="4.5" y1="1" x2="4.5" y2="10" stroke="currentColor" stroke-opacity="0.4"/><line x1="9.5" y1="1" x2="9.5" y2="10" stroke="currentColor" stroke-opacity="0.4"/><line x1="1" y1="5.5" x2="13" y2="5.5" stroke="currentColor" stroke-opacity="0.4"/></svg>
+              </span>
+              <div class="cs-name" title="${esc(cfg ? cfg.card : cardName)}">${esc(cfg ? cfg.card : cardName)}</div>
+            </div>
+            ${lim ? `<span class="cs-util" title="Unpaid vs card limit: ${utilPct}%">${utilPct}% used</span>` : `<span class="cs-util cs-util-none">No limit</span>`}
+          </div>
+          <div class="cs-metrics-grid">
+            <div class="cs-metric-cell">
+              <span class="cs-metric-label">Spent</span>
+              <span class="cs-metric-val c-red">₹${monthSpent.toFixed(2)}</span>
+            </div>
+            ${lim ? `
+            <div class="cs-metric-cell cs-metric-right">
+              <span class="cs-metric-label">Remaining</span>
+              <span class="cs-metric-val c-green">₹${remFmt}</span>
+            </div>` : `
+            <div class="cs-metric-cell cs-metric-right">
+              <span class="cs-metric-label">Unpaid</span>
+              <span class="cs-metric-val c-pink">₹${totalUnpaid.toFixed(2)}</span>
+            </div>`}
+          </div>
           ${lim ? `<div class="cs-bar-wrap"><div class="cs-bar ${over ? "cs-bar-over" : pct >= 70 ? "cs-bar-warn" : ""}" style="width:${pct}%"></div></div>` : ""}
-          <div class="cs-row cs-unpaid"><span>Unpaid</span><span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></div>
+          <div class="cs-sub-row">
+            ${lim ? `<span class="cs-sub-item"><span class="cs-sub-lbl">Limit:</span> ₹${lim.toLocaleString("en-IN")}</span>` : `<span class="cs-sub-item cs-no-limit">Standard revolving</span>`}
+            ${lim ? `<span class="cs-sub-item cs-sub-right"><span class="cs-sub-lbl">Unpaid:</span> <span class="c-pink" title="All-time unpaid: ₹${totalUnpaid.toFixed(2)}">₹${totalUnpaid.toFixed(2)}</span></span>` : ""}
+          </div>
         </div>`;
     }
   });

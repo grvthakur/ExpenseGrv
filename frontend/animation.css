@@ -876,36 +876,216 @@ body.light-mode select option:checked {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Premium per-card summary tiles (Credit Cards tab). Presentation only. ── */
+/* ─── Ultra-Premium Compact Per-Card Tiles ("Little Short & Enhanced") ─── */
 html body #cardSummaryGrid .card-summary-item {
   --tc: 34, 211, 238;
-  position: relative; overflow: hidden;
-  background: linear-gradient(160deg, rgba(var(--tc), .13) 0%, rgba(var(--tc), .03) 38%, var(--s2) 100%) !important;
-  border: 1px solid rgba(var(--tc), .30) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 5px 16px -12px rgba(var(--tc), .55), inset 0 1px 0 rgba(255, 255, 255, .05);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(var(--tc), .12) 0%, rgba(var(--tc), .02) 40%, rgba(18, 18, 28, .96) 80%, rgba(12, 12, 18, .99) 100%) !important;
+  border: 1px solid rgba(var(--tc), .28) !important;
+  border-radius: 14px !important;
+  padding: 10px 13px !important;
+  min-height: 114px;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  box-shadow: 0 4px 18px -4px rgba(0, 0, 0, .55), 0 0 14px -6px rgba(var(--tc), .35), inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
 }
+
+html body #cardSummaryGrid .card-summary-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(var(--tc), .55) !important;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, .7), 0 0 20px -4px rgba(var(--tc), .55), inset 0 1px 0 rgba(255, 255, 255, .14) !important;
+}
+
+/* Subtle metallic top specular accent line */
 html body #cardSummaryGrid .card-summary-item::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
-  background: linear-gradient(90deg, rgba(var(--tc), 1), rgba(var(--tc), .15));
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0; height: 2px;
+  background: linear-gradient(90deg, rgba(var(--tc), 1) 0%, rgba(var(--tc), .25) 70%, transparent 100%);
+  pointer-events: none;
 }
-html body #cardSummaryGrid .cs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-html body #cardSummaryGrid .cs-head .cs-name { margin: 0 !important; color: rgb(var(--tc)) !important; letter-spacing: .04em; text-shadow: 0 0 14px rgba(var(--tc), .35); }
+
+/* Card Header */
+html body #cardSummaryGrid .cs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+html body #cardSummaryGrid .cs-brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+html body #cardSummaryGrid .cs-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--tc));
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+html body #cardSummaryGrid .cs-head .cs-name {
+  margin: 0 !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgb(var(--tc)) !important;
+  text-shadow: 0 0 12px rgba(var(--tc), .35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 html body #cardSummaryGrid .cs-util {
-  flex: 0 0 auto; font-size: .62rem; font-weight: 700; letter-spacing: .03em; white-space: nowrap;
-  padding: 2px 8px; border-radius: 999px; color: rgb(var(--tc));
-  background: rgba(var(--tc), .14); border: 1px solid rgba(var(--tc), .32);
+  flex: 0 0 auto;
+  font-size: .60rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  color: rgb(var(--tc));
+  background: rgba(var(--tc), .12);
+  border: 1px solid rgba(var(--tc), .28);
+  backdrop-filter: blur(4px);
 }
-html body #cardSummaryGrid .cs-util-none { opacity: .6; }
-html body #cardSummaryGrid .cs-bar-wrap { height: 7px !important; border-radius: 99px !important; background: rgba(148, 163, 184, .16) !important; }
-html body #cardSummaryGrid .cs-bar { border-radius: 99px !important; background: linear-gradient(90deg, rgba(var(--tc), .55), rgb(var(--tc))) !important; box-shadow: 0 0 10px rgba(var(--tc), .55); }
-html body #cardSummaryGrid .cs-bar.cs-bar-warn { background: linear-gradient(90deg, #f59e0b, #fbbf24) !important; box-shadow: 0 0 10px rgba(251, 191, 36, .55); }
-html body #cardSummaryGrid .cs-bar.cs-bar-over { background: linear-gradient(90deg, #ef4444, #fb7185) !important; box-shadow: 0 0 10px rgba(239, 68, 68, .6); }
-html body #cardSummaryGrid .cs-row.cs-unpaid {
-  margin: 8px 0 0 !important; padding-top: 8px; border-top: 1px dashed rgba(var(--tc), .25);
+
+html body #cardSummaryGrid .cs-util-none {
+  opacity: .6;
+  border-style: dashed;
+}
+
+/* Compact Primary Metrics (2-column split) */
+html body #cardSummaryGrid .cs-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
   align-items: baseline;
 }
-html body #cardSummaryGrid .cs-row.cs-unpaid span:last-child { font-size: 1.02em; font-weight: 800; }
+
+html body #cardSummaryGrid .cs-metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+html body #cardSummaryGrid .cs-metric-right {
+  text-align: right;
+  align-items: flex-end;
+}
+
+html body #cardSummaryGrid .cs-metric-label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+html body #cardSummaryGrid .cs-metric-val {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Micro Neon Progress Bar */
+html body #cardSummaryGrid .cs-bar-wrap {
+  height: 3.5px !important;
+  border-radius: 99px !important;
+  background: rgba(255, 255, 255, .08) !important;
+  margin: 0 0 6px 0 !important;
+  overflow: hidden;
+}
+
+html body #cardSummaryGrid .cs-bar {
+  border-radius: 99px !important;
+  background: linear-gradient(90deg, rgba(var(--tc), .6), rgb(var(--tc))) !important;
+  box-shadow: 0 0 8px rgba(var(--tc), .6);
+  transition: width 0.3s ease;
+}
+
+html body #cardSummaryGrid .cs-bar.cs-bar-warn {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24) !important;
+  box-shadow: 0 0 8px rgba(251, 191, 36, .65);
+}
+
+html body #cardSummaryGrid .cs-bar.cs-bar-over {
+  background: linear-gradient(90deg, #ef4444, #fb7185) !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, .7);
+}
+
+/* Compact Sub-Row Footer (Limit & Unpaid) */
+html body #cardSummaryGrid .cs-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  padding-top: 5px;
+  border-top: 1px dashed rgba(var(--tc), .20);
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+html body #cardSummaryGrid .cs-sub-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+html body #cardSummaryGrid .cs-sub-lbl {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
+html body #cardSummaryGrid .cs-sub-right {
+  text-align: right;
+  font-weight: 600;
+}
+
+html body #cardSummaryGrid .cs-no-limit {
+  font-size: 0.62rem;
+  opacity: .6;
+  font-style: italic;
+}
+
+/* Backward-compatible support for unmigrated .cs-row */
+html body #cardSummaryGrid .cs-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  margin-bottom: 2px;
+  color: var(--muted);
+}
+html body #cardSummaryGrid .cs-row span:last-child {
+  font-weight: 600;
+}
+html body #cardSummaryGrid .cs-row.cs-unpaid {
+  margin: 5px 0 0 !important;
+  padding-top: 5px;
+  border-top: 1px dashed rgba(var(--tc), .20);
+  align-items: baseline;
+}
+html body #cardSummaryGrid .cs-row.cs-unpaid span:last-child {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+/* Color Themes */
 html body #cardSummaryGrid .cs-tone-0 { --tc: 34,211,238; }
 html body #cardSummaryGrid .cs-tone-1 { --tc: 168,85,247; }
 html body #cardSummaryGrid .cs-tone-2 { --tc: 245,158,11; }
@@ -916,20 +1096,33 @@ html body #cardSummaryGrid .cs-tone-6 { --tc: 249,115,22; }
 html body #cardSummaryGrid .cs-tone-7 { --tc: 20,184,166; }
 html body #cardSummaryGrid .cs-tone-8 { --tc: 244,63,94; }
 html body #cardSummaryGrid .cs-tone-9 { --tc: 148,163,184; }
-body.light-mode #cardSummaryGrid .card-summary-item { box-shadow: 0 6px 18px -12px rgba(var(--tc), .6); }
-body.light-mode #cardSummaryGrid .cs-head .cs-name, body.light-mode #cardSummaryGrid .cs-util { color: color-mix(in srgb, rgb(var(--tc)) 62%, #000) !important; text-shadow: none; }
+
+/* Light Mode Overrides */
+body.light-mode #cardSummaryGrid .card-summary-item {
+  background: linear-gradient(145deg, rgba(var(--tc), .14) 0%, rgba(255, 255, 255, .96) 60%, rgba(244, 244, 248, .98) 100%) !important;
+  border-color: rgba(var(--tc), .35) !important;
+  box-shadow: 0 4px 16px -6px rgba(var(--tc), .35), 0 2px 6px -2px rgba(0, 0, 0, .05) !important;
+}
+body.light-mode #cardSummaryGrid .cs-head .cs-name,
+body.light-mode #cardSummaryGrid .cs-util {
+  color: color-mix(in srgb, rgb(var(--tc)) 75%, #000) !important;
+  text-shadow: none !important;
+}
+body.light-mode #cardSummaryGrid .cs-util {
+  background: rgba(var(--tc), .12) !important;
+  border-color: rgba(var(--tc), .35) !important;
+}
+body.light-mode #cardSummaryGrid .cs-metric-val.c-red { color: #dc2626 !important; text-shadow: none; }
+body.light-mode #cardSummaryGrid .cs-metric-val.c-green { color: #059669 !important; text-shadow: none; }
+body.light-mode #cardSummaryGrid .cs-sub-right .c-pink { color: #db2777 !important; text-shadow: none; }
+
 @media (min-width: 601px) {
-  html body #cardSummaryGrid.card-summary-grid { gap: 8px !important; margin-bottom: 12px !important; }
-  html body #cardSummaryGrid .card-summary-item { padding: 9px 13px 10px !important; min-width: 168px !important; border-radius: 12px !important; }
-  html body #cardSummaryGrid .cs-head { margin-bottom: 5px; }
-  html body #cardSummaryGrid .cs-name { font-size: .76rem !important; }
-  html body #cardSummaryGrid .cs-util { font-size: .58rem; padding: 1px 7px; }
-  html body #cardSummaryGrid .cs-row { margin-bottom: 2px !important; font-size: .72rem !important; }
-  html body #cardSummaryGrid .cs-bar-wrap { height: 5px !important; margin: 4px 0 !important; }
-  html body #cardSummaryGrid .cs-row.cs-unpaid { margin-top: 5px !important; padding-top: 5px; }
+  html body #cardSummaryGrid .card-summary-item { padding: 10px 13px !important; }
 }
 @media (max-width: 600px) {
-  html body #cardSummaryGrid .cs-util { font-size: .55rem; padding: 1px 6px; }
-  html body #cardSummaryGrid .cs-head { margin-bottom: 5px; flex-direction: column; align-items: flex-start; gap: 3px; }
-  html body #cardSummaryGrid .cs-head .cs-name { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+  html body #cardSummaryGrid .card-summary-item { padding: 8px 10px !important; min-height: 104px; }
+  html body #cardSummaryGrid .cs-util { font-size: .54rem; padding: 1px 5px; }
+  html body #cardSummaryGrid .cs-head .cs-name { font-size: .68rem !important; }
+  html body #cardSummaryGrid .cs-metric-val { font-size: .76rem !important; }
+  html body #cardSummaryGrid .cs-sub-row { font-size: .60rem !important; }
 }
