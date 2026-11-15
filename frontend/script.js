@@ -1503,14 +1503,9 @@ function renderCards() {
   cardConfig.forEach((c) => {
     if (c.card) cardSet.add(c.card.trim());
   });
-  // Tiles follow the CC Master / Manage Cards list: a card deleted there must disappear here,
-  // even though its old transactions are kept. (Fallback: if no config has loaded yet, list
-  // cards found in transactions so the grid is not blank.)
-  if (cardSet.size === 0) {
-    cardTxns.forEach((t) => {
-      if (t.card) cardSet.add(t.card.trim());
-    });
-  }
+  cardTxns.forEach((t) => {
+    if (t.card) cardSet.add(t.card.trim());
+  });
 
   let renderedCardCount = 0;
   cardSet.forEach((cardName) => {
@@ -2400,11 +2395,30 @@ function formatExpDate(val) {
 }
 
 const CC_BANK_COLORS = {
-  HDFC: "30,64,175",
+  HDFC: "37,99,235",
   SBI: "14,165,233",
   KOTAK: "239,68,68",
   ICICI: "249,115,22",
   AXIS: "168,85,247",
+  PNB: "217,119,6",
+  INDUSIND: "225,29,72",
+  HSBC: "220,38,38",
+  BOB: "245,158,11",
+  IDFC: "185,28,28",
+  AMEX: "13,148,136",
+  RBL: "59,130,246",
+  YES: "37,99,235",
+  CITI: "14,116,144",
+  STANDARD: "16,185,129",
+  SCB: "16,185,129",
+  AU: "234,88,12",
+  ONE: "244,63,94",
+  TATA: "30,64,175",
+  ROARBANK: "236,72,153",
+  VISA: "37,99,235",
+  MASTERCARD: "234,88,12",
+  RUPAY: "16,185,129",
+  CARD: "34,211,238",
 };
 
 function renderCCMaster(rows) {
@@ -2546,20 +2560,47 @@ function renderCCMaster(rows) {
     <div class="cc-card-grid">
       ${rows
         .map((row, index) => {
-          const bank = String(row[0] || "").trim();
-          const name = String(row[1] || "—").trim();
+          let bank = String(row[0] || "").trim();
+          let name = String(row[1] || "").trim();
           const numRaw = String(row[2] || "").replace(/\s+/g, "");
           const numFmt = (numRaw.match(/.{1,4}/g) || []).join(" ");
           const numCvv = String(row[3] || "");
-          const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : "";
+          const cvv = numCvv.includes("/") ? numCvv.split("/")[1].trim() : numCvv.trim();
           const exp = formatExpDate(row[4]);
-          const bc = CC_BANK_COLORS[bank.toUpperCase()] || "34,211,238";
-          const copy = `${bank} ${name}\nCard: ${numFmt}\nExp: ${exp}\nCVV: ${cvv || "—"}`;
+
+          // Auto-detect bank from name if bank column was left blank
+          if (!bank && name) {
+            const sep = name.includes("-") ? "-" : name.includes(" ") ? " " : "";
+            if (sep) {
+              const prefix = name.split(sep)[0].trim().toUpperCase();
+              if (CC_BANK_COLORS[prefix]) {
+                bank = prefix;
+                name = name.slice(prefix.length + 1).trim();
+              }
+            }
+          }
+
+          let displayBank = bank;
+          if (!displayBank) {
+            if (numRaw.startsWith("4")) displayBank = "VISA";
+            else if (numRaw.startsWith("5")) displayBank = "MASTERCARD";
+            else if (numRaw.startsWith("37")) displayBank = "AMEX";
+            else if (numRaw.startsWith("6")) displayBank = "RUPAY";
+            else displayBank = "CARD";
+          }
+
+          if (!name || name === "—") {
+            name = bank ? `${bank} Card` : `${displayBank} Card`;
+          }
+
+          const bankKey = (bank || displayBank).toUpperCase();
+          const bc = CC_BANK_COLORS[bankKey] || "34,211,238";
+          const copy = `${bank || displayBank} ${name}\nCard: ${numFmt}\nExp: ${exp}\nCVV: ${cvv || "—"}`;
 
           const searchText =
-            `${bank} ${name} ${numRaw} ${numFmt} ${exp} ${cvv}`.toLowerCase();
+            `${bank} ${displayBank} ${name} ${numRaw} ${numFmt} ${exp} ${cvv}`.toLowerCase();
 
-          const info = getLimitInfo(name, bank);
+          const info = getLimitInfo(row[1] || name, bank);
           const cardId = `cc-flip-${index}`;
 
           const limitRows = info.matched
@@ -2569,27 +2610,27 @@ function renderCCMaster(rows) {
               <strong>${formatLimit(info.limit)}</strong>
             </div>
             <div class="cc-limit-row">
-              <span>Used Limit</span>
-              <strong>${formatLimit(info.used)}</strong>
+              <span>Used</span>
+              <strong style="color:#f87171">${formatLimit(info.used)}</strong>
             </div>
             <div class="cc-limit-row">
-              <span>Available Limit</span>
-              <strong>${formatLimit(info.available)}</strong>
+              <span>Available</span>
+              <strong style="color:#4ade80">${formatLimit(info.available)}</strong>
             </div>
             <div class="cc-limit-progress">
               <div style="width:${info.pct}%"></div>
             </div>
             <div class="cc-limit-footnote">
-              Usage: ${info.pct.toFixed(1)}% · Based on all UNPAID transactions (paid bills free the limit)
+              ${info.pct.toFixed(0)}% used · Paid bills free limit
             </div>
           `
             : `
             <div class="cc-limit-row">
               <span>Limit details</span>
-              <strong>Card name not matched</strong>
+              <strong>Card not matched</strong>
             </div>
             <div class="cc-limit-footnote">
-              Add this card to Manage Cards using the same card name to show limits.
+              Add this card to Manage Cards to show limits.
             </div>
           `;
 
@@ -2603,41 +2644,43 @@ function renderCCMaster(rows) {
 
               <div class="cc-flip-face cc-flip-front">
                 <div class="cc-card-top">
-                  <div>
-                    ${
-                      bank
-                        ? `<span class="cc-bank-badge">${esc(bank)}</span>`
-                        : ""
-                    }
-                    <div class="cc-card-name" style="margin-top:8px">
-                      ${esc(name)}
-                    </div>
+                  <div class="cc-card-brand-group">
+                    <span class="cc-bank-badge">${esc(displayBank)}</span>
+                    <span class="cc-card-name">${esc(name)}</span>
                   </div>
                   <button type="button"
                     class="cc-copy-btn"
                     data-copy="${encodeURIComponent(copy)}"
                     onclick="copyCC(this)"
-                    title="Copy all details">⧉ Copy</button>
+                    title="Copy card details">⧉ Copy</button>
                 </div>
 
-                <div class="cc-chip"></div>
+                <div class="cc-mid-row">
+                  <div class="cc-chip"></div>
+                  <svg class="cc-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <path d="M8.5 7.5a6 6 0 0 1 0 9"></path>
+                    <path d="M12.5 5a10 10 0 0 1 0 14"></path>
+                    <path d="M16.5 2.5a14 14 0 0 1 0 19"></path>
+                  </svg>
+                </div>
+
                 <div class="cc-num">${esc(numFmt)}</div>
 
                 <div class="cc-card-bottom">
-                  <div>
-                    <div class="cc-cvv-label">CVV</div>
-                    <div class="cc-cvv">${esc(cvv || "—")}</div>
+                  <div class="cc-card-meta-wrap">
+                    <div class="cc-cvv-col">
+                      <div class="cc-cvv-label">CVV</div>
+                      <div class="cc-cvv">${esc(cvv || "—")}</div>
+                    </div>
+                    <div class="cc-exp-col">
+                      <div class="cc-cvv-label">VALID THRU</div>
+                      <div class="cc-exp">${esc(exp)}</div>
+                    </div>
                   </div>
-                  <div style="text-align:right">
-                    <div class="cc-cvv-label">Valid Thru</div>
-                    <div class="cc-exp">${esc(exp)}</div>
-                  </div>
-                </div>
-
-                <div class="cc-flip-actions">
                   <button type="button"
                     class="cc-flip-btn"
-                    onclick="toggleCCMasterFlip(this)">↻ View Limits</button>
+                    onclick="toggleCCMasterFlip(this)"
+                    title="View limits">↻ Limits</button>
                 </div>
               </div>
 

@@ -26,7 +26,7 @@
 
 
     <!-- Premium animation layer — purely additive, adds no new functionality -->
-    <link rel="stylesheet" href="animation.css?v=4">
+    <link rel="stylesheet" href="animation.css?v=3">
     <link rel="stylesheet" href="dropdown.css">
     <link rel="stylesheet" href="loan.css">
     <style>
@@ -1841,9 +1841,9 @@
 
         .cc-card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
-            padding: 4px 2px;
+            grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+            gap: 14px;
+            padding: 6px 2px;
         }
 
         .cc-card-item {
@@ -6145,28 +6145,30 @@
         }
 
 
-        /* CC MASTER FLIP CARDS — responsive sizing, clean 3D faces, premium action */
+        /* CC MASTER FLIP CARDS — compact luxury ratio, brushed obsidian finish, authentic EMV foil */
         #ccMasterBody .cc-card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-            gap: 12px;
-            padding: 4px 2px;
+            grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+            gap: 14px;
+            padding: 6px 2px;
             min-width: 0;
+            justify-content: center;
         }
 
         #ccMasterBody .cc-card-item {
             --bc: 34, 211, 238;
             position: relative;
             width: 100%;
-            min-width: 0;
-            height: 260px;
-            min-height: 260px;
+            max-width: 340px;
+            margin: 0 auto;
+            height: 172px;
+            min-height: 172px;
             padding: 0 !important;
             overflow: hidden !important;
             perspective: 1200px;
             background: transparent !important;
             border: 0 !important;
-            border-radius: 12px;
+            border-radius: 14px;
             box-shadow: none !important;
             isolation: isolate;
         }
@@ -6178,7 +6180,7 @@
             transform-style: preserve-3d;
             -webkit-transform-style: preserve-3d;
             transition: transform .55s cubic-bezier(.2, .7, .2, 1);
-            border-radius: 12px;
+            border-radius: 14px;
         }
 
         #ccMasterBody .cc-card-item.is-flipped .cc-flip-inner {
@@ -6193,17 +6195,52 @@
             width: 100%;
             height: 100%;
             min-width: 0;
-            padding: 14px 16px;
-            border-radius: 12px;
+            padding: 11px 13px;
+            border-radius: 14px;
             overflow: hidden;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
-            background: linear-gradient(135deg, #1c1c2e 0%, #16213e 100%);
-            border: 1px solid var(--border);
-            box-shadow: 0 8px 22px rgba(0, 0, 0, .18);
+            background: radial-gradient(ellipse 120% 90% at 88% -15%, rgba(var(--bc), .26) 0%, transparent 65%),
+                        linear-gradient(135deg, #171d2b 0%, #0d121c 100%);
+            border: 1px solid rgba(255, 255, 255, .1);
+            box-shadow: 0 10px 25px -4px rgba(0, 0, 0, .48),
+                        0 0 0 1px rgba(var(--bc), .18),
+                        inset 0 1px 0 rgba(255, 255, 255, .22);
+            transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
         }
 
-        /* Safari/iOS can paint both 3D faces during rotation; explicitly switch visibility too. */
+        #ccMasterBody .cc-card-item:hover .cc-flip-face {
+            border-color: rgba(var(--bc), .45);
+            box-shadow: 0 14px 28px -4px rgba(0, 0, 0, .6),
+                        0 0 18px rgba(var(--bc), .22),
+                        inset 0 1px 0 rgba(255, 255, 255, .32);
+        }
+
+        /* Front face specular light sheen */
+        #ccMasterBody .cc-flip-front::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 5%, rgba(255, 255, 255, .45) 40%, rgba(var(--bc), .7) 70%, transparent 95%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        #ccMasterBody .cc-flip-front::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 10% 90%, rgba(var(--bc), .08) 0%, transparent 50%),
+                        linear-gradient(115deg, rgba(255, 255, 255, .03) 0%, transparent 35%, rgba(255, 255, 255, .015) 70%, transparent 100%);
+            pointer-events: none;
+            border-radius: inherit;
+            z-index: 1;
+        }
+
+        /* Safari/iOS 3D rendering protection */
         #ccMasterBody .cc-flip-front {
             display: flex;
             flex-direction: column;
@@ -6219,8 +6256,10 @@
             transform: rotateY(180deg) translateZ(1px);
             -webkit-transform: rotateY(180deg) translateZ(1px);
             color: #fff;
-            background: radial-gradient(circle at top right, rgba(34, 211, 238, .18), transparent 45%), linear-gradient(145deg, #111827, #123b50);
-            border-color: rgba(103, 232, 249, .38);
+            background: radial-gradient(circle at top right, rgba(var(--bc), .22), transparent 55%),
+                        linear-gradient(145deg, #131927, #0f1624);
+            border-color: rgba(var(--bc), .38);
+            padding: 11px 13px;
         }
 
         #ccMasterBody .cc-card-item.is-flipped .cc-flip-front {
@@ -6231,12 +6270,295 @@
             visibility: visible;
         }
 
-        #ccMasterBody .cc-flip-front .cc-card-top {
-            align-items: flex-start;
+        /* Top Header Row */
+        #ccMasterBody .cc-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 7px;
+            position: relative;
+            z-index: 3;
         }
 
-        #ccMasterBody .cc-flip-front .cc-num {
-            overflow-wrap: anywhere;
+        #ccMasterBody .cc-card-brand-group {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        #ccMasterBody .cc-bank-badge {
+            background: rgba(var(--bc), .16);
+            color: rgb(var(--bc));
+            border: 1px solid rgba(var(--bc), .38);
+            box-shadow: 0 0 8px rgba(var(--bc), .15);
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            line-height: 1.3;
+            flex-shrink: 0;
+        }
+
+        #ccMasterBody .cc-card-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #f1f5f9;
+            letter-spacing: .5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+        }
+
+        #ccMasterBody .cc-copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, .08);
+            border: 1px solid rgba(255, 255, 255, .16);
+            color: #cbd5e1;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all .18s ease;
+            line-height: 1.3;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            z-index: 3;
+        }
+
+        #ccMasterBody .cc-copy-btn:hover {
+            background: rgba(var(--bc), .22);
+            border-color: rgba(var(--bc), .5);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(var(--bc), .25);
+            transform: translateY(-1px);
+        }
+
+        #ccMasterBody .cc-copy-btn:active {
+            transform: translateY(0) scale(.96);
+        }
+
+        #ccMasterBody .cc-copy-btn.done {
+            background: rgba(34, 197, 94, .22) !important;
+            border-color: rgba(34, 197, 94, .6) !important;
+            color: #86efac !important;
+        }
+
+        /* Mid Row: Authentic EMV Chip & Contactless Wave */
+        #ccMasterBody .cc-mid-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 7px;
+            position: relative;
+            z-index: 3;
+        }
+
+        #ccMasterBody .cc-chip {
+            position: relative;
+            width: 32px;
+            height: 23px;
+            border-radius: 4px;
+            margin: 0 !important;
+            background: linear-gradient(135deg, #fce18b 0%, #cca134 45%, #926a11 75%, #cca134 100%) !important;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, .5), inset 0 -1px 1px rgba(0, 0, 0, .35), 0 2px 4px rgba(0, 0, 0, .3) !important;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #ccMasterBody .cc-chip::before {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border: 1px solid rgba(117, 81, 7, .6);
+            border-radius: 2px;
+            background:
+                radial-gradient(circle at center, #845e0d 18%, transparent 19%),
+                linear-gradient(to right, transparent 48%, rgba(117, 81, 7, .55) 48%, rgba(117, 81, 7, .55) 52%, transparent 52%),
+                linear-gradient(to bottom, transparent 48%, rgba(117, 81, 7, .55) 48%, rgba(117, 81, 7, .55) 52%, transparent 52%);
+        }
+
+        #ccMasterBody .cc-nfc {
+            width: 14px;
+            height: 14px;
+            color: rgba(255, 255, 255, .4);
+            flex-shrink: 0;
+        }
+
+        /* Embossed Card Number */
+        #ccMasterBody .cc-num {
+            font-family: 'SF Mono', 'Roboto Mono', 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2.2px;
+            color: #f8fafc;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 0 8px rgba(var(--bc), .25);
+            margin: 0 0 8px;
+            line-height: 1.2;
+            position: relative;
+            z-index: 3;
+            overflow-wrap: normal;
+            white-space: nowrap;
+        }
+
+        /* Bottom Row: CVV, Expiry & View Limits */
+        #ccMasterBody .cc-card-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-top: auto;
+            position: relative;
+            z-index: 3;
+            padding-top: 2px;
+        }
+
+        #ccMasterBody .cc-card-meta-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #ccMasterBody .cc-cvv-col,
+        #ccMasterBody .cc-exp-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #ccMasterBody .cc-cvv-label {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        #ccMasterBody .cc-cvv {
+            font-family: 'SF Mono', 'Roboto Mono', monospace;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #fbbf24;
+            letter-spacing: 1.5px;
+            line-height: 1.2;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+        }
+
+        #ccMasterBody .cc-exp {
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 700;
+            color: #38bdf8;
+            letter-spacing: .4px;
+            line-height: 1.2;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+        }
+
+        #ccMasterBody .cc-flip-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 24px;
+            padding: 0 9px;
+            font-family: inherit;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .2px;
+            border-radius: 6px;
+            background: rgba(var(--bc), .15);
+            border: 1px solid rgba(var(--bc), .42);
+            color: #e0f2fe;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .12);
+            transition: all .18s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #ccMasterBody .cc-flip-btn:hover {
+            background: rgba(var(--bc), .28);
+            border-color: rgba(var(--bc), .65);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(var(--bc), .25);
+            transform: translateY(-1px);
+        }
+
+        #ccMasterBody .cc-flip-btn:active {
+            transform: translateY(0) scale(.97);
+        }
+
+        /* Back Face Details */
+        #ccMasterBody .cc-flip-title {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #f8fafc;
+            line-height: 1.25;
+            margin: 0 0 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            letter-spacing: .3px;
+        }
+
+        #ccMasterBody .cc-limit-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
+            font-size: 10.5px;
+            line-height: 1.2;
+        }
+
+        #ccMasterBody .cc-limit-row span {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        #ccMasterBody .cc-limit-row strong {
+            text-align: right;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #f1f5f9;
+        }
+
+        #ccMasterBody .cc-limit-progress {
+            height: 4.5px;
+            background: rgba(255, 255, 255, .12);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        #ccMasterBody .cc-limit-progress > div {
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, rgb(var(--bc)));
+            border-radius: inherit;
+            transition: width .4s ease;
+        }
+
+        #ccMasterBody .cc-limit-footnote {
+            font-size: 9px;
+            color: #94a3b8;
+            margin-top: 4px;
+            line-height: 1.3;
+            opacity: .85;
         }
 
         #ccMasterBody .cc-flip-actions {
@@ -6244,87 +6566,21 @@
             justify-content: flex-end;
             align-items: center;
             margin-top: auto;
-            padding-top: 10px;
+            padding-top: 4px;
             flex-shrink: 0;
         }
 
-        #ccMasterBody .cc-flip-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            border: 1px solid rgba(103, 232, 249, .72);
-            background: linear-gradient(135deg, rgba(8, 145, 178, .34), rgba(30, 64, 175, .25));
-            color: #d9fbff;
-            border-radius: 10px;
-            padding: 9px 13px;
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 750;
-            line-height: 1.2;
-            letter-spacing: .15px;
-            white-space: nowrap;
-            cursor: pointer;
-            box-shadow: 0 4px 14px rgba(8, 145, 178, .17), inset 0 1px 0 rgba(255, 255, 255, .12);
-            transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
-            -webkit-tap-highlight-color: transparent;
+        body.light-mode #ccMasterBody .cc-flip-face {
+            background: radial-gradient(ellipse 120% 90% at 88% -15%, rgba(var(--bc), .22) 0%, transparent 65%),
+                        linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255, 255, 255, .12);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, .2), 0 0 0 1px rgba(var(--bc), .2);
         }
 
-        #ccMasterBody .cc-flip-btn:hover {
-            background: linear-gradient(135deg, rgba(8, 145, 178, .52), rgba(30, 64, 175, .4));
-            box-shadow: 0 6px 18px rgba(8, 145, 178, .25), inset 0 1px 0 rgba(255, 255, 255, .18);
-            transform: translateY(-1px);
-        }
-
-        #ccMasterBody .cc-flip-btn:active {
-            transform: translateY(0) scale(.98);
-        }
-
-        #ccMasterBody .cc-flip-title {
-            font-size: 14px;
-            font-weight: 800;
-            line-height: 1.35;
-            margin: 0 0 8px;
-            padding-right: 4px;
-            overflow-wrap: anywhere;
-        }
-
-        #ccMasterBody .cc-limit-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, .13);
-            font-size: 12px;
-        }
-
-        #ccMasterBody .cc-limit-row strong {
-            text-align: right;
-            font-size: 13px;
-            overflow-wrap: anywhere;
-        }
-
-        #ccMasterBody .cc-limit-progress {
-            flex: 0 0 7px;
-            height: 7px;
-            background: rgba(255, 255, 255, .16);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 12px;
-        }
-
-        #ccMasterBody .cc-limit-progress>div {
-            height: 100%;
-            background: linear-gradient(90deg, #22d3ee, #60a5fa);
-            border-radius: inherit;
-        }
-
-        #ccMasterBody .cc-limit-footnote {
-            font-size: 10px;
-            opacity: .78;
-            margin-top: 7px;
-            line-height: 1.35;
+        body.light-mode #ccMasterBody .cc-flip-back {
+            background: radial-gradient(circle at top right, rgba(var(--bc), .2), transparent 55%),
+                        linear-gradient(145deg, #1e293b, #0f172a);
+            border-color: rgba(var(--bc), .35);
         }
 
         @media (max-width: 600px) {
@@ -6335,25 +6591,13 @@
             }
 
             #ccMasterBody .cc-card-item {
-                width: 100%;
-                height: 260px;
-                min-height: 260px;
+                max-width: 320px;
+                height: 172px;
+                min-height: 172px;
             }
 
             #ccMasterBody .cc-flip-face {
-                padding: 13px 14px;
-            }
-
-            #ccMasterBody .cc-flip-title {
-                font-size: 13px;
-            }
-
-            #ccMasterBody .cc-limit-row {
-                padding: 7px 0;
-            }
-
-            #ccMasterBody .cc-flip-btn {
-                padding: 9px 12px;
+                padding: 11px 12px;
             }
         }
 
@@ -7759,11 +8003,11 @@
         </script>
 
     <script src="state-machine.js?v=1"></script>
-    <script src="script.js?v=ai4"></script>
+    <script src="script.js?v=ai5"></script>
     <script src="loan.js"></script>
     <script src="developer-dashboard.js?v=1"></script>
 
-    <script src="card-fix.js?v=2"></script>
+    <script src="card-fix.js"></script>
     <script src="ai-entry.js?v=9"></script>
     <script src="ai-orb.js?v=1"></script>
     <!-- Export layer — reads rendered tables only, touches no app logic -->
