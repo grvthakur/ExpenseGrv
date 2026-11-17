@@ -25,7 +25,6 @@
   html body #sweetieSection table tbody tr:hover td {
     background: transparent;
   }
-  html body #cardSection table tbody tr.grv-unpaid-row:hover td,
   html body #grvCCSection table tbody tr.grv-unpaid-row:hover td {
     background: rgba(239, 68, 68, 0.055);
   }
@@ -119,14 +118,191 @@ html body #expenseTable tbody tr td:nth-child(2) { background: rgba(168, 85,247,
 html body #expenseTable tbody tr td:nth-child(3) { background: rgba( 14,165,233,var(--col-a)); }
 html body #expenseTable tbody tr td:nth-child(4) { background: rgba( 34,197, 94,var(--col-a)); }
 
-/* Credit Cards: Date | Card | Used by | Description | Remark | Amount | Status | Billing */
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(1) { background: rgba(148,163,184,var(--col-a)); }
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(2) { background: rgba( 34,211,238,var(--col-a)); }
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(3) { background: rgba(245,158, 11,var(--col-a)); }
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(4) { background: rgba(168, 85,247,var(--col-a)); }
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(5) { background: rgba(249,115, 22,var(--col-a)); }
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(6) { background: rgba(244, 63, 94,var(--col-a)); }
-html body #cardTable tbody tr:not(.grv-unpaid-row) td:nth-child(8) { background: rgba( 59,130,246,var(--col-a)); }
+/* ═══════════════════════════════════════════════════════════════════════════
+   §8 CARD TRANSACTIONS TABLE — PREMIUM FINANCIAL DASHBOARD UI
+   Replaces the black/burgundy alternating rows with deep charcoal, graphite
+   and subtle midnight shades, clean 1px borders, crisp headers, and smooth hover.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Palette tokens for Card Table (adaptive across all dark and light themes) */
+html body #cardTable {
+  --ct-th-bg: #141722;
+  --ct-th-color: #94a3b8;
+  --ct-th-border: rgba(255, 255, 255, 0.08);
+  --ct-row-bg: #10131b;
+  --ct-row-even-bg: #151924;
+  --ct-row-hover: #1c2233;
+  --ct-row-border: rgba(255, 255, 255, 0.045);
+  --ct-text: #f1f5f9;
+  --ct-desc-color: #f8fafc;
+  --ct-date-color: #38bdf8;
+  --ct-remarks-color: #cbd5e1;
+  --ct-month-color: #93c5fd;
+}
+
+/* Light mode & light themes palette */
+body.light-mode #cardTable,
+body[data-grv-visual-theme="minimalism"] #cardTable,
+body[data-grv-visual-theme="neumorphism"] #cardTable,
+body[data-grv-visual-theme="claymorphism"] #cardTable,
+body[data-grv-visual-theme="brutalism"] #cardTable {
+  --ct-th-bg: #f1f5f9;
+  --ct-th-color: #475569;
+  --ct-th-border: rgba(0, 0, 0, 0.08);
+  --ct-row-bg: #ffffff;
+  --ct-row-even-bg: #f8fafc;
+  --ct-row-hover: #eef2f6;
+  --ct-row-border: rgba(0, 0, 0, 0.05);
+  --ct-text: #1e293b;
+  --ct-desc-color: #0f172a;
+  --ct-date-color: #0284c7;
+  --ct-remarks-color: #64748b;
+  --ct-month-color: #2563eb;
+}
+
+/* Custom dark themes (Spatial UI, Skeuomorphism, Metallic, Space) */
+body[data-grv-visual-theme="spatial-ui"] #cardTable,
+body[data-grv-visual-theme="skeuomorphism"] #cardTable,
+body[data-grv-visual-theme="metallic"] #cardTable,
+body[data-grv-visual-theme="space"] #cardTable {
+  --ct-th-bg: color-mix(in srgb, var(--s2) 90%, #000);
+  --ct-th-color: var(--muted);
+  --ct-th-border: color-mix(in srgb, var(--border) 60%, transparent);
+  --ct-row-bg: color-mix(in srgb, var(--surface) 90%, #000);
+  --ct-row-even-bg: color-mix(in srgb, var(--surface) 75%, #1c2233);
+  --ct-row-hover: color-mix(in srgb, var(--surface) 60%, var(--accent, #38bdf8));
+  --ct-row-border: color-mix(in srgb, var(--border) 40%, transparent);
+  --ct-text: var(--text);
+  --ct-desc-color: var(--text);
+}
+
+/* Glassmorphism & Liquid Glass */
+body[data-grv-visual-theme="glassmorphism"] #cardTable,
+body[data-grv-visual-theme="liquid-glass"] #cardTable {
+  --ct-th-bg: color-mix(in srgb, var(--s2) 80%, rgba(0, 0, 0, 0.4));
+  --ct-th-color: var(--muted);
+  --ct-th-border: var(--border);
+  --ct-row-bg: color-mix(in srgb, var(--surface) 85%, rgba(0, 0, 0, 0.3));
+  --ct-row-even-bg: color-mix(in srgb, var(--surface) 70%, rgba(30, 41, 59, 0.4));
+  --ct-row-hover: color-mix(in srgb, var(--surface) 60%, rgba(56, 189, 248, 0.2));
+  --ct-row-border: color-mix(in srgb, var(--border) 35%, transparent);
+  --ct-text: var(--text);
+  --ct-desc-color: var(--text);
+}
+
+/* 1. Header — Crisp typography, subtle 1px border, sophisticated dark graphite */
+html body #cardTable th {
+  background: var(--ct-th-bg) !important;
+  color: var(--ct-th-color) !important;
+  font-size: 0.70rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--ct-th-border) !important;
+}
+
+html body #cardTable th .sort-arrow {
+  color: var(--accent, #22d3ee) !important;
+  opacity: 0.85;
+}
+
+/* 2. Base Row (Odd) — Deep Charcoal / Midnight */
+html body #cardTable tbody tr td {
+  background: var(--ct-row-bg) !important;
+  border-bottom: 1px solid var(--ct-row-border) !important;
+  color: var(--ct-text) !important;
+  transition: background 0.15s ease-out;
+}
+
+/* 3. Alternating Row (Even) — Refined Midnight Graphite */
+html body #cardTable tbody tr:nth-child(even) td {
+  background: var(--ct-row-even-bg) !important;
+  border-bottom: 1px solid var(--ct-row-border) !important;
+}
+
+/* 4. Desktop Hover Highlight — Smooth subtle highlight */
+@media (hover: hover) and (pointer: fine) {
+  html body #cardTable tbody tr:hover td {
+    background: var(--ct-row-hover) !important;
+  }
+}
+
+/* 5. Unpaid Rows — Replaces muddy burgundy/maroon with clean deep charcoal/graphite + crisp red edge */
+html body #cardTable tbody tr.grv-unpaid-row td {
+  background: var(--ct-row-bg) !important;
+}
+
+html body #cardTable tbody tr.grv-unpaid-row:nth-child(even) td {
+  background: var(--ct-row-even-bg) !important;
+}
+
+html body #cardTable tbody tr.grv-unpaid-row td:first-child {
+  box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.85) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html body #cardTable tbody tr.grv-unpaid-row:hover td {
+    background: var(--ct-row-hover) !important;
+  }
+}
+
+/* 6. Refund / Credit Rows — Crisp cyan accent indicator */
+html body #cardTable tbody tr:has(.badge-credit) td:first-child,
+html body #cardTable tbody tr:has(.badge-credit-done) td:first-child {
+  box-shadow: inset 3px 0 0 rgba(34, 211, 238, 0.85) !important;
+}
+
+/* 7. Column Text Contrast & Hierarchy */
+/* Date Column: Crisp cyan date */
+html body #cardTable tbody tr td:nth-child(1) {
+  color: var(--ct-date-color) !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* Description Column: High contrast primary text */
+html body #cardTable tbody tr td:nth-child(4) {
+  color: var(--ct-desc-color) !important;
+  font-weight: 500 !important;
+}
+
+/* Remarks Column: Understated secondary text */
+html body #cardTable tbody tr td:nth-child(5) {
+  color: var(--ct-remarks-color) !important;
+  font-weight: 400 !important;
+}
+
+/* Billing Month: Soft readable text */
+html body #cardTable tbody tr td:nth-child(8) {
+  color: var(--ct-month-color) !important;
+  font-weight: 500 !important;
+}
+
+/* 8. Sleek Table Scrollbar (Desktop) */
+#cardSection .table-wrapper > div {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+#cardSection .table-wrapper > div::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+#cardSection .table-wrapper > div::-webkit-scrollbar-track {
+  background: transparent;
+}
+#cardSection .table-wrapper > div::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+#cardSection .table-wrapper > div::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+body.light-mode #cardSection .table-wrapper > div {
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+body.light-mode #cardSection .table-wrapper > div::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+}
 
 /* GRV CC: Date | Card | Description | Remark | Amount | Status (col 1 may be hidden checkbox) */
 html body #grvCardTable tbody tr:not(.grv-unpaid-row) td:nth-child(2) { background: rgba(148,163,184,var(--col-a)); }

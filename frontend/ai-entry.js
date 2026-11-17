@@ -403,19 +403,40 @@
       .map((l) => l.trim())
       .filter(Boolean);
     const LB =
-      /^(used\s*by|usedby|user|person|by|desc(?:ription)?|merchant|remarks?|note|notes)\s*[:\-=]\s*(.+)$/i;
+      /^(used\s*by|usedby|user|person|by|desc(?:ription)?|merchant|remarks?|remrks?|rmrks?|rem|note|notes)\s*[:\-=]?\s*(.*)$/i;
+    const LB_SPACE =
+      /^(used\s*by|usedby|desc(?:ription)?|remarks?|remrks?|rmrks?|rem)\s+(.+)$/i;
+    const BANK_HDR =
+      /^(transaction\s*(?:amount|id|ref)|merchant(?:\s*name)?|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob|bank|available\s*(?:limit|balance)|avl|total\s*(?:credit\s*)?limit|date\s*&?\s*time|credit\s*card\s*no|card\s*no)\b/i;
     const lab = { who: "", desc: "", rem: "" };
-    const rest = [];
-    lines.forEach((l) => {
-      // Labels also work with only a space ("Remarks paid in sbi", "Desc amazon pay") - short lines only.
-      const m =
-        l.match(LB) ||
-        (l.length <= 80 &&
-          l.match(/^(used\s*by|usedby|desc(?:ription)?|remarks?)\s+(.+)$/i));
-      if (!m) return rest.push(l);
+    const consumedIndices = new Set();
+
+    for (let i = 0; i < lines.length; i++) {
+      if (consumedIndices.has(i)) continue;
+      const l = lines[i];
+      if (BANK_HDR.test(l)) continue;
+      let m = l.match(LB) || (l.length <= 80 && l.match(LB_SPACE));
+      if (!m) continue;
+
       const k = m[1].toLowerCase().replace(/\s+/g, "");
-      const v = m[2].trim();
-      if (/^(usedby|user|person|by)$/.test(k))
+      let v = (m[2] || "").trim();
+
+      // If value is empty on this line, check if subsequent line contains the value
+      if (!v && i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+        if (!nextLine.match(LB) && !nextLine.match(BANK_HDR)) {
+          v = nextLine.trim();
+          consumedIndices.add(i);
+          consumedIndices.add(i + 1);
+          i++; // advance past consumed next line
+        }
+      } else if (v) {
+        consumedIndices.add(i);
+      }
+
+      if (!v) continue;
+
+      if (/^(usedby|user|person|by)$/.test(k)) {
         lab.who = v
           .split(/\s+/)
           .map((w) =>
@@ -424,11 +445,16 @@
               : w[0].toUpperCase() + w.slice(1).toLowerCase(),
           )
           .join(" ");
-      else if (/^(desc|description|merchant)/.test(k))
+      } else if (/^(desc|description|merchant)/.test(k)) {
         lab.desc = v.toUpperCase();
-      else lab.rem = v.toUpperCase();
-    });
-    if (rest.length === lines.length || !rest.length) return null;
+      } else {
+        lab.rem = v.toUpperCase();
+      }
+    }
+
+    if (!consumedIndices.size) return null;
+    const rest = lines.filter((_, idx) => !consumedIndices.has(idx));
+    if (!rest.length) return null;
     return {
       body: rest.join("\n"),
       who: lab.who,
@@ -787,20 +813,20 @@
     // on an issuer name or a particular SMS template.
     const isBankNoiseLine = (line) =>
       line.length > 140 ||
-      /(?:https?:|www\.|\b(?:call|dispute|otp|one[- ]time|available|avl\s*(?:limit|balance)|not you|customer care|helpline|reference|ref(?:erence)?\s*(?:no|number|id)?|txn\s*(?:id|ref)|transaction\s*id|time\s*:|date\s*:|do not share|never share|block your card)\b|\b(?:[a-z0-9]*bank|sfb|small finance bank)\b)/i.test(
+      /(?:https?:|www\.|\b(?:call|dispute|otp|one[- ]time|available|avl\s*(?:limit|balance)|not you|customer care|helpline|reference|ref(?:erence)?\s*(?:no|number|id)?|txn\s*(?:id|ref)|transaction\s*id|time\s*:|date\s*:|do not share|never share|block your card|remarks?|remrks?|rmrks?|notes?)\b|\b(?:[a-z0-9]*bank|sfb|small finance bank)\b)/i.test(
         line,
       ) ||
       BOILER.test(line);
 
     // Explicit natural-language identity, with or without punctuation:
-    //   Used by Grv / Used by: Grv / Used by = Grv
+    //   Used by Grv / Used by: Grv / Used by = Grv / User: Grv
     // Everything after that label is user context, not a candidate person name.
     const usedByIndex = lines.findIndex((line) =>
-      /^used\s*by\s*[:=\-]?\s*[A-Za-z][A-Za-z' -]*$/i.test(line),
+      /^(?:used\s*by|user|person|by)\s*[:=\-]?\s*[A-Za-z][A-Za-z' -]*$/i.test(line),
     );
     if (usedByIndex >= 0) {
       const whoMatch = lines[usedByIndex].match(
-        /^used\s*by\s*[:=\-]?\s*([A-Za-z][A-Za-z' -]*)$/i,
+        /^(?:used\s*by|user|person|by)\s*[:=\-]?\s*([A-Za-z][A-Za-z' -]*)$/i,
       );
       const whoToken = whoMatch ? whoMatch[1].trim().replace(/\s+/g, " ") : "";
       const safeWho =
@@ -815,7 +841,7 @@
         lines.slice(usedByIndex + 1).forEach((line) => {
           if (isBankNoiseLine(line)) return;
           const remarkMatch = line.match(
-            /^(?:remarks?|note)(?:\s*[:=\-]\s*|\s+)(.+)$/i,
+            /^(?:remarks?|remrks?|rmrks?|rem|note|notes)(?:\s*[:=\-]\s*|\s+)(.+)$/i,
           );
           if (remarkMatch) {
             explicitRemarks.push(remarkMatch[1].trim());
@@ -831,7 +857,7 @@
             return;
           }
           // Another explicit field starts a new block; don't absorb it as an item.
-          if (/^(?:used\s*by|date|amount|card|merchant)\s*[:=]/i.test(line))
+          if (/^(?:used\s*by|user|date|amount|card|merchant)\s*[:=]/i.test(line))
             return;
           itemLines.push(line);
           consumedLines.push(line);
@@ -841,7 +867,7 @@
           who: /^(?:me|self)$/i.test(whoToken) ? "GRV" : cap(whoToken),
           rem: "",
           item: itemLines.join(" ").replace(/\s+/g, " ").trim(),
-          remarks: explicitRemarks.join(" ").trim().toUpperCase(),
+          remarks: explicitRemarks.join(" ").trim(),
           date: "",
           sure: true,
           line: consumedLines[consumedLines.length - 1],
@@ -853,7 +879,7 @@
       }
     }
     const bad =
-      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\d{1,2}:\d{2}|[x*]{2,}\s*\d{2,4}|\b(ist|call|dispute|click|link|otps?|available|avl|limit|bank|merchant|name|amount|date|time|dear|hi|hello|thank|regards|team|please|kindly|sincerely|secret|disclose|password|one-time|confidential|fraud|helpline|never|share|not you)\b/i;
+      /(?:\b(?:inr|rs\.?)|₹)\s*\d|https?:|www\.|[?!]|\d{1,2}:\d{2}|[x*]{2,}\s*\d{2,4}|\b(remarks?|remrks?|rmrks?|notes?|ist|call|dispute|click|link|otps?|available|avl|limit|bank|merchant|name|amount|date|time|dear|hi|hello|thank|regards|team|please|kindly|sincerely|secret|disclose|password|one-time|confidential|fraud|helpline|never|share|not you)\b/i;
     let line = "";
     for (let k = lines.length - 1; k >= 0; k--)
       if (
@@ -1524,15 +1550,19 @@
         t,
       ));
   // App is debit-only: a bank SMS that is a credit/refund is never a transaction. OTPs with transaction details are supported.
-  const isNonDebitSms = (t) =>
-    isBankSms(t) &&
-    ((!/\b(spent|debited|purchase[d]?|paid|charged|withdrawn|used)\b/i.test(t) &&
-      /\b(credited|refund(?:ed)?|reversed|reversal|received)\b/i.test(
-        t,
-      )) ||
-      // UPI / VPA / IMPS / NEFT account debits are not card transactions (ignored).
-      (/(?:\b(?:upi|vpa|imps|neft)\b|\w@\w{2,})/i.test(t) &&
-        !/\bcard\b/i.test(t)));
+  const isNonDebitSms = (t) => {
+    if (!isBankSms(t)) return false;
+    // Strip user-entered remarks and label lines so remarks cannot misclassify bank SMS
+    const cleanT = String(t || "")
+      .replace(/(?:^|\n)\s*(?:remarks?|remrks?|rmrks?|rem|notes?)\s*[:\-=]?\s*[\s\S]*$/i, "")
+      .trim();
+    const target = cleanT && isBankSms(cleanT) ? cleanT : t;
+    const hasDebit = /\b(spent|debited|purchase[d]?|paid|charged|withdrawn|used)\b/i.test(target);
+    // Genuine completed refund/credit words that are not forward-looking remarks like "will be refunded"
+    const hasRefundOrCredit = /(?<!\b(?:will\s*(?:be|get)|to\s*be|pending|for)\s+)\b(credited|refund(?:ed)?|reversed|reversal|received)\b/i.test(target);
+    const isUpi = /(?:\b(?:upi|vpa|imps|neft)\b|\w@\w{2,})/i.test(target) && !/\bcard\b/i.test(target);
+    return (!hasDebit && hasRefundOrCredit) || isUpi;
+  };
   let forceParse = false;
   const isQuestion = (t) => {
     if (isBankSms(t)) return false;
@@ -2427,7 +2457,23 @@
       );
       return;
     }
-    if (isNonDebitSms(text)) {
+    const lab = labelHint(text) || tailLab(text);
+    const body0 = lab ? lab.body : text;
+    const ul0 = userLine(text);
+    const bodyP =
+      ul0 && ul0.body
+        ? ul0.body
+        : ul0
+          ? (lab ? lab.body : text)
+              .split(/\n+/)
+              .filter(
+                (line) => !(ul0.lines || [ul0.line]).includes(line.trim()),
+              )
+              .join("\n")
+          : body0;
+
+    const bankCheckTarget = bodyP || body0 || text;
+    if (isNonDebitSms(bankCheckTarget)) {
       showAiError(
         "Not a debit",
         new Error(
@@ -2445,8 +2491,6 @@
     currentAiSourceText = text.slice(0, 1500);
     // Clear any stale payload before starting a new transaction parse.
     window.__grvAiLearningPending = null;
-    const lab = labelHint(text) || tailLab(text);
-    const body0 = lab ? lab.body : text;
     const applyLab = (o) => {
       if (!lab || !o) return o;
       if (lab.desc) {
@@ -2485,21 +2529,6 @@
         .join(" | ");
       // 0) PATTERN FIRST: complete bank SMS (+ clear hint line) => instant, no AI. Anything doubtful falls through to AI below.
       try {
-        // Parse user context from the ORIGINAL pasted text, not the reduced
-        // label body. This preserves explicit "Used by Grv" + item lines even
-        // when labelHint() has already extracted another labelled field.
-        const ul0 = userLine(text);
-        const bodyP =
-          ul0 && ul0.body
-            ? ul0.body
-            : ul0
-              ? (lab ? lab.body : text)
-                  .split(/\n+/)
-                  .filter(
-                    (line) => !(ul0.lines || [ul0.line]).includes(line.trim()),
-                  )
-                  .join("\n")
-              : body0;
         const sm = await smsParse(bodyP);
         if (sm && sm.amount > 0 && sm.desc && (!ul0 || ul0.sure)) {
           const sh = shorthandHint(text, sm);
