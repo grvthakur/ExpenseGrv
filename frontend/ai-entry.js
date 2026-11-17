@@ -306,9 +306,45 @@
       .map(([k, label, id]) => {
         const sel = $(id) && $(id).tagName === "SELECT";
         const v = String(r[k] ?? "").replace(/"/g, "&quot;");
-        const inp = sel
-          ? `<select data-k="${k}" style="${st}">${[...$(id).options].some((o) => o.value === r[k]) ? "" : '<option value="" selected style="color:#000">— Select —</option>'}${[...$(id).options].map((o) => `<option value="${o.value}" ${o.value === r[k] ? "selected" : ""} style="color:#000">${o.text}</option>`).join("")}</select>`
-          : `<input data-k="${k}" type="${k === "date" ? "date" : k === "amount" ? "number" : "text"}" value="${v}" style="${st}">`;
+        let inp;
+        if (k === "card") {
+          if (typeof populateCardDropdown === "function") {
+            try {
+              populateCardDropdown();
+            } catch (_) {}
+          }
+          const cfgCards =
+            typeof cardConfig !== "undefined" &&
+            Array.isArray(cardConfig) &&
+            cardConfig.length
+              ? cardConfig.map((c) => ({ value: c.card, text: c.card }))
+              : sel && $(id).options.length
+                ? [...$(id).options]
+                    .map((o) => ({ value: o.value, text: o.text }))
+                    .filter((o) => o.value)
+                : [];
+          const currentVal = String(r[k] || "")
+            .trim()
+            .toLowerCase();
+          const matched = cfgCards.find(
+            (c) => c.value.trim().toLowerCase() === currentVal,
+          );
+          const hasMatch = !!matched;
+          const defaultOpt = hasMatch
+            ? ""
+            : '<option value="" selected style="color:#000">— Select —</option>';
+          const optsHtml = cfgCards
+            .map(
+              (c) =>
+                `<option value="${c.value}" ${c === matched ? "selected" : ""} style="color:#000">${c.text}</option>`,
+            )
+            .join("");
+          inp = `<select data-k="${k}" style="${st}">${defaultOpt}${optsHtml}</select>`;
+        } else if (sel) {
+          inp = `<select data-k="${k}" style="${st}">${[...$(id).options].some((o) => o.value === r[k]) ? "" : '<option value="" selected style="color:#000">— Select —</option>'}${[...$(id).options].map((o) => `<option value="${o.value}" ${o.value === r[k] ? "selected" : ""} style="color:#000">${o.text}</option>`).join("")}</select>`;
+        } else {
+          inp = `<input data-k="${k}" type="${k === "date" ? "date" : k === "amount" ? "number" : "text"}" value="${v}" style="${st}">`;
+        }
         return `<label style="display:block;font-size:.78rem;opacity:.8;margin-top:10px">${label}${inp}</label>`;
       })
       .join("");
@@ -1305,12 +1341,31 @@
     (String(t || "").match(/\b(?:card|a\/c|acct?)[^\d]{0,14}(\d{4})\b/i) ||
       String(t || "").match(/\b(?:x{2,}|\*{2,})\s*(\d{4})\b/i) ||
       [])[1] || "";
-  function last4Card(d4) {
+  function last4Card(d4, userHint) {
     if (!d4) return "";
-    const has = (n) =>
-      (typeof cardConfig !== "undefined" ? cardConfig : []).find(
-        (c) => String(c.card).toLowerCase() === String(n).toLowerCase(),
+    const cfgList =
+      typeof cardConfig !== "undefined" && Array.isArray(cardConfig)
+        ? cardConfig
+        : [];
+    const norm = (s) =>
+      String(s || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    const has = (n) => {
+      const target = norm(n);
+      if (!target) return null;
+      return (
+        cfgList.find((c) => norm(c.card) === target) ||
+        cfgList.find((c) => {
+          const cn = norm(c.card);
+          return (
+            target.length >= 4 &&
+            (cn.endsWith(target) || target.endsWith(cn))
+          );
+        }) ||
+        null
       );
+    };
     const L = l4Load();
     if (L[d4] && has(L[d4])) return has(L[d4]).card;
     let rows = (typeof ccMasterCache !== "undefined" && ccMasterCache) || null;
@@ -1321,7 +1376,7 @@
         rows = [];
       }
     }
-    const row = (Array.isArray(rows) ? rows : []).find(
+    const matchingRows = (Array.isArray(rows) ? rows : []).filter(
       (x) =>
         String(x[2] || "")
           .replace(/\D/g, "")
@@ -1331,8 +1386,35 @@
           .replace(/\D/g, "")
           .endsWith(d4),
     );
-    const hit = row && has(String(row[0]).trim() + "-" + String(row[1]).trim());
-    return hit ? hit.card : "";
+    if (!matchingRows.length) return "";
+    const matchedCards = matchingRows
+      .map(
+        (row) =>
+          has(String(row[0]).trim() + "-" + String(row[1]).trim()) ||
+          has(String(row[1]).trim()) ||
+          has(String(row[0]).trim()),
+      )
+      .filter(Boolean);
+    const uniqueCards = [
+      ...new Map(matchedCards.map((c) => [c.card, c])).values(),
+    ];
+    if (uniqueCards.length === 1) return uniqueCards[0].card;
+    if (uniqueCards.length > 1 && userHint) {
+      const u = String(userHint).trim().toLowerCase();
+      const byTxns = uniqueCards.filter((c) => {
+        if (typeof cardTxns !== "undefined" && Array.isArray(cardTxns)) {
+          return cardTxns.some(
+            (t) =>
+              norm(t.card) === norm(c.card) &&
+              String(t.usedBy || "").toLowerCase() === u,
+          );
+        }
+        return false;
+      });
+      if (byTxns.length === 1) return byTxns[0].card;
+    }
+    // Ambiguous multiple cards: return "" to preserve fallback rather than guessing wrong card
+    return "";
   }
   function learnLast4(d4, card) {
     try {
@@ -1347,7 +1429,7 @@
   }
   let lastD4 = "";
   // Instant bank SMS / email parser (no AI): amount, card last-4/bank, date, merchant.
-  async function smsParse(t) {
+  async function smsParse(t, userHint) {
     if (t.length > 3000) return null;
     if (!isBankSms(t) || isNonDebitSms(t)) return null;
     const am = bankAmount(t);
@@ -1385,7 +1467,7 @@
     const d4 = (t.match(/\b(?:card|a\/c|acct?)[^\d]{0,14}(\d{4})\b/i) ||
       t.match(/\b(?:x{2,}|\*{2,})\s*(\d{4})\b/i) ||
       [])[1];
-    if (d4) card = last4Card(d4);
+    if (d4) card = last4Card(d4, userHint);
     if (!card) {
       const bank = [
         "icici",
@@ -1404,10 +1486,25 @@
       ].find((b) => new RegExp("\\b" + b.replace(/\s+/g, "\\s+"), "i").test(t));
       const bKey =
         bank && /^(bank of baroda|baroda)$/i.test(bank) ? "bob" : bank;
-      const c = bKey
-        ? cardConfig.filter((x) => x.card.toLowerCase().startsWith(bKey))
-        : [];
+      const c =
+        bKey && typeof cardConfig !== "undefined" && Array.isArray(cardConfig)
+          ? cardConfig.filter((x) => x.card.toLowerCase().startsWith(bKey))
+          : [];
       if (c.length === 1) card = c[0].card;
+      else if (c.length > 1 && userHint) {
+        const u = String(userHint).trim().toLowerCase();
+        const byTxns = c.filter((x) => {
+          if (typeof cardTxns !== "undefined" && Array.isArray(cardTxns)) {
+            return cardTxns.some(
+              (t) =>
+                t.card === x.card &&
+                String(t.usedBy || "").toLowerCase() === u,
+            );
+          }
+          return false;
+        });
+        if (byTxns.length === 1) card = byTxns[0].card;
+      }
     }
     const lm = t.match(
       /\bmerchant(?:\s*name)?\s*[:\-]\s*([^\n]+?)(?=\s+(?:card|credit|debit|date|avail|total|a\/c|acct?|on|ref|txn|upi|axis|hdfc|icici|sbi|kotak|idfc|pnb|hsbc|indusind|rbl|bob)\b|\n|$)/i,
@@ -2529,7 +2626,9 @@
         .join(" | ");
       // 0) PATTERN FIRST: complete bank SMS (+ clear hint line) => instant, no AI. Anything doubtful falls through to AI below.
       try {
-        const sm = await smsParse(bodyP);
+        const userHint =
+          (lab && lab.who) || (ul0 && ul0.who) || plainName(text);
+        const sm = await smsParse(bodyP, userHint);
         if (sm && sm.amount > 0 && sm.desc && (!ul0 || ul0.sure)) {
           const sh = shorthandHint(text, sm);
           if (sh) {
@@ -2554,6 +2653,7 @@
                 .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
                 .join(" ");
           }
+          lastD4 = last4Of(text);
           box.style.display = "none";
           preview(sm);
           return;
@@ -2682,31 +2782,35 @@
             /\b(?:card|a\/c|acct?|x{2,}|\*{2,})\s*[^\d]{0,12}(\d{4})\b/i,
           ) || [])[1];
           if (d && !(ul && ul.card)) {
-            const rows =
-              (typeof ccMasterCache !== "undefined" && ccMasterCache) ||
-              (await fetchCCMasterData());
-            const row = rows.find(
-              (x) =>
-                String(x[2] || "")
-                  .replace(/\D/g, "")
-                  .endsWith(d) ||
-                String(x[3] || "")
-                  .split("/")[0]
-                  .replace(/\D/g, "")
-                  .endsWith(d),
-            );
-            const hit =
-              row &&
-              cardConfig.find(
-                (c) =>
-                  c.card.toLowerCase() ===
-                  (
-                    String(row[0]).trim() +
-                    "-" +
-                    String(row[1]).trim()
-                  ).toLowerCase(),
+            const resolved = last4Card(d, (lab && lab.who) || r.usedBy);
+            if (resolved) r.card = resolved;
+            else {
+              const rows =
+                (typeof ccMasterCache !== "undefined" && ccMasterCache) ||
+                (await fetchCCMasterData());
+              const row = rows.find(
+                (x) =>
+                  String(x[2] || "")
+                    .replace(/\D/g, "")
+                    .endsWith(d) ||
+                  String(x[3] || "")
+                    .split("/")[0]
+                    .replace(/\D/g, "")
+                    .endsWith(d),
               );
-            if (hit) r.card = hit.card;
+              const hit =
+                row &&
+                cardConfig.find(
+                  (c) =>
+                    c.card.toLowerCase() ===
+                    (
+                      String(row[0]).trim() +
+                      "-" +
+                      String(row[1]).trim()
+                    ).toLowerCase(),
+                );
+              if (hit) r.card = hit.card;
+            }
           }
         } catch (_) {}
       }

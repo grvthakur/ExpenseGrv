@@ -251,6 +251,12 @@ function loadLocal() {
           dueMonthOffset: parseInt(c.dueMonthOffset) || 0,
         }))
         .filter((c) => c.card);
+    if (cardConfig.length) {
+      try {
+        populateCardDropdown();
+        populateGrvCardDropdown();
+      } catch (_) {}
+    }
     if (sw) sweetieTxns = JSON.parse(sw);
   } catch (e) {
     expenses = [];
@@ -5956,6 +5962,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   initSelectors();
   lockDatePicker();
   loadLocal();
+  populateCardDropdown();
+  populateGrvCardDropdown();
   render();
   finishInitialSkeleton();
   renderCards();
