@@ -35,12 +35,17 @@
       String(r[0] || "").trim() ||
         document.getElementById("newCardBank")?.value,
     );
-    set(
-      "newCardNumberCvv",
-      String(r[3] || r[2] || "")
-        .replace(/\s+/g, "")
-        .trim(),
-    );
+    const rawNum = String(r[2] || "").replace(/\s+/g, "").trim();
+    const rawCvv = String(r[3] || "").replace(/\s+/g, "").trim();
+    let numCvvVal = "";
+    if (rawCvv.includes("/")) {
+      numCvvVal = rawCvv;
+    } else if (rawNum && /^\d{12,19}$/.test(rawNum)) {
+      numCvvVal = rawCvv && /^\d{3,4}$/.test(rawCvv) ? `${rawNum}/${rawCvv}` : rawNum;
+    } else {
+      numCvvVal = rawCvv || rawNum;
+    }
+    set("newCardNumberCvv", numCvvVal);
     const m = /^([A-Za-z]{3})-(\d{2})$/.exec(formatExpDate(r[4]));
     if (m) {
       set(
@@ -263,11 +268,67 @@
 // Set CC_PERSIST = false if you ever want nothing stored in the browser (opens slower then).
 const CC_PERSIST = true;
 const CC_CACHE_KEY = "cc_master_cache_v1";
+
+const isCardTombstoned = (cardName) => {
+  if (typeof window !== "undefined" && typeof window.isCardDeleted === "function") {
+    return window.isCardDeleted(cardName);
+  }
+  if (!cardName) return false;
+  try {
+    const raw = localStorage.getItem("grv_deleted_cards_v1");
+    if (!raw) return false;
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return false;
+    const k = String(cardName).trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    return list.some(
+      (d) =>
+        (d.norm ||
+          String(d.name).trim().toLowerCase().replace(/[^a-z0-9]/g, "")) === k
+    );
+  } catch (_) {
+    return false;
+  }
+};
+
+const isCCRowTombstoned = (r) => {
+  if (typeof window !== "undefined" && typeof window.isCCRowDeleted === "function") {
+    return window.isCCRowDeleted(r);
+  }
+  if (!Array.isArray(r)) return false;
+  const b = String(r[0] || "").trim();
+  const n = String(r[1] || "").trim();
+  return (
+    isCardTombstoned(n) ||
+    isCardTombstoned(b + "-" + n) ||
+    isCardTombstoned(b + " " + n) ||
+    isCardTombstoned(b + n)
+  );
+};
+
+window.__removeCCMasterCard = function (card) {
+  if (!Array.isArray(ccMasterCache)) return;
+  const k = String(card || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  ccMasterCache = ccMasterCache.filter((r) => {
+    if (!Array.isArray(r)) return false;
+    const b = String(r[0] || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const n = String(r[1] || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    return n !== k && (b + n) !== k;
+  });
+  if (CC_PERSIST) {
+    try {
+      localStorage.setItem(CC_CACHE_KEY, JSON.stringify(ccMasterCache));
+    } catch (_) {}
+  }
+};
+
 (function () {
   if (CC_PERSIST) {
     try {
-      const saved = JSON.parse(localStorage.getItem(CC_CACHE_KEY) || "null");
-      if (Array.isArray(saved) && saved.length) ccMasterCache = saved;
+      let saved = JSON.parse(localStorage.getItem(CC_CACHE_KEY) || "null");
+      if (Array.isArray(saved) && saved.length) {
+        saved = saved.filter((r) => !isCCRowTombstoned(r));
+        ccMasterCache = saved;
+      }
     } catch (_) {}
   } else {
     try {
@@ -285,8 +346,8 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
 // CC Master loading: 60s timeout, NO retry pile-up (retries were doubling the load on Apps Script).
 (function () {
   fetchCCMasterData = function () {
-    if (ccMasterFetchPromise) return ccMasterFetchPromise;
-    ccMasterFetchPromise = (async () => {
+    if (window.ccMasterFetchPromise) return window.ccMasterFetchPromise;
+    window.ccMasterFetchPromise = (async () => {
       const c = new AbortController();
       const t = setTimeout(() => c.abort(), 60000);
       try {
@@ -296,13 +357,14 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
         const d = await r.json();
         if (!Array.isArray(d))
           throw new Error(d.error || "Unable to load CC Master");
-        ccMasterCache = d;
+        const filtered = d.filter((row) => !isCCRowTombstoned(row));
+        ccMasterCache = filtered;
         if (CC_PERSIST) {
           try {
-            localStorage.setItem(CC_CACHE_KEY, JSON.stringify(d));
+            localStorage.setItem(CC_CACHE_KEY, JSON.stringify(filtered));
           } catch (_) {}
         }
-        return d;
+        return filtered;
       } catch (e) {
         throw new Error(
           e.name === "AbortError"
@@ -311,10 +373,10 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
         );
       } finally {
         clearTimeout(t);
-        ccMasterFetchPromise = null;
+        window.ccMasterFetchPromise = null;
       }
     })();
-    return ccMasterFetchPromise;
+    return window.ccMasterFetchPromise;
   };
 
   // Warm up right now (don't wait for the user to tap), then keep it fresh every 5 min.
@@ -364,12 +426,32 @@ const CC_CACHE_KEY = "cc_master_cache_v1";
       .toLowerCase();
   function merge() {
     if (!Array.isArray(ccMasterCache) || !Array.isArray(cardConfig)) return;
+    if (typeof isCCRowTombstoned === "function") {
+      const cleaned = ccMasterCache.filter((r) => !isCCRowTombstoned(r));
+      if (cleaned.length !== ccMasterCache.length) {
+        ccMasterCache = cleaned;
+        if (CC_PERSIST) {
+          try {
+            localStorage.setItem(CC_CACHE_KEY, JSON.stringify(cleaned));
+          } catch (_) {}
+        }
+      }
+    }
     let add = 0;
     ccMasterCache.forEach((r) => {
       const b = String(r[0] || "").trim(),
         n = String(r[1] || "").trim();
       const name = b && n ? b + "-" + n : n;
       if (!name) return;
+      if (
+        typeof isCardTombstoned === "function" &&
+        (isCardTombstoned(name) ||
+          isCardTombstoned(n) ||
+          isCardTombstoned(b + " " + n) ||
+          isCardTombstoned(b + n))
+      ) {
+        return;
+      }
       if (
         cardConfig.some((x) => lc(x.card) === lc(name) || lc(x.card) === lc(n))
       )

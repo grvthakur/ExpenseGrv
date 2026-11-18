@@ -111,6 +111,22 @@ let expenses = [];
 let salaries = {};
 let cardTxns = []; // credit card transactions
 let cardConfig = []; // [{card, cutoff, limit, dueDay, dueMonthOffset}]
+var ccMasterCache = null; // CC Master cache
+
+if (typeof window !== "undefined") {
+  try {
+    Object.defineProperty(window, "cardConfig", {
+      get() { return cardConfig; },
+      set(v) { cardConfig = v; },
+      configurable: true,
+    });
+    Object.defineProperty(window, "cardTxns", {
+      get() { return cardTxns; },
+      set(v) { cardTxns = v; },
+      configurable: true,
+    });
+  } catch (_) {}
+}
 let currentChart = null;
 let activeTab = "expenses"; // "expenses" | "cards"
 let expSort = { col: "date", dir: "desc" };
@@ -219,6 +235,99 @@ function finishInitialSkeleton() {
   }
 }
 
+// ─── DELETED CARDS REGISTRY & TOMBSTONE HELPERS ────────────────────────────
+const GRV_DELETED_CARDS_KEY = "grv_deleted_cards_v1";
+
+function getDeletedCards() {
+  try {
+    const raw = localStorage.getItem(GRV_DELETED_CARDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function normalizeCardKey(val) {
+  return String(val || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function isCardDeleted(cardName) {
+  if (!cardName) return false;
+  const list = getDeletedCards();
+  if (!list.length) return false;
+  const k = normalizeCardKey(cardName);
+  return list.some(
+    (d) => d.norm === k || normalizeCardKey(d.name) === k
+  );
+}
+
+function addDeletedCard(cardName) {
+  if (!cardName) return;
+  const k = normalizeCardKey(cardName);
+  const list = getDeletedCards().filter(
+    (d) => normalizeCardKey(d.name) !== k && d.norm !== k
+  );
+  list.push({
+    name: String(cardName).trim(),
+    norm: k,
+    deletedAt: Date.now(),
+  });
+  try {
+    localStorage.setItem(GRV_DELETED_CARDS_KEY, JSON.stringify(list));
+  } catch (_) {}
+}
+
+function removeDeletedCard(cardName) {
+  if (!cardName) return;
+  const k = normalizeCardKey(cardName);
+  const list = getDeletedCards().filter(
+    (d) => d.norm !== k && normalizeCardKey(d.name) !== k
+  );
+  try {
+    localStorage.setItem(GRV_DELETED_CARDS_KEY, JSON.stringify(list));
+  } catch (_) {}
+}
+
+function isCCRowDeleted(row) {
+  if (!Array.isArray(row)) return false;
+  const b = String(row[0] || "").trim();
+  const n = String(row[1] || "").trim();
+  return (
+    isCardDeleted(n) ||
+    isCardDeleted(b + "-" + n) ||
+    isCardDeleted(b + " " + n) ||
+    isCardDeleted(b + n)
+  );
+}
+
+function ccRowMatchesCard(row, card) {
+  if (!Array.isArray(row) || !card) return false;
+  const b = String(row[0] || "").trim();
+  const n = String(row[1] || "").trim();
+  const target = normalizeCardKey(card);
+  return (
+    normalizeCardKey(n) === target ||
+    normalizeCardKey(b + "-" + n) === target ||
+    normalizeCardKey(b + " " + n) === target ||
+    normalizeCardKey(b + n) === target
+  );
+}
+
+// Expose on window for other modules
+if (typeof window !== "undefined") {
+  window.getDeletedCards = getDeletedCards;
+  window.normalizeCardKey = normalizeCardKey;
+  window.isCardDeleted = isCardDeleted;
+  window.addDeletedCard = addDeletedCard;
+  window.removeDeletedCard = removeDeletedCard;
+  window.isCCRowDeleted = isCCRowDeleted;
+  window.ccRowMatchesCard = ccRowMatchesCard;
+}
+
 // ─── LOCAL STORAGE ───────────────────────────────────────────────────────────
 function saveLocal() {
   try {
@@ -250,11 +359,12 @@ function loadLocal() {
           dueDay: parseInt(c.dueDay) || 0,
           dueMonthOffset: parseInt(c.dueMonthOffset) || 0,
         }))
-        .filter((c) => c.card);
+        .filter((c) => c.card && !isCardDeleted(c.card));
     if (cardConfig.length) {
       try {
         populateCardDropdown();
         populateGrvCardDropdown();
+        populateCCCardFilter();
       } catch (_) {}
     }
     if (sw) sweetieTxns = JSON.parse(sw);
@@ -1989,7 +2099,17 @@ function startEditCard(id) {
   if (typeof window !== "undefined" && window.__asm)
     window.__asm.startEdit("card", id, t);
   editingCardId = id;
-  document.getElementById("cardSelect").value = t.card;
+  const sel = document.getElementById("cardSelect");
+  if (sel && t.card && ![...sel.options].some((o) => o.value === t.card)) {
+    const opt = document.createElement("option");
+    opt.value = t.card;
+    opt.text = `${t.card} (Inactive/Deleted)`;
+    sel.insertBefore(opt, sel.firstChild);
+  }
+  if (sel) {
+    sel.value = t.card;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  }
   document.getElementById("cardUsedBy").value = t.usedBy || "";
   document.getElementById("cardDesc").value = t.description || "";
   document.getElementById("cardTxnDate").value = t.txnDate;
@@ -2007,6 +2127,7 @@ function startEditCard(id) {
 
 function cancelEditCard() {
   editingCardId = null;
+  populateCardDropdown();
   document.getElementById("cardUsedBy").value = "";
   document.getElementById("cardDesc").value = "";
   document.getElementById("cardRemarks").value = "";
@@ -2280,7 +2401,7 @@ async function syncCardsFromSheet(isManual = false) {
       const _oldCfg = JSON.stringify(cardConfig);
       cardConfig = cfgRes
         .slice(1)
-        .filter((row) => row[0])
+        .filter((row) => row[0] && !isCardDeleted(row[0]))
         .map((row) => ({
           card: String(row[0]).trim(),
           cutoff: parseInt(row[1]) || 0,
@@ -2288,8 +2409,11 @@ async function syncCardsFromSheet(isManual = false) {
           dueDay: parseInt(row[3]) || 0,
           dueMonthOffset: parseInt(row[4]) || 0,
         }));
-      if (isManual || _oldCfg !== JSON.stringify(cardConfig))
+      if (isManual || _oldCfg !== JSON.stringify(cardConfig)) {
         populateCardDropdown();
+        populateGrvCardDropdown();
+        populateCCCardFilter();
+      }
     }
 
     if (isManual || _cBefore !== JSON.stringify([cardTxns, cardConfig])) {
@@ -2317,7 +2441,7 @@ async function syncCardsFromSheet(isManual = false) {
 // The actual password and card data never stored in browser localStorage.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-let ccMasterFetchPromise = null;
+var ccMasterFetchPromise = null;
 
 function fetchCCMasterData() {
   if (ccMasterFetchPromise) return ccMasterFetchPromise;
@@ -7717,7 +7841,7 @@ function closeGrvBills() {
   const modal = document.getElementById("grvBillsModal");
   if (modal) modal.style.display = "none";
 }
-let editingGrvCardKey = null;
+var editingGrvCardKey = null;
 
 function openGrvCardConfig(cardKey = null) {
   const modal = document.getElementById("grvCardConfigModal");
@@ -7785,8 +7909,14 @@ async function saveGrvCardConfig() {
   const numberCvv = String(
     document.getElementById("newCardNumberCvv")?.value || "",
   ).trim();
+  const expMonth = document.getElementById("newCardExpMonth")?.value || "";
+  const expYear = document.getElementById("newCardExpYear")?.value || "";
+  const expFromSelects =
+    expMonth && expYear
+      ? `${expMonth.slice(0, 3)}-${expYear.slice(-2)}`
+      : "";
   const expDate = String(
-    document.getElementById("newCardExpDate")?.value || "",
+    document.getElementById("newCardExpDate")?.value || expFromSelects,
   ).trim();
   const cutoffRaw = document.getElementById("newCardCutoff")?.value;
   const limitRaw = document.getElementById("newCardLimit")?.value;
@@ -7844,9 +7974,11 @@ async function saveGrvCardConfig() {
     cardConfig = existing
       ? cardConfig.map((c) => (c === existing ? cfg : c))
       : [...cardConfig, cfg];
+    removeDeletedCard(cfg.card);
     saveLocal();
     populateCardDropdown();
     populateGrvCardDropdown();
+    populateCCCardFilter();
     renderCards();
     renderGrvCC();
     renderGrvBills();
@@ -7888,33 +8020,129 @@ function renderGrvManageCards() {
     )
     .join("");
 }
+let isDeletingGrvCard = false;
+
 async function deleteGrvCardConfig(card) {
   const cfg = cardConfig.find((c) => c.card === card);
   if (!cfg) return;
+  if (isDeletingGrvCard) return;
+
+  const confirmed = confirm(
+    `Delete "${card}" from CardConfig and CC Master?\n\n` +
+      `• The card will be removed from Manage Cards, CC Master, and all active selection dropdowns.\n` +
+      `• Historical transactions, payments, bills, and reports are PRESERVED safely.`
+  );
+  if (!confirmed) return;
+
+  isDeletingGrvCard = true;
+  const beforeConfig = cardConfig.map((c) => ({ ...c }));
+  const cardKeyNorm = normalizeCardKey(card);
+
+  // 1. Mark as tombstoned/deleted immediately so sync/merge won't re-add it
+  addDeletedCard(card);
+
+  // 2. Remove from in-memory cardConfig and persist locally
+  cardConfig = cardConfig.filter(
+    (c) => normalizeCardKey(c.card) !== cardKeyNorm && c.card !== card
+  );
+  saveLocal();
+
+  // 3. Remove from ccMasterCache and its localStorage cache
+  if (typeof window.__removeCCMasterCard === "function") {
+    window.__removeCCMasterCard(card);
+  }
+  try {
+    const rawCC = localStorage.getItem("cc_master_cache_v1");
+    if (rawCC) {
+      const parsedCC = JSON.parse(rawCC);
+      if (Array.isArray(parsedCC)) {
+        const cleanedCC = parsedCC.filter((r) => !ccRowMatchesCard(r, card));
+        localStorage.setItem("cc_master_cache_v1", JSON.stringify(cleanedCC));
+        if (Array.isArray(ccMasterCache)) {
+          ccMasterCache = cleanedCC;
+        }
+      }
+    } else if (Array.isArray(ccMasterCache)) {
+      ccMasterCache = ccMasterCache.filter((r) => !ccRowMatchesCard(r, card));
+      localStorage.setItem("cc_master_cache_v1", JSON.stringify(ccMasterCache));
+    }
+  } catch (_) {}
+
+  // 4. Update dropdowns & reset active selections if they match the deleted card
+  populateCardDropdown();
+  populateGrvCardDropdown();
+  populateCCCardFilter();
+
+  const cardSel = document.getElementById("cardSelect");
   if (
-    !confirm(
-      `Delete ${card} from CardConfig and CC Master? Existing transactions will NOT be deleted.`,
-    )
-  )
-    return;
+    cardSel &&
+    (cardSel.value === card || normalizeCardKey(cardSel.value) === cardKeyNorm)
+  ) {
+    cardSel.selectedIndex = 0;
+    cardSel.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  const ccFilterSel = document.getElementById("ccCardFilter");
+  if (
+    ccFilterSel &&
+    (ccFilterSel.value === card ||
+      normalizeCardKey(ccFilterSel.value) === cardKeyNorm)
+  ) {
+    ccFilterSel.value = "ALL";
+    cardCardFilter = "ALL";
+    ccFilterSel.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  const grvFilterSel = document.getElementById("grvCardFilter");
+  if (
+    grvFilterSel &&
+    (grvFilterSel.value === card ||
+      normalizeCardKey(grvFilterSel.value) === cardKeyNorm)
+  ) {
+    grvFilterSel.value = "ALL";
+    grvCardFilter = "ALL";
+    grvFilterSel.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  // 5. Re-render UI components immediately
+  renderGrvManageCards();
+  renderCards();
+  renderGrvCC();
+  renderGrvBills();
+
+  const ccModal = document.getElementById("ccMasterModal");
+  if (
+    ccModal &&
+    ccModal.style.display !== "none" &&
+    Array.isArray(ccMasterCache)
+  ) {
+    renderCCMaster(ccMasterCache);
+  }
+
+  // 6. Delete from server (CardConfig sheet & CC sheet)
   try {
     const res = await fetch(
       apiUrl(`action=deleteCardConfig&card=${enc(card)}`),
     );
     const text = await res.text();
     if (!text.startsWith("Deleted")) throw new Error(text);
-    cardConfig = cardConfig.filter((c) => c.card !== card);
+    toast(`✓ ${card} deleted. Transactions kept safe.`);
+  } catch (err) {
+    // Rollback if server write failed
+    removeDeletedCard(card);
+    cardConfig = beforeConfig;
     saveLocal();
     populateCardDropdown();
     populateGrvCardDropdown();
+    populateCCCardFilter();
     renderCards();
     renderGrvCC();
     renderGrvBills();
     renderGrvManageCards();
-    toast(`✓ ${card} deleted. Transactions kept safe.`);
-  } catch (err) {
-    toast("⚠️ Card delete failed", true, 5000);
+    toast(`⚠️ Card delete failed: ${err.message || err}`, true, 6000);
     console.warn("Card delete error", err);
+  } finally {
+    isDeletingGrvCard = false;
   }
 }
 

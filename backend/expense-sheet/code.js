@@ -959,7 +959,8 @@ function doGet(e) {
       if (cfgSheet) {
         const rows = cfgSheet.getDataRange().getValues();
         for (let i = rows.length - 1; i >= 1; i--)
-          if (String(rows[i][0]).trim() === card) cfgSheet.deleteRow(i + 1);
+          if (String(rows[i][0]).trim().toLowerCase() === card.toLowerCase())
+            cfgSheet.deleteRow(i + 1);
       }
       const cc = ss.getSheetByName("CC");
       if (cc) {
@@ -1230,10 +1231,20 @@ function ccMatches(row, card) {
       .toLowerCase()
       .replace(/\s+/g, " ");
   const c = n(card);
+  const clean = (x) =>
+    String(x || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const cc = clean(card);
+  const r0 = n(row[0]),
+    r1 = n(row[1]);
+  const c0 = clean(row[0]),
+    c1 = clean(row[1]);
   return (
-    n(row[1]) === c ||
-    n(row[0] + "-" + row[1]) === c ||
-    n(row[0] + " " + row[1]) === c
+    r1 === c ||
+    (r0 && (r0 + "-" + r1 === c || r0 + " " + r1 === c)) ||
+    (cc && (c1 === cc || (c0 && (c0 + c1 === cc || c0 + "-" + c1 === cc))))
   );
 }
 
