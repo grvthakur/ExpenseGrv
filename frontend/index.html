@@ -3035,26 +3035,204 @@
             align-items: center
         }
 
+        .grv-manage-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .grv-manage-search-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .grv-manage-search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+
+        .grv-manage-search {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 7px 10px 7px 30px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--s2);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .grv-manage-search:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+        }
+
+        .grv-manage-count {
+            font-size: 0.72rem;
+            color: var(--muted);
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
         .grv-manage-card-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 12px;
             padding: 12px 14px;
-            background: var(--s2);
+            background: linear-gradient(135deg, var(--s2), var(--surface));
             border: 1px solid var(--border);
-            border-radius: 13px
+            border-left: 4px solid var(--accent);
+            border-radius: 14px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+
+        .grv-manage-card-row:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+        }
+
+        .grv-manage-card-info {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .grv-manage-card-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .grv-issuer-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            padding: 2px 7px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+            background: rgba(34, 211, 238, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(34, 211, 238, 0.35);
+        }
+
+        /* HDFC - Deep Royal Blue */
+        .grv-manage-card-row.is-issuer-hdfc {
+            border-left-color: #2563eb;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.13) 0%, var(--s2) 65%, var(--surface) 100%);
+        }
+        .grv-manage-card-row.is-issuer-hdfc:hover {
+            border-color: rgba(37, 99, 235, 0.5);
+            border-left-color: #3b82f6;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.22);
+        }
+        .grv-issuer-badge-hdfc {
+            background: rgba(37, 99, 235, 0.22);
+            color: #60a5fa;
+            border-color: rgba(37, 99, 235, 0.5);
+        }
+
+        /* SBI - Electric Sky Blue */
+        .grv-manage-card-row.is-issuer-sbi {
+            border-left-color: #0ea5e9;
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.13) 0%, var(--s2) 65%, var(--surface) 100%);
+        }
+        .grv-manage-card-row.is-issuer-sbi:hover {
+            border-color: rgba(14, 165, 233, 0.5);
+            border-left-color: #38bdf8;
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.22);
+        }
+        .grv-issuer-badge-sbi {
+            background: rgba(14, 165, 233, 0.22);
+            color: #38bdf8;
+            border-color: rgba(14, 165, 233, 0.5);
+        }
+
+        /* Kotak - Ruby / Crimson Red */
+        .grv-manage-card-row.is-issuer-kotak {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.13) 0%, var(--s2) 65%, var(--surface) 100%);
+        }
+        .grv-manage-card-row.is-issuer-kotak:hover {
+            border-color: rgba(239, 68, 68, 0.5);
+            border-left-color: #f87171;
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.22);
+        }
+        .grv-issuer-badge-kotak {
+            background: rgba(239, 68, 68, 0.22);
+            color: #f87171;
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        /* ICICI - Vibrant Mandarin / Orange */
+        .grv-manage-card-row.is-issuer-icici {
+            border-left-color: #f97316;
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.13) 0%, var(--s2) 65%, var(--surface) 100%);
+        }
+        .grv-manage-card-row.is-issuer-icici:hover {
+            border-color: rgba(249, 115, 22, 0.5);
+            border-left-color: #fb923c;
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.22);
+        }
+        .grv-issuer-badge-icici {
+            background: rgba(249, 115, 22, 0.22);
+            color: #fb923c;
+            border-color: rgba(249, 115, 22, 0.5);
+        }
+
+        /* Axis - Royal Burgundy / Purple */
+        .grv-manage-card-row.is-issuer-axis {
+            border-left-color: #a855f7;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.13) 0%, var(--s2) 65%, var(--surface) 100%);
+        }
+        .grv-manage-card-row.is-issuer-axis:hover {
+            border-color: rgba(168, 85, 247, 0.5);
+            border-left-color: #c084fc;
+            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.22);
+        }
+        .grv-issuer-badge-axis {
+            background: rgba(168, 85, 247, 0.22);
+            color: #c084fc;
+            border-color: rgba(168, 85, 247, 0.5);
         }
 
         .grv-manage-card-name {
             font-weight: 800;
-            color: var(--accent)
+            color: var(--text);
+            font-size: 0.88rem;
         }
 
         .grv-manage-card-meta {
-            font-size: .7rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
             color: var(--muted);
-            margin-top: 3px
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+
+        .grv-manage-card-meta strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .grv-meta-sep {
+            opacity: 0.35;
         }
 
         .grv-manage-delete {

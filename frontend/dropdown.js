@@ -81,6 +81,64 @@
         list.appendChild(item);
       });
     }
+    function getBottomNavHeight() {
+      const bottomNav = document.querySelector('.tab-bar');
+      if (!bottomNav) return 0;
+      const comp = window.getComputedStyle(bottomNav);
+      if (comp.display === 'none' || comp.visibility === 'hidden') return 0;
+      const navRect = bottomNav.getBoundingClientRect();
+      const vh = window.innerHeight;
+      if (navRect.top < vh && navRect.bottom > 0) {
+        return Math.max(0, vh - navRect.top);
+      }
+      return 0;
+    }
+
+    function computePosition() {
+      if (!panel.classList.contains('is-open')) return;
+      const triggerRect = trigger.getBoundingClientRect();
+      const vh = window.innerHeight;
+
+      if (triggerRect.bottom < 0 || triggerRect.top > vh) {
+        close();
+        return;
+      }
+
+      const bottomNavHeight = getBottomNavHeight();
+      const safeBottom = vh - bottomNavHeight - 8;
+      const spaceBelow = safeBottom - triggerRect.bottom;
+      const spaceAbove = triggerRect.top - 8;
+
+      const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+
+      if (openUp) {
+        panel.classList.add('is-up');
+        panel.classList.remove('is-down');
+        panel.style.top = 'auto';
+        panel.style.bottom = 'calc(100% + 6px)';
+        const maxPanel = Math.max(140, Math.min(360, spaceAbove));
+        panel.style.maxHeight = maxPanel + 'px';
+        list.style.maxHeight = Math.max(80, maxPanel - 55) + 'px';
+      } else {
+        panel.classList.remove('is-up');
+        panel.classList.add('is-down');
+        panel.style.top = 'calc(100% + 6px)';
+        panel.style.bottom = 'auto';
+        const maxPanel = Math.max(140, Math.min(360, spaceBelow));
+        panel.style.maxHeight = maxPanel + 'px';
+        list.style.maxHeight = Math.max(80, maxPanel - 55) + 'px';
+      }
+    }
+
+    function onViewportChange() {
+      computePosition();
+    }
+
+    function onScroll(e) {
+      if (panel.contains(e.target)) return;
+      computePosition();
+    }
+
     function open() {
       closeOthers();
       render();
@@ -89,18 +147,32 @@
       host.classList.add('is-open');
       search.value = '';
       render();
-      requestAnimationFrame(() => search.focus({ preventScroll: true }));
+      computePosition();
+      requestAnimationFrame(() => {
+        computePosition();
+        search.focus({ preventScroll: true });
+      });
+      window.addEventListener('resize', onViewportChange);
+      window.addEventListener('orientationchange', onViewportChange);
+      window.addEventListener('scroll', onScroll, true);
     }
     function close() {
-      panel.classList.remove('is-open');
+      panel.classList.remove('is-open', 'is-up', 'is-down');
       trigger.setAttribute('aria-expanded', 'false');
       host.classList.remove('is-open');
+      panel.style.top = '';
+      panel.style.bottom = '';
+      panel.style.maxHeight = '';
+      list.style.maxHeight = '';
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('orientationchange', onViewportChange);
+      window.removeEventListener('scroll', onScroll, true);
     }
     function closeOthers() {
       document.querySelectorAll('.et-cd-host.is-open').forEach(other => {
         if (other !== host) {
           other.classList.remove('is-open');
-          other.querySelector('.et-cd-panel')?.classList.remove('is-open');
+          other.querySelector('.et-cd-panel')?.classList.remove('is-open', 'is-up', 'is-down');
           other.querySelector('.et-cd-trigger')?.setAttribute('aria-expanded', 'false');
         }
       });
@@ -111,6 +183,26 @@
     search.addEventListener('keydown', e => {
       if (e.key === 'Escape') { e.preventDefault(); close(); trigger.focus(); }
       if (e.key === 'ArrowDown') { e.preventDefault(); list.querySelector('.et-cd-option')?.focus(); }
+    });
+    list.addEventListener('keydown', e => {
+      const options = Array.from(list.querySelectorAll('.et-cd-option'));
+      const currentIndex = options.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = options[currentIndex + 1] || options[0];
+        next?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (currentIndex <= 0) {
+          search.focus();
+        } else {
+          options[currentIndex - 1]?.focus();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+        trigger.focus();
+      }
     });
     trigger.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }

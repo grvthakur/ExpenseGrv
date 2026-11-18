@@ -8005,6 +8005,46 @@ function closeGrvManageCards() {
   const modal = document.getElementById("grvManageCardsModal");
   if (modal) modal.style.display = "none";
 }
+function detectCardIssuer(c) {
+  const bank = String((c && c.bank) || "").trim().toUpperCase();
+  const card = String((c && (c.card || c.name)) || "").trim().toUpperCase();
+  const full = (bank + " " + card).trim();
+
+  if (/\b(HDFC)\b/i.test(full) || full.includes("HDFC")) return "HDFC";
+  if (/\b(SBI)\b/i.test(full) || full.includes("SBI")) return "SBI";
+  if (/\b(KOTAK)\b/i.test(full) || full.includes("KOTAK")) return "KOTAK";
+  if (/\b(ICICI)\b/i.test(full) || full.includes("ICICI")) return "ICICI";
+  if (/\b(AXIS)\b/i.test(full) || full.includes("AXIS")) return "AXIS";
+
+  if (/\b(IDFC)\b/i.test(full)) return "IDFC";
+  if (/\b(PNB)\b/i.test(full)) return "PNB";
+  if (/\b(BOB|BANK OF BARODA)\b/i.test(full)) return "BOB";
+  if (/\b(HSBC)\b/i.test(full)) return "HSBC";
+  if (/\b(INDUSIND)\b/i.test(full)) return "INDUSIND";
+  if (/\b(RBL)\b/i.test(full)) return "RBL";
+  if (/\b(AMEX|AMERICAN EXPRESS)\b/i.test(full)) return "AMEX";
+  if (/\b(AU)\b/i.test(full)) return "AU";
+
+  return bank || "CARD";
+}
+
+function filterGrvManageCards(q) {
+  const query = String(q || "").trim().toLowerCase();
+  const rows = document.querySelectorAll("#grvManageCardsBody .grv-manage-card-row");
+  let visible = 0;
+  rows.forEach((r) => {
+    const search = r.getAttribute("data-manage-search") || "";
+    const show = !query || search.includes(query);
+    r.style.display = show ? "flex" : "none";
+    if (show) visible++;
+  });
+  const countEl = document.getElementById("grvManageCardsCount");
+  if (countEl) {
+    countEl.textContent = `${visible} of ${rows.length} card${rows.length === 1 ? "" : "s"}`;
+  }
+}
+window.filterGrvManageCards = filterGrvManageCards;
+
 function renderGrvManageCards() {
   const body = document.getElementById("grvManageCardsBody");
   if (!body) return;
@@ -8013,12 +8053,49 @@ function renderGrvManageCards() {
       '<div class="grv-empty-analysis">No cards configured yet.</div>';
     return;
   }
-  body.innerHTML = cardConfig
-    .map(
-      (c) =>
-        `<div class="grv-manage-card-row"><div><div class="grv-manage-card-name">${esc(c.card)}</div><div class="grv-manage-card-meta">Cutoff ${+c.cutoff || 0} · Limit ${money(c.limit)} · Due ${+c.dueDay || 0 ? `${+c.dueDay}/${+c.dueMonthOffset || 0}` : "Not set"}</div></div><div class="grv-manage-actions"><button type="button" class="grv-manage-edit" onclick='openGrvCardConfig(${JSON.stringify(c.card)})'>✏️ Edit</button><button type="button" class="grv-manage-delete" onclick='deleteGrvCardConfig(${JSON.stringify(c.card)})'>🗑 Delete</button></div></div>`,
-    )
+
+  const showSearch = cardConfig.length > 3;
+  const toolbarHtml = showSearch
+    ? `<div class="grv-manage-toolbar">
+        <div class="grv-manage-search-wrap">
+          <span class="grv-manage-search-icon" aria-hidden="true">⌕</span>
+          <input type="search" id="grvManageCardsSearch" class="grv-manage-search" placeholder="Search by card or issuer…" oninput="filterGrvManageCards(this.value)" autocomplete="off" aria-label="Search cards">
+        </div>
+        <div id="grvManageCardsCount" class="grv-manage-count">${cardConfig.length} card${cardConfig.length === 1 ? "" : "s"}</div>
+      </div>`
+    : "";
+
+  const rowsHtml = cardConfig
+    .map((c) => {
+      const issuer = detectCardIssuer(c);
+      const issuerLower = issuer.toLowerCase();
+      const cutoff = +c.cutoff || 0;
+      const due = +c.dueDay || 0 ? `${+c.dueDay}/${+c.dueMonthOffset || 0}` : "Not set";
+      const searchText = `${issuer} ${c.card} cutoff ${cutoff} limit ${c.limit || 0} due ${due}`.toLowerCase();
+
+      return `<div class="grv-manage-card-row is-issuer-${issuerLower}" data-issuer="${esc(issuer)}" data-manage-search="${esc(searchText)}">
+        <div class="grv-manage-card-info">
+          <div class="grv-manage-card-title-row">
+            <span class="grv-issuer-badge grv-issuer-badge-${issuerLower}">${esc(issuer)}</span>
+            <span class="grv-manage-card-name">${esc(c.card)}</span>
+          </div>
+          <div class="grv-manage-card-meta">
+            <span class="grv-meta-item"><span>Cutoff</span> <strong>${cutoff}</strong></span>
+            <span class="grv-meta-sep">·</span>
+            <span class="grv-meta-item"><span>Limit</span> <strong>${money(c.limit)}</strong></span>
+            <span class="grv-meta-sep">·</span>
+            <span class="grv-meta-item"><span>Due</span> <strong>${due}</strong></span>
+          </div>
+        </div>
+        <div class="grv-manage-actions">
+          <button type="button" class="grv-manage-edit" onclick='openGrvCardConfig(${JSON.stringify(c.card)})'>✏️ Edit</button>
+          <button type="button" class="grv-manage-delete" onclick='deleteGrvCardConfig(${JSON.stringify(c.card)})'>🗑 Delete</button>
+        </div>
+      </div>`;
+    })
     .join("");
+
+  body.innerHTML = toolbarHtml + rowsHtml;
 }
 let isDeletingGrvCard = false;
 

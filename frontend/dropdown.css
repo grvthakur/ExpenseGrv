@@ -93,6 +93,13 @@
   transform: translateY(0) scale(1);
   pointer-events: auto;
 }
+.et-cd-panel.is-up {
+  transform: translateY(5px) scale(0.985);
+  transform-origin: bottom center;
+}
+.et-cd-panel.is-up.is-open {
+  transform: translateY(0) scale(1);
+}
 
 .et-cd-search-wrap {
   position: relative;
@@ -184,37 +191,20 @@ body.light-mode .et-cd-panel {
 
 @media (max-width: 600px) {
   .et-cd-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1190;
-    background: rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-  }
-  .et-cd-backdrop.is-open {
-    display: block;
+    display: none !important;
   }
   .et-cd-panel {
-    position: fixed;
-    left: 10px;
-    right: 10px;
-    top: auto;
-    bottom: 10px;
-    max-height: min(72vh, 520px);
-    padding: 10px;
-    border-radius: 18px;
-    transform: translateY(16px) scale(0.99);
-    transform-origin: bottom center;
-  }
-  .et-cd-panel.is-open {
-    transform: translateY(0) scale(1);
-  }
-  .et-cd-list {
-    max-height: min(48vh, 330px);
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    padding: 8px;
+    border-radius: 14px;
+    box-sizing: border-box;
   }
   .et-cd-option {
-    min-height: 44px;
-    font-size: 0.88rem;
+    min-height: 40px;
+    font-size: 0.86rem;
   }
 }
 
@@ -227,23 +217,18 @@ body.light-mode .et-cd-panel {
   }
 }
 
-/* Desktop guard: never turn these dropdowns into a viewport-wide bottom sheet. */
+/* Dropdown alignment: keep panel cleanly anchored to the input */
 @media (min-width: 601px) {
   .et-cd-host {
     position: relative !important;
   }
   .et-cd-panel {
     position: absolute !important;
-    inset: auto 0 auto 0 !important;
-    top: calc(100% + 7px) !important;
-    bottom: auto !important;
+    left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
-    max-height: 360px;
-    transform-origin: top center !important;
     border-radius: 14px !important;
-  }
-  .et-cd-list {
-    max-height: 260px !important;
+    box-sizing: border-box;
   }
   .et-cd-backdrop {
     display: none !important;
