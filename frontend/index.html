@@ -8186,7 +8186,7 @@
     <script src="developer-dashboard.js?v=1"></script>
 
     <script src="card-fix.js"></script>
-    <script src="ai-entry.js?v=9"></script>
+    <script src="ai-entry.js?v=10"></script>
     <script src="ai-orb.js?v=1"></script>
     <!-- Export layer — reads rendered tables only, touches no app logic -->
     <script src="export.js"></script>
@@ -9462,59 +9462,106 @@
 
             html body #cardTable th,
             html body #cardTable td {
-                padding: 10px 6px !important
+                padding: 10px 6px !important;
+                vertical-align: middle
             }
 
+            /* Date column */
             html body #cardTable th:nth-child(1),
             html body #cardTable td:nth-child(1) {
                 white-space: nowrap !important;
-                width: 1%
+                width: 1%;
+                min-width: 95px
             }
 
             html body #cardTable th:nth-child(1) br {
                 display: none
             }
 
+            /* Card column: single line, no wrapping, readable compact pill */
+            html body #cardTable th:nth-child(2),
+            html body #cardTable td:nth-child(2) {
+                white-space: nowrap !important;
+                width: 1%;
+                min-width: 125px;
+                max-width: 175px
+            }
+
+            html body #cardTable td:nth-child(2) .table-card-pill {
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                max-width: 165px !important;
+                display: inline-block !important;
+                vertical-align: middle !important
+            }
+
+            /* Used By column */
             html body #cardTable th:nth-child(3),
             html body #cardTable td:nth-child(3) {
-                width: 1%
+                white-space: nowrap !important;
+                width: 1%;
+                min-width: 65px
             }
 
+            html body #cardTable td:nth-child(3) .table-person-pill {
+                white-space: nowrap !important;
+                display: inline-block !important;
+                vertical-align: middle !important
+            }
+
+            /* Description column: balanced width, sits close to Remarks */
             html body #cardTable th:nth-child(4),
             html body #cardTable td:nth-child(4) {
-                width: 30%;
+                width: 22%;
+                min-width: 150px;
                 text-align: left !important
             }
 
+            /* Remarks column: compact rebalanced width, sits right next to Description */
             html body #cardTable th:nth-child(5),
             html body #cardTable td:nth-child(5) {
-                width: 30%;
-                max-width: none !important;
+                width: 15%;
+                min-width: 100px;
                 text-align: left !important
             }
 
+            /* Amount column */
             html body #cardTable th:nth-child(6),
             html body #cardTable td:nth-child(6) {
                 width: 1%;
-                white-space: nowrap
+                white-space: nowrap !important;
+                min-width: 85px;
+                text-align: right !important
             }
 
+            /* Status column */
             html body #cardTable th:nth-child(7),
             html body #cardTable td:nth-child(7) {
-                width: 1%
+                width: 1%;
+                white-space: nowrap !important;
+                min-width: 80px;
+                text-align: center !important
             }
 
+            /* Billing Month column */
             html body #cardTable th:nth-child(8),
             html body #cardTable td:nth-child(8) {
                 width: 1%;
-                max-width: 80px
+                white-space: nowrap !important;
+                min-width: 100px;
+                max-width: 140px
             }
 
+            /* Actions column */
             html body #cardTable th:nth-child(9),
             html body #cardTable td:nth-child(9) {
                 width: 1%;
+                white-space: nowrap !important;
+                min-width: 85px;
                 padding-left: 2px !important;
-                padding-right: 2px !important
+                padding-right: 2px !important;
+                text-align: center !important
             }
         }
     </style>
