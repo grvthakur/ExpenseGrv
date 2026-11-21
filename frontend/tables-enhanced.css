@@ -58,7 +58,7 @@
 }
 
 /* ── v8: softer data colours (desktop + phone, TEXT COLOUR ONLY) ───────────────
-   Credit-card tables: amount = soft lime (unique, not used by any card/person pill), description = stays white, remarks = soft lavender.
+   Credit-card tables: amount = soft lime (unique, not used by any card/person pill), description = stays white, remarks = high-contrast golden amber.
    Expenses: spend amount = soft coral-orange instead of hard red (income stays green).
    Text colour only — no size/layout change. Delete this block to revert. */
 @media all {
@@ -67,7 +67,9 @@
     text-shadow: 0 0 6px rgba(190, 242, 100, 0.22) !important;
   }
   html body :is(#cardTable, #grvCardTable) td:nth-child(5) .table-text-pill {
-    color: #d8c8ff !important;
+    color: #fde047 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.015em !important;
   }
   html body #expenseTable td.txn-amount-out .table-amount-pill {
     color: #fdba74 !important;
@@ -78,7 +80,8 @@
     text-shadow: none !important;
   }
   body.light-mode :is(#cardTable, #grvCardTable) td:nth-child(5) .table-text-pill {
-    color: #6d28d9 !important;
+    color: #b45309 !important;
+    font-weight: 600 !important;
   }
   body.light-mode #expenseTable td.txn-amount-out .table-amount-pill {
     color: #c2410c !important;
@@ -136,7 +139,7 @@ html body #cardTable {
   --ct-text: #f1f5f9;
   --ct-desc-color: #f8fafc;
   --ct-date-color: #38bdf8;
-  --ct-remarks-color: #cbd5e1;
+  --ct-remarks-color: #fde047;
   --ct-month-color: #93c5fd;
 }
 
@@ -156,7 +159,7 @@ body[data-grv-visual-theme="brutalism"] #cardTable {
   --ct-text: #1e293b;
   --ct-desc-color: #0f172a;
   --ct-date-color: #0284c7;
-  --ct-remarks-color: #64748b;
+  --ct-remarks-color: #b45309;
   --ct-month-color: #2563eb;
 }
 
@@ -266,10 +269,14 @@ html body #cardTable tbody tr td:nth-child(4) {
   font-weight: 500 !important;
 }
 
-/* Remarks Column: Understated secondary text */
-html body #cardTable tbody tr td:nth-child(5) {
-  color: var(--ct-remarks-color) !important;
-  font-weight: 400 !important;
+/* Remarks Column: High-contrast distinct text (Card Table & GRV CC Master) */
+html body :is(#cardTable, #grvCardTable) tbody tr td:nth-child(5) {
+  color: var(--ct-remarks-color, #fde047) !important;
+  font-weight: 600 !important;
+}
+body.light-mode :is(#cardTable, #grvCardTable) tbody tr td:nth-child(5) {
+  color: var(--ct-remarks-color, #b45309) !important;
+  font-weight: 600 !important;
 }
 
 /* Billing Month: Soft readable text */
